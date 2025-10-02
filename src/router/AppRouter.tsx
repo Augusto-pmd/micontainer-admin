@@ -7,6 +7,7 @@ import AdminPanel from "../pages/AdminPanel";
 import UserProfile from "../pages/UserProfile";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { UserRole } from "../types/auth";
+import { Building } from "../pages/Building";
 
 export const router = createBrowserRouter([
   // Ruta pública de login
@@ -216,10 +217,10 @@ export const router = createBrowserRouter([
         )
       },
       {
-        path: "test",
+        path: "building",
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
-            <Test />
+            <Building />
           </ProtectedRoute>
         ),
       },
