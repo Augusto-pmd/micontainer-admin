@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../stores/authStore';
+import Button from '../components/Button';
 import { Navigate } from 'react-router-dom';
 
 const Login = () => {
@@ -126,20 +127,15 @@ const Login = () => {
           </div>
 
           <div>
-            <button
+                        <Button
               type="submit"
               disabled={isSubmitting}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-green-700 hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              loading={isSubmitting}
+              variant="primary"
+              fullWidth
             >
-              {isSubmitting ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Iniciando sesión...
-                </div>
-              ) : (
-                'Iniciar Sesión'
-              )}
-            </button>
+              Iniciar Sesión
+            </Button>
           </div>
           
 

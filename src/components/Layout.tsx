@@ -11,7 +11,7 @@ interface LinkItem {
 
 const links: LinkItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: "🏠" },
-  { name: "Mi Perfil", href: "/", icon: "👤" },
+  { name: "Mi Perfil", href: "/profile", icon: "👤" },
   { name: "Test", href: "/test", icon: "🧪" },
   { name: "Panel Admin", href: "/admin", icon: "⚙️", roles: [UserRole.ADMIN] },
   { name: "Usuarios", href: "/users", icon: "👥", roles: [UserRole.ADMIN] },

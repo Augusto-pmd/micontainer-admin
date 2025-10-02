@@ -4,7 +4,7 @@ import DashboardLayout from "../components/Layout";
 import App from "../App";
 import Login from "../pages/Login";
 import AdminPanel from "../pages/AdminPanel";
-
+import UserProfile from "../pages/UserProfile";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { UserRole } from "../types/auth";
 
@@ -59,6 +59,26 @@ export const router = createBrowserRouter([
             }
           >
             <AdminPanel />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "profile",
+        element: (
+          <ProtectedRoute
+            requiredRole={[UserRole.ADMIN, UserRole.OPERATOR, UserRole.USER]}
+            fallback={
+              <div className="text-center py-12">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  Acceso Requerido
+                </h2>
+                <p className="text-gray-600">
+                  Debes iniciar sesión para ver tu perfil.
+                </p>
+              </div>
+            }
+          >
+            <UserProfile />
           </ProtectedRoute>
         ),
       },

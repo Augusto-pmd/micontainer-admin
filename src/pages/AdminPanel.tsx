@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../stores/authStore';
 import { UserRole, type User } from '../types/auth';
 import { getUsers, updateUserRole } from '../services/user.services';
+import Button from '../components/Button';
 
 const AdminPanel = () => {
   const { user, logout } = useAuth();
@@ -235,9 +236,9 @@ const AdminPanel = () => {
               <p className="text-sm text-gray-500 mb-3">
                 Gestiona las políticas de seguridad y autenticación.
               </p>
-              <button className="bg-green-700 text-white px-4 py-2 rounded-md text-sm hover:bg-green-800">
+              <Button variant="primary" size="sm">
                 Configurar
-              </button>
+              </Button>
             </div>
             
             <div className="border border-gray-200 rounded-lg p-4">
@@ -245,9 +246,9 @@ const AdminPanel = () => {
               <p className="text-sm text-gray-500 mb-3">
                 Revisa los logs de actividad y errores del sistema.
               </p>
-              <button className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
+              <Button variant="secondary" size="sm">
                 Ver Logs
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -260,18 +261,19 @@ const AdminPanel = () => {
             Acciones de Administración
           </h3>
           <div className="flex flex-wrap gap-4">
-            <button
+            <Button
               onClick={logout}
-              className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700"
+              variant="danger"
+              size="sm"
             >
               Cerrar Sesión
-            </button>
-            <button className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
+            </Button>
+            <Button variant="secondary" size="sm">
               Respaldar Sistema
-            </button>
-            <button className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
+            </Button>
+            <Button variant="secondary" size="sm">
               Generar Reportes
-            </button>
+            </Button>
           </div>
         </div>
       </div>

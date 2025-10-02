@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useRouteAccess } from '../hooks/useAuth';
 import { useAuth } from '../stores/authStore';
 import type { ProtectedRouteProps } from '../types/auth';
+import Button from './Button';
 
 /**
  * Componente de loading mientras se verifica la autenticación
@@ -30,12 +31,13 @@ const AccessDenied = ({ message }: { message?: string }) => (
       <p className="text-sm text-gray-500 mb-4">
         {message || 'No tienes permisos para acceder a esta página.'}
       </p>
-      <button
+      <Button
         onClick={() => window.history.back()}
-        className="w-full bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+        variant="primary"
+        fullWidth
       >
         Volver
-      </button>
+      </Button>
     </div>
   </div>
 );
