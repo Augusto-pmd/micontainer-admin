@@ -13,12 +13,6 @@ const links: LinkItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: "🏠" },
   { name: "Mi Perfil", href: "/profile", icon: "👤" },
   { name: "Edificios", href: "/building", icon: "🏢" },
-  { name: "Panel Admin", href: "/admin", icon: "⚙️", roles: [UserRole.ADMIN] },
-  { name: "Usuarios", href: "/users", icon: "👥", roles: [UserRole.ADMIN] },
-  { name: "Reportes", href: "/reports", icon: "📊", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
-  { name: "Operador", href: "/moderator", icon: "🛡️", roles: [UserRole.OPERATOR] },
-  { name: "Admin/Op", href: "/admin-or-mod", icon: "🔧", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
-  { name: "Todos los Usuarios", href: "/all-users", icon: "👨‍👩‍👧‍👦", roles: [UserRole.ADMIN] },
 ];
 
 export default function DashboardLayout() {
