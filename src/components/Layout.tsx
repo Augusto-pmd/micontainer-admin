@@ -15,10 +15,10 @@ const links: LinkItem[] = [
   { name: "Test", href: "/test", icon: "🧪" },
   { name: "Panel Admin", href: "/admin", icon: "⚙️", roles: [UserRole.ADMIN] },
   { name: "Usuarios", href: "/users", icon: "👥", roles: [UserRole.ADMIN] },
-  { name: "Reportes", href: "/reports", icon: "📊", roles: [UserRole.ADMIN, UserRole.MODERATOR] },
-  { name: "Moderación", href: "/moderator", icon: "🛡️", roles: [UserRole.MODERATOR] },
-  { name: "Admin/Mod", href: "/admin-or-mod", icon: "🔧", roles: [UserRole.ADMIN, UserRole.MODERATOR] },
-  { name: "Todos los Usuarios", href: "/all-users", icon: "👨‍👩‍👧‍👦", roles: [UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER] },
+  { name: "Reportes", href: "/reports", icon: "📊", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
+  { name: "Operador", href: "/moderator", icon: "🛡️", roles: [UserRole.OPERATOR] },
+  { name: "Admin/Op", href: "/admin-or-mod", icon: "🔧", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
+  { name: "Todos los Usuarios", href: "/all-users", icon: "👨‍👩‍👧‍👦", roles: [UserRole.ADMIN, UserRole.OPERATOR, UserRole.USER] },
 ];
 
 export default function DashboardLayout() {
@@ -118,7 +118,7 @@ export default function DashboardLayout() {
                   <div className="text-xs text-gray-500">
                     <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                       user?.role === UserRole.ADMIN ? 'bg-red-100 text-red-800' :
-                      user?.role === UserRole.MODERATOR ? 'bg-yellow-100 text-yellow-800' :
+                      user?.role === UserRole.OPERATOR ? 'bg-yellow-100 text-yellow-800' :
                       'bg-green-100 text-green-800'
                     }`}>
                       {user?.role}

@@ -17,8 +17,3 @@ export const logoutService = async () => {
   return response.data;
 };
 
-// Obtener perfil del usuario autenticado
-export const getProfileService = async () => {
-  const response = await api.get("/auth/me");
-  return response.data;
-};

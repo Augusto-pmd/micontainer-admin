@@ -1,9 +1,29 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { AuthStore, User } from '../types/auth';
+import type { AuthStore, User, BackendUser, LoginResponse } from '../types/auth';
 import { UserRole } from '../types/auth';
-import { loginService, logoutService, getProfileService } from '../services/auth.services';
+import { loginService, logoutService } from '../services/auth.services';
 import { api } from '../services/api';
+
+// Función para mapear usuario del backend al formato del frontend
+const mapBackendUserToUser = (backendUser: BackendUser): User => {
+  const userRole = backendUser.role.code as UserRole;
+  
+  return {
+    id: backendUser.id,
+    email: backendUser.email,
+    name: `${backendUser.firstName} ${backendUser.lastName}`,
+    firstName: backendUser.firstName,
+    lastName: backendUser.lastName,
+    role: userRole,
+    roleDetails: backendUser.role,
+    avatar: `${backendUser.firstName.charAt(0)}${backendUser.lastName.charAt(0)}`,
+    isActive: true, // Asumimos que si el usuario puede hacer login, está activo
+    createdAt: new Date(backendUser.createdAt),
+    updatedAt: new Date(backendUser.updatedAt),
+    customer: backendUser.customer
+  };
+};
 
 export const useAuthStore = create<AuthStore>()(
   persist(
@@ -20,8 +40,11 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true, error: null });
         
         try {
-          const response = await loginService({ email, password });
-          const { user, token } = response;
+          const response: LoginResponse = await loginService({ email, password });
+          const { user: backendUser, token } = response;
+          
+          // Mapear el usuario del backend al formato del frontend
+          const user = mapBackendUserToUser(backendUser);
           
           // Configurar el token en el header por defecto de axios
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -90,10 +113,10 @@ export const useAuthStore = create<AuthStore>()(
 
       // Verificar autenticación al cargar la app
       checkAuth: async () => {
-        const { token, isAuthenticated } = get();
+        const { token, user, isAuthenticated } = get();
         
         // Si ya está autenticado, no hacer nada
-        if (isAuthenticated) {
+        if (isAuthenticated && user) {
           return;
         }
         
@@ -103,25 +126,9 @@ export const useAuthStore = create<AuthStore>()(
           return;
         }
 
-        set({ isLoading: true });
-        
-        try {
-          // Configurar el token en el header
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          
-          // Hacer una petición al endpoint de validación
-          const user = await getProfileService();
-          
-          set({
-            user,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null
-          });
-        } catch {
-          // Limpiar el token del header
+        // Si tenemos token pero no usuario (caso raro), limpiar todo
+        if (token && !user) {
           delete api.defaults.headers.common['Authorization'];
-          
           set({
             user: null,
             token: null,
@@ -129,8 +136,14 @@ export const useAuthStore = create<AuthStore>()(
             isLoading: false,
             error: null
           });
-          // Limpiar token inválido del storage
           localStorage.removeItem('auth-storage');
+          return;
+        }
+
+        // Si tenemos token y usuario, configurar el header para futuras peticiones
+        if (token && user) {
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          set({ isLoading: false });
         }
       },
 

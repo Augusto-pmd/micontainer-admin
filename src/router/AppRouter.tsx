@@ -4,9 +4,9 @@ import DashboardLayout from "../components/Layout";
 import App from "../App";
 import Login from "../pages/Login";
 import AdminPanel from "../pages/AdminPanel";
-import UserDashboard from "../pages/UserDashboard";
+
 import { ProtectedRoute } from "../components/ProtectedRoute";
-import { UserRole, Permission } from "../types/auth";
+import { UserRole } from "../types/auth";
 
 export const router = createBrowserRouter([
   // Ruta pública de login
@@ -35,7 +35,10 @@ export const router = createBrowserRouter([
         path: "dashboard",
         element: (
           <ProtectedRoute>
-            <UserDashboard />
+            <div className="p-6">
+              <h1 className="text-2xl font-bold">Dashboard de Usuario</h1>
+              <p>Página en construcción</p>
+            </div>
           </ProtectedRoute>
         ),
       },
@@ -63,7 +66,7 @@ export const router = createBrowserRouter([
         path: "users",
         element: (
           <ProtectedRoute
-            requiredPermissions={[Permission.READ_USERS]}
+            requiredRole={[UserRole.ADMIN, UserRole.OPERATOR, UserRole.USER]}
             fallback={
               <div className="text-center py-12">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
@@ -88,7 +91,7 @@ export const router = createBrowserRouter([
         path: "reports",
         element: (
           <ProtectedRoute
-            requiredPermissions={[Permission.READ_REPORTS]}
+            requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}
             fallback={
               <div className="text-center py-12">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
@@ -113,7 +116,7 @@ export const router = createBrowserRouter([
         path: "moderator",
         element: (
           <ProtectedRoute
-            requiredRole={UserRole.MODERATOR}
+            requiredRole={UserRole.OPERATOR}
             fallback={
               <div className="text-center py-12">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">
@@ -138,7 +141,7 @@ export const router = createBrowserRouter([
         path: "admin-or-mod",
         element: (
           <ProtectedRoute 
-            requiredRole={[UserRole.ADMIN, UserRole.MODERATOR]}
+            requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}
             fallback={
               <div className="text-center py-12">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Acceso Restringido</h2>
@@ -156,7 +159,7 @@ export const router = createBrowserRouter([
               <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                 <h3 className="font-semibold text-blue-900">Ejemplo de uso:</h3>
                 <code className="text-sm text-blue-800">
-                  requiredRole={[UserRole.ADMIN, UserRole.MODERATOR]}
+                  requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}
                 </code>
               </div>
             </div>
@@ -167,7 +170,7 @@ export const router = createBrowserRouter([
         path: "all-users",
         element: (
           <ProtectedRoute 
-            requiredRole={[UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER]}
+            requiredRole={[UserRole.ADMIN, UserRole.OPERATOR, UserRole.USER]}
             fallback={
               <div className="text-center py-12">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Solo para Usuarios Registrados</h2>
@@ -185,7 +188,7 @@ export const router = createBrowserRouter([
               <div className="mt-4 p-4 bg-green-50 rounded-lg">
                 <h3 className="font-semibold text-green-900">Ejemplo de uso:</h3>
                 <code className="text-sm text-green-800">
-                  requiredRole={[UserRole.ADMIN, UserRole.MODERATOR, UserRole.USER]}
+                  requiredRole={[UserRole.ADMIN, UserRole.OPERATOR, UserRole.USER]}
                 </code>
               </div>
             </div>
@@ -195,7 +198,7 @@ export const router = createBrowserRouter([
       {
         path: "test",
         element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.MODERATOR]}>
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <Test />
           </ProtectedRoute>
         ),

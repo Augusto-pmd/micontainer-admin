@@ -1,14 +1,45 @@
-import { PermissionGuard } from '../components/ProtectedRoute';
+import { useState, useEffect } from 'react';
+
 import { useAuth } from '../stores/authStore';
-import { UserRole, Permission, MOCK_USERS } from '../types/auth';
+import { UserRole, type User } from '../types/auth';
+import { getUsers, updateUserRole } from '../services/user.services';
 
 const AdminPanel = () => {
   const { user, logout } = useAuth();
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
+
+  const loadUsers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const userData = await getUsers();
+      setUsers(userData);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || 'Error al cargar usuarios');
+      console.error('Error loading users:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRoleUpdate = async (userId: string, newRole: string) => {
-    // Simulación de actualización de rol
-    console.log(`Actualizando usuario ${userId} a rol ${newRole}`);
-    alert(`Usuario actualizado a rol: ${newRole}`);
+    try {
+      await updateUserRole(userId, newRole);
+      // Actualizar el usuario en el estado local
+      setUsers(users.map(u => 
+        u.id === userId ? { ...u, role: newRole as UserRole } : u
+      ));
+      alert(`Usuario actualizado a rol: ${newRole}`);
+    } catch (err: any) {
+      console.error('Error updating user role:', err);
+      alert('Error al actualizar el rol del usuario');
+    }
   };
 
   return (
@@ -37,7 +68,7 @@ const AdminPanel = () => {
                   Total Usuarios
                 </dt>
                 <dd className="text-lg font-medium text-gray-900">
-                  {Object.keys(MOCK_USERS).length}
+                  {loading ? '...' : users.length}
                 </dd>
               </dl>
             </div>
@@ -59,7 +90,7 @@ const AdminPanel = () => {
                   Usuarios Activos
                 </dt>
                 <dd className="text-lg font-medium text-gray-900">
-                  {Object.values(MOCK_USERS).filter(u => u.isActive).length}
+                  {loading ? '...' : users.filter(u => u.isActive).length}
                 </dd>
               </dl>
             </div>
@@ -81,7 +112,7 @@ const AdminPanel = () => {
                   Administradores
                 </dt>
                 <dd className="text-lg font-medium text-gray-900">
-                  {Object.values(MOCK_USERS).filter(u => u.role === UserRole.ADMIN).length}
+                  {loading ? '...' : users.filter(u => u.role === UserRole.ADMIN).length}
                 </dd>
               </dl>
             </div>
@@ -90,7 +121,6 @@ const AdminPanel = () => {
       </div>
 
       {/* Gestión de usuarios - Solo para admins */}
-      <PermissionGuard permissions={[Permission.MANAGE_ROLES]} showFallback>
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
@@ -118,7 +148,26 @@ const AdminPanel = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {Object.values(MOCK_USERS).map((mockUser) => (
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                        Cargando usuarios...
+                      </td>
+                    </tr>
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-4 text-center text-red-500">
+                        {error}
+                      </td>
+                    </tr>
+                  ) : users.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                        No hay usuarios disponibles
+                      </td>
+                    </tr>
+                  ) : (
+                    users.map((mockUser) => (
                     <tr key={mockUser.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -140,7 +189,7 @@ const AdminPanel = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                           mockUser.role === UserRole.ADMIN ? 'bg-red-100 text-red-800' :
-                          mockUser.role === UserRole.MODERATOR ? 'bg-yellow-100 text-yellow-800' :
+                          mockUser.role === UserRole.OPERATOR ? 'bg-yellow-100 text-yellow-800' :
                           'bg-green-100 text-green-800'
                         }`}>
                           {mockUser.role}
@@ -160,19 +209,19 @@ const AdminPanel = () => {
                           onChange={(e) => handleRoleUpdate(mockUser.id, e.target.value)}
                         >
                           <option value={UserRole.ADMIN}>Admin</option>
-                          <option value={UserRole.MODERATOR}>Moderador</option>
+                          <option value={UserRole.OPERATOR}>Operador</option>
                           <option value={UserRole.USER}>Usuario</option>
                           <option value={UserRole.GUEST}>Invitado</option>
                         </select>
                       </td>
                     </tr>
-                  ))}
+                  ))
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
-      </PermissionGuard>
 
       {/* Configuración del sistema */}
       <div className="bg-white shadow rounded-lg">

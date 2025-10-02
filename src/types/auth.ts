@@ -1,38 +1,61 @@
-// Definición de roles disponibles en el sistema
+// Definición de roles disponibles en el sistema (basado en códigos del backend)
 export const UserRole = {
-  ADMIN: 'admin',
-  USER: 'user',
-  MODERATOR: 'moderator',
-  GUEST: 'guest'
+  ADMIN: 'role-admin',
+  OPERATOR: 'role-operator',
+  USER: 'role-user',
+  GUEST: 'role-guest'
 } as const;
 
 export type UserRole = typeof UserRole[keyof typeof UserRole];
 
-// Definición de permisos específicos
-export const Permission = {
-  READ_USERS: 'read:users',
-  WRITE_USERS: 'write:users',
-  DELETE_USERS: 'delete:users',
-  READ_ADMIN: 'read:admin',
-  WRITE_ADMIN: 'write:admin',
-  READ_REPORTS: 'read:reports',
-  WRITE_REPORTS: 'write:reports',
-  MANAGE_ROLES: 'manage:roles'
-} as const;
 
-export type Permission = typeof Permission[keyof typeof Permission];
 
-// Interface para el usuario
+// Interface para el rol desde el backend
+export interface Role {
+  id: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  name: string;
+  code: string;
+  description: string;
+  status: string;
+}
+
+// Interface para el customer desde el backend
+export interface Customer {
+  // Definir cuando sea necesario
+  [key: string]: any;
+}
+
+// Interface para el usuario desde el backend
+export interface BackendUser {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: Role;
+  customer: Customer | null;
+}
+
+// Interface para el usuario normalizada para el frontend
 export interface User {
   id: string;
   email: string;
-  name: string;
+  name: string; // firstName + lastName combinados
+  firstName: string;
+  lastName: string;
   role: UserRole;
-  permissions: Permission[];
+  roleDetails: Role; // Información completa del rol
   avatar?: string;
   isActive: boolean;
   createdAt: Date;
+  updatedAt: Date;
   lastLogin?: Date;
+  customer: Customer | null;
 }
 
 // Estado de autenticación
@@ -58,38 +81,21 @@ export interface AuthActions {
 // Store completo de autenticación
 export interface AuthStore extends AuthState, AuthActions {}
 
+// Interface para la respuesta de login del backend
+export interface LoginResponse {
+  user: BackendUser;
+  token: string;
+}
+
 // Props para componentes de protección de rutas
 export interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredRole?: UserRole | UserRole[]; // Ahora puede ser un rol individual o un array de roles
-  requiredPermissions?: Permission[];
+  requiredRole?: UserRole | UserRole[];
   fallback?: React.ReactNode;
   redirectTo?: string;
   requireAllRoles?: boolean; // Para determinar si requiere TODOS los roles o solo UNO
 }
 
-// Configuración de roles y sus permisos por defecto
-export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  [UserRole.ADMIN]: [
-    Permission.READ_USERS,
-    Permission.WRITE_USERS,
-    Permission.DELETE_USERS,
-    Permission.READ_ADMIN,
-    Permission.WRITE_ADMIN,
-    Permission.READ_REPORTS,
-    Permission.WRITE_REPORTS,
-    Permission.MANAGE_ROLES
-  ],
-  [UserRole.MODERATOR]: [
-    Permission.READ_USERS,
-    Permission.WRITE_USERS,
-    Permission.READ_REPORTS,
-    Permission.WRITE_REPORTS
-  ],
-  [UserRole.USER]: [
-    Permission.READ_USERS
-  ],
-  [UserRole.GUEST]: []
-};
+
 
 
