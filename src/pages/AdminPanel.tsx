@@ -56,7 +56,7 @@ const AdminPanel = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+              <div className="w-8 h-8 bg-green-700 rounded-md flex items-center justify-center">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                 </svg>
@@ -172,7 +172,7 @@ const AdminPanel = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-semibold">
+                            <div className="h-10 w-10 rounded-full bg-green-700 flex items-center justify-center text-white font-semibold">
                               {mockUser.avatar}
                             </div>
                           </div>
@@ -204,7 +204,7 @@ const AdminPanel = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <select
-                          className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-blue-500 focus:outline-none focus:ring-blue-500 sm:text-sm"
+                          className="mt-1 block w-full rounded-md border-gray-300 py-2 pl-3 pr-10 text-base focus:border-green-500 focus:outline-none focus:ring-green-500 sm:text-sm"
                           defaultValue={mockUser.role}
                           onChange={(e) => handleRoleUpdate(mockUser.id, e.target.value)}
                         >
@@ -235,7 +235,7 @@ const AdminPanel = () => {
               <p className="text-sm text-gray-500 mb-3">
                 Gestiona las políticas de seguridad y autenticación.
               </p>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">
+              <button className="bg-green-700 text-white px-4 py-2 rounded-md text-sm hover:bg-green-800">
                 Configurar
               </button>
             </div>
@@ -262,14 +262,14 @@ const AdminPanel = () => {
           <div className="flex flex-wrap gap-4">
             <button
               onClick={logout}
-              className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700"
+              className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700"
             >
               Cerrar Sesión
             </button>
-            <button className="bg-yellow-600 text-white px-4 py-2 rounded-md text-sm hover:bg-yellow-700">
+            <button className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
               Respaldar Sistema
             </button>
-            <button className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm hover:bg-purple-700">
+            <button className="bg-green-600 text-white px-4 py-2 rounded-md text-sm hover:bg-green-700">
               Generar Reportes
             </button>
           </div>

@@ -27,7 +27,7 @@ export default function DashboardLayout() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-green-700"></div>
       </div>
     );
   }
@@ -42,7 +42,7 @@ export default function DashboardLayout() {
                 id="toggleSidebarMobile"
                 aria-expanded="true"
                 aria-controls="sidebar"
-                className="lg:hidden mr-2 text-gray-600 hover:text-gray-900 cursor-pointer p-2 hover:bg-gray-100 focus:bg-gray-100 focus:ring-2 focus:ring-gray-100 rounded"
+                className="lg:hidden mr-2 text-gray-600 hover:text-green-700 cursor-pointer p-2 hover:bg-green-50 focus:bg-green-50 focus:ring-2 focus:ring-green-100 rounded"
               >
                 <svg
                   id="toggleSidebarMobileHamburger"
@@ -125,12 +125,12 @@ export default function DashboardLayout() {
                     </span>
                   </div>
                 </div>
-                <div className="bg-blue-500 text-white p-2 rounded-full w-12 h-12 flex items-center justify-center">
+                <div className="bg-green-700 text-white p-2 rounded-full w-12 h-12 flex items-center justify-center">
                   {user?.avatar || 'U'}
                 </div>
                 <button
                   onClick={logout}
-                  className="text-gray-400 hover:text-gray-600 text-sm"
+                  className="text-gray-400 hover:text-green-600 text-sm"
                   title="Cerrar sesión"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,7 +165,7 @@ export default function DashboardLayout() {
                       <li key={link.href}>
                         <Link
                           to={link.href}
-                          className="text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-gray-100 group"
+                          className="text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-green-50 group"
                         >
                           <span className="mr-3">{link.icon}</span>
                           <span>{link.name}</span>
@@ -239,7 +239,7 @@ export default function DashboardLayout() {
               </li>
             </ul>
             <div className="flex sm:justify-center space-x-6">
-              <a href="#" className="text-gray-500 hover:text-gray-900">
+              <a href="#" className="text-gray-500 hover:text-green-700">
                 <svg
                   className="h-5 w-5"
                   fill="currentColor"
@@ -253,7 +253,7 @@ export default function DashboardLayout() {
                   />
                 </svg>
               </a>
-              <a href="#" className="text-gray-500 hover:text-gray-900">
+              <a href="#" className="text-gray-500 hover:text-green-700">
                 <svg
                   className="h-5 w-5"
                   fill="currentColor"
@@ -267,7 +267,7 @@ export default function DashboardLayout() {
                   />
                 </svg>
               </a>
-              <a href="#" className="text-gray-500 hover:text-gray-900">
+              <a href="#" className="text-gray-500 hover:text-green-700">
                 <svg
                   className="h-5 w-5"
                   fill="currentColor"
@@ -277,7 +277,7 @@ export default function DashboardLayout() {
                   <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
                 </svg>
               </a>
-              <a href="#" className="text-gray-500 hover:text-gray-900">
+              <a href="#" className="text-gray-500 hover:text-green-700">
                 <svg
                   className="h-5 w-5"
                   fill="currentColor"
@@ -291,7 +291,7 @@ export default function DashboardLayout() {
                   />
                 </svg>
               </a>
-              <a href="#" className="text-gray-500 hover:text-gray-900">
+              <a href="#" className="text-gray-500 hover:text-green-700">
                 <svg
                   className="h-5 w-5"
                   fill="currentColor"

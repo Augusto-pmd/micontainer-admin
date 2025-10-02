@@ -156,9 +156,9 @@ export const router = createBrowserRouter([
               <p className="text-gray-600">
                 Esta sección está disponible tanto para administradores como para moderadores.
               </p>
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-semibold text-blue-900">Ejemplo de uso:</h3>
-                <code className="text-sm text-blue-800">
+              <div className="mt-4 p-4 bg-green-50 rounded-lg">
+                <h3 className="font-semibold text-green-900">Ejemplo de uso:</h3>
+                <code className="text-sm text-green-800">
                   requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}
                 </code>
               </div>

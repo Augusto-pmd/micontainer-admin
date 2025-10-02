@@ -9,7 +9,7 @@ import type { ProtectedRouteProps } from '../types/auth';
 const AuthLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
     <div className="flex flex-col items-center space-y-4">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-700"></div>
       <p className="text-gray-600">Verificando autenticación...</p>
     </div>
   </div>
@@ -32,7 +32,7 @@ const AccessDenied = ({ message }: { message?: string }) => (
       </p>
       <button
         onClick={() => window.history.back()}
-        className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        className="w-full bg-green-700 text-white px-4 py-2 rounded-md hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
       >
         Volver
       </button>
