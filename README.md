@@ -4,8 +4,38 @@ This template provides a minimal setup to get React working in Vite with HMR and
 
 Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## Alertas de la API (SweetAlert2)
+
+Se integró **SweetAlert2** para mostrar mensajes consistentes de éxito, error, información y confirmación.
+
+### Utilidades (`src/utils/alerts.ts`)
+
+```ts
+import { showSuccess, showError, showInfo, showWarning, showConfirm, showApiError, showApiValidationErrors } from './src/utils/alerts';
+
+showSuccess('Guardado', 'Los cambios se aplicaron correctamente');
+showError('Error', 'No se pudo completar la acción');
+const confirmed = await showConfirm('¿Estás seguro?', 'Esta acción no se puede deshacer');
+if (confirmed) {
+  // continuar
+}
+```
+
+### Errores automáticos de la API
+
+Los errores HTTP >= 400 se muestran automáticamente mediante el interceptor de Axios (`src/services/api.ts`).
+
+Para errores de validación (422) puedes usar:
+
+```ts
+showApiValidationErrors({ email: ['El email es inválido'], password: ['Requerido'] });
+```
+
+### Convenciones
+- Color primario: verde (coherente con la UI)
+- Toasts de éxito: esquina superior derecha, desaparecen automáticamente
+- Diálogos de confirmación: botones invertidos (confirmar destacado)
 
 ## Expanding the ESLint configuration
 

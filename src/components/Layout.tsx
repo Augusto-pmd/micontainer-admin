@@ -18,7 +18,7 @@ const links: LinkItem[] = [
   { name: "Reportes", href: "/reports", icon: "📊", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
   { name: "Operador", href: "/moderator", icon: "🛡️", roles: [UserRole.OPERATOR] },
   { name: "Admin/Op", href: "/admin-or-mod", icon: "🔧", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
-  { name: "Todos los Usuarios", href: "/all-users", icon: "👨‍👩‍👧‍👦", roles: [UserRole.ADMIN, UserRole.OPERATOR, UserRole.USER] },
+  { name: "Todos los Usuarios", href: "/all-users", icon: "👨‍👩‍👧‍👦", roles: [UserRole.ADMIN] },
 ];
 
 export default function DashboardLayout() {
