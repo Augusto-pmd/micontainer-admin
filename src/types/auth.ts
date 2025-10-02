@@ -92,39 +92,4 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   [UserRole.GUEST]: []
 };
 
-// Datos de usuario de prueba
-export const MOCK_USERS: Record<string, User> = {
-  admin: {
-    id: '1',
-    email: 'admin@micontainer.com',
-    name: 'Luis Admin',
-    role: UserRole.ADMIN,
-    permissions: ROLE_PERMISSIONS[UserRole.ADMIN],
-    avatar: 'LA',
-    isActive: true,
-    createdAt: new Date('2024-01-01'),
-    lastLogin: new Date()
-  },
-  user: {
-    id: '2',
-    email: 'user@micontainer.com',
-    name: 'Usuario Normal',
-    role: UserRole.USER,
-    permissions: ROLE_PERMISSIONS[UserRole.USER],
-    avatar: 'UN',
-    isActive: true,
-    createdAt: new Date('2024-01-15'),
-    lastLogin: new Date()
-  },
-  moderator: {
-    id: '3',
-    email: 'mod@micontainer.com',
-    name: 'Moderador Sistema',
-    role: UserRole.MODERATOR,
-    permissions: ROLE_PERMISSIONS[UserRole.MODERATOR],
-    avatar: 'MS',
-    isActive: true,
-    createdAt: new Date('2024-01-10'),
-    lastLogin: new Date()
-  }
-};
+

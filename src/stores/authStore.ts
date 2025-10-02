@@ -1,52 +1,9 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AuthStore, User } from '../types/auth';
-import { UserRole, MOCK_USERS } from '../types/auth';
-
-// Simulación de API de autenticación
-const authAPI = {
-  login: async (email: string, password: string): Promise<{ user: User; token: string }> => {
-    // Simulamos delay de red
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Lógica de autenticación simple para demo
-    const userKey = email.split('@')[0];
-    const user = MOCK_USERS[userKey];
-    
-    if (!user) {
-      throw new Error('Usuario no encontrado');
-    }
-    
-    // En un app real, verificarías la contraseña aquí
-    if (password !== 'password123') {
-      throw new Error('Contraseña incorrecta');
-    }
-    
-    const token = `mock-jwt-token-${user.id}-${Date.now()}`;
-    
-    return { user, token };
-  },
-  
-  checkAuth: async (token: string): Promise<User> => {
-    // Simulamos verificación de token
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    if (!token || !token.startsWith('mock-jwt-token')) {
-      throw new Error('Token inválido');
-    }
-    
-    // Extraer ID de usuario del token mock
-    const parts = token.split('-');
-    const userId = parts[3];
-    
-    const user = Object.values(MOCK_USERS).find(u => u.id === userId);
-    if (!user) {
-      throw new Error('Usuario no encontrado');
-    }
-    
-    return user;
-  }
-};
+import { UserRole } from '../types/auth';
+import { loginService, logoutService, getProfileService } from '../services/auth.services';
+import { api } from '../services/api';
 
 export const useAuthStore = create<AuthStore>()(
   persist(
@@ -63,7 +20,11 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true, error: null });
         
         try {
-          const { user, token } = await authAPI.login(email, password);
+          const response = await loginService({ email, password });
+          const { user, token } = response;
+          
+          // Configurar el token en el header por defecto de axios
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
           set({
             user: { ...user, lastLogin: new Date() },
@@ -72,30 +33,40 @@ export const useAuthStore = create<AuthStore>()(
             isLoading: false,
             error: null
           });
-        } catch (error) {
+        } catch (error: any) {
           set({
             user: null,
             token: null,
             isAuthenticated: false,
             isLoading: false,
-            error: error instanceof Error ? error.message : 'Error de autenticación'
+            error: error?.response?.data?.message || error?.message || 'Error de autenticación'
           });
           throw error;
         }
       },
 
       // Acción de logout
-      logout: () => {
-        set({
-          user: null,
-          token: null,
-          isAuthenticated: false,
-          isLoading: false,
-          error: null
-        });
-        
-        // Limpiar localStorage
-        localStorage.removeItem('auth-storage');
+      logout: async () => {
+        try {
+          await logoutService();
+        } catch (error) {
+          // Incluso si el logout en el servidor falla, limpiamos el estado local
+          console.error('Error durante logout:', error);
+        } finally {
+          // Limpiar el token del header de axios
+          delete api.defaults.headers.common['Authorization'];
+          
+          set({
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            isLoading: false,
+            error: null
+          });
+          
+          // Limpiar localStorage
+          localStorage.removeItem('auth-storage');
+        }
       },
 
       // Establecer usuario directamente
@@ -135,7 +106,12 @@ export const useAuthStore = create<AuthStore>()(
         set({ isLoading: true });
         
         try {
-          const user = await authAPI.checkAuth(token);
+          // Configurar el token en el header
+          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          // Hacer una petición al endpoint de validación
+          const user = await getProfileService();
+          
           set({
             user,
             isAuthenticated: true,
@@ -143,6 +119,9 @@ export const useAuthStore = create<AuthStore>()(
             error: null
           });
         } catch {
+          // Limpiar el token del header
+          delete api.defaults.headers.common['Authorization'];
+          
           set({
             user: null,
             token: null,
