@@ -23,7 +23,7 @@ export const createBranchServices = async (branchData: any) => {
 };
 
 export const updateBranchServices = async (id: number, branchData: any) => {
-  const response = await api.put(`/branch/${id}`, branchData);
+  const response = await api.patch(`/branch/${id}`, branchData);
   return response.data;
 };
 

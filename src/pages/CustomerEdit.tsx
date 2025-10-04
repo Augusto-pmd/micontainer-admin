@@ -21,7 +21,7 @@ export const CustomerEdit = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { selectedCustomer, isLoading, fetchCustomerById } = useCustomerStore();
-  
+
   const [formData, setFormData] = useState({
     dni: "",
     cuit: "",
@@ -32,7 +32,7 @@ export const CustomerEdit = () => {
       firstName: "",
       lastName: "",
       email: "",
-    }
+    },
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -54,38 +54,38 @@ export const CustomerEdit = () => {
           firstName: selectedCustomer.user.firstName,
           lastName: selectedCustomer.user.lastName,
           email: selectedCustomer.user.email,
-        }
+        },
       });
     }
   }, [selectedCustomer]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
+
     if (name.startsWith("user.")) {
       const userField = name.split(".")[1];
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         user: {
           ...prev.user,
-          [userField]: value
-        }
+          [userField]: value,
+        },
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        [name]: value
+        [name]: value,
       }));
     }
   };
 
   const handlePersonTypeChange = (value: "fisica" | "juridica") => {
-    setFormData(prev => ({ ...prev, personType: value }));
+    setFormData((prev) => ({ ...prev, personType: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.dni.trim()) {
       showApiError(new Error("El DNI es requerido"));
       return;
@@ -112,9 +112,18 @@ export const CustomerEdit = () => {
     }
 
     setIsSaving(true);
-    
+
     try {
-      await updateCustomerServices(Number(id), formData);
+      const userData = {
+        firstName: formData.user.firstName,
+        lastName: formData.user.lastName,
+        email: formData.user.email,
+        address: formData.address,
+        cuit: formData.cuit,
+        dni: formData.dni,
+        phone: formData.phone,
+      };
+      await updateCustomerServices(Number(id), userData);
       await showSuccess("Cliente actualizado correctamente");
       navigate(`/customers/${id}`);
     } catch (error: any) {
@@ -156,9 +165,7 @@ export const CustomerEdit = () => {
           Volver a detalles
         </Button>
 
-        <h1 className="text-3xl font-bold text-gray-900">
-          Editar Cliente
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900">Editar Cliente</h1>
         <p className="text-gray-500 mt-2">
           Actualiza la información del cliente
         </p>

@@ -16,7 +16,7 @@ export const createBuilding = async (buildingData: any) => {
 };
 
 export const updateBuilding = async (id: number, buildingData: any) => {
-  const response = await api.put(`/building/${id}`, buildingData);
+  const response = await api.patch(`/building/${id}`, buildingData);
   return response.data;
 };
 

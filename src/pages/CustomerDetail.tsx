@@ -1,24 +1,43 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, User, Phone, Mail, MapPin, CreditCard, FileText } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, MapPin, CreditCard, FileText, Package, Calendar, DollarSign, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useCustomerStore } from "@/stores/customerStore";
+import { getOrdersByCustomerIdServices } from "@/services/order.services";
+import type { ReservationOrder } from "@/types/order";
 
 export const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { selectedCustomer, isLoading, error, fetchCustomerById, clearSelectedCustomer } = useCustomerStore();
+  
+  const [orders, setOrders] = useState<ReservationOrder[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchCustomerById(Number(id));
+      loadCustomerOrders(Number(id));
     }
     
     return () => {
       clearSelectedCustomer();
     };
   }, [id, fetchCustomerById, clearSelectedCustomer]);
+
+  const loadCustomerOrders = async (customerId: number) => {
+    setLoadingOrders(true);
+    try {
+      const customerOrders = await getOrdersByCustomerIdServices(customerId);
+      setOrders(customerOrders);
+    } catch (error) {
+      console.error("Error loading customer orders:", error);
+      setOrders([]);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -184,13 +203,87 @@ export const CustomerDetail = () => {
             </div>
           )}
 
-          {/* Actividad Reciente - Placeholder para futuras órdenes */}
+          {/* Actividad Reciente - Órdenes del Cliente */}
           <div className="bg-white rounded-lg border p-6">
-            <h2 className="text-xl font-semibold mb-4">Órdenes Recientes</h2>
-            <p className="text-gray-500 text-center py-8">
-              No hay órdenes registradas para este cliente
-            </p>
-            {/* Aquí se pueden mostrar las órdenes del cliente en el futuro */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <Package className="h-5 w-5" />
+                Órdenes del Cliente
+              </h2>
+              <span className="text-sm text-gray-500">
+                {orders.length} {orders.length === 1 ? 'orden' : 'órdenes'}
+              </span>
+            </div>
+            
+            {loadingOrders ? (
+              <div className="flex justify-center py-8">
+                <Spinner className="h-8 w-8 text-green-500" />
+              </div>
+            ) : orders.length === 0 ? (
+              <div className="text-center py-8">
+                <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No hay órdenes registradas para este cliente</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {orders.map((order) => (
+                  <div 
+                    key={order.id} 
+                    className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/orders/${order.id}`)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-semibold text-gray-900">Orden #{order.id}</span>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            order.storageRoom.status === 'reserved' 
+                              ? 'bg-yellow-100 text-yellow-800' 
+                              : order.storageRoom.status === 'occupied'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {order.storageRoom.status === 'reserved' ? 'Reservado' : 
+                             order.storageRoom.status === 'occupied' ? 'Ocupado' : 
+                             order.storageRoom.status}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Calendar className="h-4 w-4" />
+                            <span>{new Date(order.entryDate).toLocaleDateString('es-AR')} - {order.entryTime}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <DollarSign className="h-4 w-4" />
+                            <span className="font-medium">${order.totalAmount}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Package className="h-4 w-4" />
+                            <span>{order.storageRoom.space} - {order.storageRoom.floor}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <MapPin className="h-4 w-4" />
+                            <span>{order.storageRoom.building.name}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/orders/${order.id}`);
+                        }}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -230,6 +323,12 @@ export const CustomerDetail = () => {
                 <span className="font-semibold">{customer.cuit}</span>
               </div>
               <div className="flex justify-between items-center">
+                <span className="text-gray-600">Órdenes activas</span>
+                <span className="font-semibold text-green-600">
+                  {loadingOrders ? '...' : orders.length}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-gray-600">Cliente desde</span>
                 <span className="font-semibold">
                   {new Date(customer.createdAt).toLocaleDateString('es-AR', { 
@@ -252,8 +351,12 @@ export const CustomerDetail = () => {
               >
                 Editar cliente
               </Button>
-              <Button className="w-full" variant="outline">
-                Ver órdenes
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={() => navigate('/orders', { state: { customerId: customer.id } })}
+              >
+                Ver todas las órdenes
               </Button>
               <Button className="w-full" variant="outline">
                 Enviar email
