@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -35,6 +36,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { getAllCustomersServices } from "@/services/customer.services";
 import type { Customer as CustomerType, PaginatedCustomers } from "@/types/customer";
+import { useCustomerStore } from "@/stores/customerStore";
 
 const columnLabels: Record<string, string> = {
   id: "ID",
@@ -97,6 +99,8 @@ const columns: ColumnDef<CustomerType>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const customer = row.original;
+      const navigate = useNavigate();
+      const { setSelectedCustomer } = useCustomerStore();
 
       return (
         <DropdownMenu>
@@ -116,7 +120,14 @@ const columns: ColumnDef<CustomerType>[] = [
               Copiar ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Ver detalles</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setSelectedCustomer(customer);
+                navigate(`/customers/${customer.id}`);
+              }}
+            >
+              Ver detalles
+            </DropdownMenuItem>
             <DropdownMenuItem>Editar cliente</DropdownMenuItem>
             <DropdownMenuItem className="text-red-600">
               Eliminar cliente

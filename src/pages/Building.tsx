@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -9,7 +10,6 @@ import {
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -36,6 +36,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { getAllBuildings } from "@/services/building.services";
 import type { Building as BuildingType } from "@/types/building";
+import { useBuildingStore } from "@/stores/buildingStore";
 
 interface PaginatedBuildings {
   data: BuildingType[];
@@ -92,6 +93,8 @@ const columns: ColumnDef<BuildingType>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const building = row.original;
+      const navigate = useNavigate();
+      const { setSelectedBuilding } = useBuildingStore();
 
       return (
         <DropdownMenu>
@@ -111,7 +114,14 @@ const columns: ColumnDef<BuildingType>[] = [
               Copiar ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Ver detalles</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setSelectedBuilding(building);
+                navigate(`/building/${building.id}`);
+              }}
+            >
+              Ver detalles
+            </DropdownMenuItem>
             <DropdownMenuItem>Editar edificio</DropdownMenuItem>
             <DropdownMenuItem className="text-red-600">
               Eliminar edificio

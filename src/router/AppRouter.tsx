@@ -8,10 +8,13 @@ import UserProfile from "../pages/UserProfile";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { UserRole } from "../types/auth";
 import { Building } from "../pages/Building";
+import { BuildingDetail } from "@/pages/BuildingDetail";
 import { Branch } from "@/pages/Branch";
+import { BranchDetail } from "@/pages/BranchDetail";
 import { Orders } from "@/pages/Orders";
 import { OrderDetail } from "@/pages/OrderDetail";
 import { Customers } from "@/pages/Customers";
+import { CustomerDetail } from "@/pages/CustomerDetail";
 
 export const router = createBrowserRouter([
   // Ruta pública de login
@@ -78,10 +81,26 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "building/:id",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <BuildingDetail />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: "branch",
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <Branch />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "branch/:id",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <BranchDetail />
           </ProtectedRoute>
         ),
       },
@@ -106,6 +125,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <Customers />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "customers/:id",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <CustomerDetail />
           </ProtectedRoute>
         ),
       },

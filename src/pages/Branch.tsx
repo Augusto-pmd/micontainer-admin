@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type {
   ColumnDef,
   ColumnFiltersState,
@@ -35,6 +36,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { getAllBranchesServices } from "@/services/branch.services";
 import type { Branch as BranchType, PaginatedBranches } from "@/types/branch";
+import { useBranchStore } from "@/stores/branchStore";
 
 const columnLabels: Record<string, string> = {
   id: "ID",
@@ -97,6 +99,8 @@ const columns: ColumnDef<BranchType>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const branch = row.original;
+      const navigate = useNavigate();
+      const { setSelectedBranch } = useBranchStore();
 
       return (
         <DropdownMenu>
@@ -116,7 +120,14 @@ const columns: ColumnDef<BranchType>[] = [
               Copiar ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Ver detalles</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setSelectedBranch(branch);
+                navigate(`/branch/${branch.id}`);
+              }}
+            >
+              Ver detalles
+            </DropdownMenuItem>
             <DropdownMenuItem>Editar sucursal</DropdownMenuItem>
             <DropdownMenuItem className="text-red-600">
               Eliminar sucursal
