@@ -1,24 +1,13 @@
 import { createBrowserRouter } from "react-router-dom";
-import Test from "../Test";
-import DashboardLayout from "../components/Layout";
 import App from "../App";
-import Login from "../pages/Login";
-import AdminPanel from "../pages/AdminPanel";
-import UserProfile from "../pages/UserProfile";
+import DashboardLayout from "../components/Layout";
 import { ProtectedRoute } from "../components/ProtectedRoute";
+import { Login, UserProfile } from "../pages/auth";
+import { Branch, BranchDetail, BranchEdit} from "../pages/branch";
+import { Building, BuildingDetail, BuildingEdit } from "../pages/building";
+import { CustomerDetail, CustomerEdit, Customers } from "../pages/customer";
+import { OrderDetail, OrderEdit, Orders } from "../pages/order";
 import { UserRole } from "../types/auth";
-import { Building } from "../pages/Building";
-import { BuildingDetail } from "@/pages/BuildingDetail";
-import { BuildingEdit } from "@/pages/BuildingEdit";
-import { Branch } from "@/pages/Branch";
-import { BranchDetail } from "@/pages/BranchDetail";
-import { BranchEdit } from "@/pages/BranchEdit";
-import { Orders } from "@/pages/Orders";
-import { OrderDetail } from "@/pages/OrderDetail";
-import { OrderEdit } from "@/pages/OrderEdit";
-import { Customers } from "@/pages/Customers";
-import { CustomerDetail } from "@/pages/CustomerDetail";
-import { CustomerEdit } from "@/pages/CustomerEdit";
 
 export const router = createBrowserRouter([
   // Ruta pública de login

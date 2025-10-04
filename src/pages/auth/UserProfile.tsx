@@ -1,7 +1,7 @@
+import { Button } from '@/components';
+import { useAuth } from '@/stores/authStore';
+import { UserRole } from '@/types/auth';
 import { useState } from 'react';
-import { useAuth } from '../stores/authStore';
-import { UserRole } from '../types/auth';
-import Button from '../components/Button';
 
 const UserProfile = () => {
   const { user, logout } = useAuth();

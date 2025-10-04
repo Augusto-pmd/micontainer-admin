@@ -1,6 +1,7 @@
+import { Button } from '@/components';
+import { useAuth } from '@/stores/authStore';
 import React, { useState } from 'react';
-import { useAuth } from '../stores/authStore';
-import Button from '../components/Button';
+
 import { Navigate } from 'react-router-dom';
 
 const Login = () => {
