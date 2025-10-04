@@ -46,7 +46,17 @@ export const OrderCreate = () => {
           value: customer.id.toString(),
           label: `${customer.user?.firstName || ''} ${customer.user?.lastName || ''} - ${customer.cuit}`,
         }));
-        setCustomers(customerOptions);
+        
+        // Agregar opción para crear nuevo cliente al inicio
+        const customersWithCreateOption = [
+          {
+            value: "CREATE_NEW",
+            label: "➕ Crear nuevo cliente...",
+          },
+          ...customerOptions,
+        ];
+        
+        setCustomers(customersWithCreateOption);
 
         // Cargar storage rooms disponibles
         const storageRoomsResponse = await getAvailableStorageRoomsServices(1000);
@@ -71,6 +81,12 @@ export const OrderCreate = () => {
   }, []);
 
   const handleChange = (field: keyof CreateOrderFormData, value: string) => {
+    // Si el usuario selecciona "crear nuevo cliente", redirigir
+    if (field === "customerId" && value === "CREATE_NEW") {
+      navigate("/customers/create", { state: { returnTo: "/orders/create" } });
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Limpiar error cuando el usuario empiece a escribir
     if (errors[field]) {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,8 @@ interface CreateCustomerFormData {
 
 export const CustomerCreate = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = location.state?.returnTo || "/customers";
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<CreateCustomerFormData>({
     firstName: "",
@@ -120,7 +122,7 @@ export const CustomerCreate = () => {
     try {
       await createCustomerServices(formData);
       showSuccess("Cliente creado exitosamente");
-      navigate("/customers");
+      navigate(returnTo);
     } catch (error: any) {
       console.error("Error al crear cliente:", error);
       const errorMessage = error.response?.data?.message || "Error al crear el cliente";
@@ -134,11 +136,11 @@ export const CustomerCreate = () => {
     <div className="container mx-auto py-6 max-w-4xl">
       <Button
         variant="ghost"
-        onClick={() => navigate("/customers")}
+        onClick={() => navigate(returnTo)}
         className="mb-4"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Volver a Clientes
+        Volver
       </Button>
 
       <Card>
@@ -327,7 +329,7 @@ export const CustomerCreate = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate("/customers")}
+                onClick={() => navigate(returnTo)}
                 disabled={isLoading}
               >
                 Cancelar
