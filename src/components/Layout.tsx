@@ -12,7 +12,8 @@ interface LinkItem {
 const links: LinkItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: "🏠" },
   { name: "Mi Perfil", href: "/profile", icon: "👤" },
-  { name: "Edificios", href: "/building", icon: "🏢" },
+  { name: "Edificios", href: "/building", icon: "🏢", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
+  { name: "Sucursales", href: "/branch", icon: "🏬", roles: [UserRole.ADMIN] },
 ];
 
 export default function DashboardLayout() {

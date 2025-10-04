@@ -8,6 +8,7 @@ import UserProfile from "../pages/UserProfile";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { UserRole } from "../types/auth";
 import { Building } from "../pages/Building";
+import { Branch } from "@/pages/Branch";
 
 export const router = createBrowserRouter([
   // Ruta pública de login
@@ -70,6 +71,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <Building />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "branch",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <Branch />
           </ProtectedRoute>
         ),
       },
