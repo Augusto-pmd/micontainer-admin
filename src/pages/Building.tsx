@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import type {
   ColumnDef,
@@ -45,7 +44,6 @@ interface PaginatedBuildings {
   limit: number;
   totalPages: number;
 }
-
 
 const columnLabels: Record<string, string> = {
   id: "ID",
@@ -106,7 +104,9 @@ const columns: ColumnDef<BuildingType>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(building.id.toString())}
+              onClick={() =>
+                navigator.clipboard.writeText(building.id.toString())
+              }
             >
               Copiar ID
             </DropdownMenuItem>
@@ -122,8 +122,6 @@ const columns: ColumnDef<BuildingType>[] = [
     },
   },
 ];
-
-
 
 export const Building = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -177,7 +175,7 @@ export const Building = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
-        <div className="animate-spin" style={{ animationDuration: '0.8s' }}>
+        <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
           <Spinner className="h-16 w-16 text-green-500" />
         </div>
       </div>
@@ -287,9 +285,7 @@ export const Building = () => {
           >
             Anterior
           </Button>
-          <span>
-            Página {page}
-          </span>
+          <span>Página {page}</span>
           <Button
             variant="outline"
             size="sm"

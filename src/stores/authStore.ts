@@ -113,16 +113,11 @@ export const useAuthStore = create<AuthStore>()(
 
       // Verificar autenticación al cargar la app
       checkAuth: async () => {
-        const { token, user, isAuthenticated } = get();
-        
-        // Si ya está autenticado, no hacer nada
-        if (isAuthenticated && user) {
-          return;
-        }
+        const { token, user } = get();
         
         // Si no hay token, marcar como no cargando
         if (!token) {
-          set({ isLoading: false });
+          set({ isLoading: false, isAuthenticated: false });
           return;
         }
 
@@ -141,9 +136,13 @@ export const useAuthStore = create<AuthStore>()(
         }
 
         // Si tenemos token y usuario, configurar el header para futuras peticiones
+        // Nota: El interceptor de axios ya maneja esto, pero lo dejamos por redundancia
         if (token && user) {
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          set({ isLoading: false });
+          set({ 
+            isLoading: false,
+            isAuthenticated: true
+          });
         }
       },
 

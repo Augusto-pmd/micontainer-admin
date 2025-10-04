@@ -8,7 +8,19 @@ export const api = axios.create({
 // Interceptor para peticiones - agregar token automáticamente
 api.interceptors.request.use(
   (config) => {
-    // El token se configura en los headers por defecto desde el authStore
+    // Obtener el token del localStorage si existe
+    const authStorage = localStorage.getItem('auth-storage');
+    if (authStorage) {
+      try {
+        const { state } = JSON.parse(authStorage);
+        const token = state?.token;
+        if (token && !config.headers.Authorization) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      } catch (error) {
+        console.error('Error al parsear auth-storage:', error);
+      }
+    }
     return config;
   },
   (error) => {
