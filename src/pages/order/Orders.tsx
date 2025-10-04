@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -179,6 +179,7 @@ const columns: ColumnDef<OrderType>[] = [
 ];
 
 export const Orders = () => {
+  const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -240,6 +241,19 @@ export const Orders = () => {
   return (
     <div className="w-full">
       {error && <div className="p-4 text-red-500">{error}</div>}
+      
+      {/* Header with title and create button */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold">Órdenes</h1>
+        <Button 
+          onClick={() => navigate('/orders/create')}
+          className="bg-green-600 hover:bg-green-700"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Crear Orden
+        </Button>
+      </div>
+
       <div className="flex items-center py-4">
         <Input
           placeholder="Filtrar por cliente..."
