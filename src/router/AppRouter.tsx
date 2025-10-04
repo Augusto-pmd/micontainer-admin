@@ -5,7 +5,7 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import { Login, UserProfile } from "../pages/auth";
 import { Branch, BranchDetail, BranchEdit} from "../pages/branch";
 import { Building, BuildingDetail, BuildingEdit } from "../pages/building";
-import { CustomerDetail, CustomerEdit, Customers } from "../pages/customer";
+import { CustomerDetail, CustomerEdit, Customers, CustomerCreate } from "../pages/customer";
 import { OrderDetail, OrderEdit, Orders } from "../pages/order";
 import { UserRole } from "../types/auth";
 
@@ -142,6 +142,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <Customers />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "customers/create",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <CustomerCreate />
           </ProtectedRoute>
         ),
       },
