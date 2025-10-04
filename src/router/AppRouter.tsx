@@ -9,12 +9,16 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import { UserRole } from "../types/auth";
 import { Building } from "../pages/Building";
 import { BuildingDetail } from "@/pages/BuildingDetail";
+import { BuildingEdit } from "@/pages/BuildingEdit";
 import { Branch } from "@/pages/Branch";
 import { BranchDetail } from "@/pages/BranchDetail";
+import { BranchEdit } from "@/pages/BranchEdit";
 import { Orders } from "@/pages/Orders";
 import { OrderDetail } from "@/pages/OrderDetail";
+import { OrderEdit } from "@/pages/OrderEdit";
 import { Customers } from "@/pages/Customers";
 import { CustomerDetail } from "@/pages/CustomerDetail";
+import { CustomerEdit } from "@/pages/CustomerEdit";
 
 export const router = createBrowserRouter([
   // Ruta pública de login
@@ -89,6 +93,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "building/:id/edit",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <BuildingEdit />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: "branch",
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
@@ -101,6 +113,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <BranchDetail />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "branch/:id/edit",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <BranchEdit />
           </ProtectedRoute>
         ),
       },
@@ -121,6 +141,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "orders/:id/edit",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <OrderEdit />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: "customers",
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
@@ -133,6 +161,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <CustomerDetail />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "customers/:id/edit",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <CustomerEdit />
           </ProtectedRoute>
         ),
       },

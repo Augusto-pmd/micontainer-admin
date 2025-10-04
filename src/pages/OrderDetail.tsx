@@ -262,7 +262,11 @@ export const OrderDetail = () => {
           <div className="bg-white rounded-lg border p-6">
             <h2 className="text-xl font-semibold mb-4">Acciones</h2>
             <div className="space-y-2">
-              <Button className="w-full" variant="outline">
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={() => navigate(`/orders/${id}/edit`)}
+              >
                 Editar orden
               </Button>
               <Button className="w-full" variant="destructive">
