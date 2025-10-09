@@ -3,6 +3,7 @@ import { useAuth } from '@/stores/authStore';
 import React, { useState } from 'react';
 
 import { Navigate } from 'react-router-dom';
+import MiContainerLogo from '@/assets/img/MiContainerLogo.png';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -37,36 +38,12 @@ const Login = () => {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 256 256"
-              className="h-12 w-12 text-green-700"
-            >
-              <rect width="256" height="256" fill="none"></rect>
-              <line
-                x1="208"
-                y1="128"
-                x2="128"
-                y2="208"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="16"
-              ></line>
-              <line
-                x1="192"
-                y1="40"
-                x2="40"
-                y2="192"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="16"
-              ></line>
-            </svg>
+          <div className="mx-auto h-24 w-auto flex items-center justify-center">
+            <img 
+              src={MiContainerLogo} 
+              alt="MiContainer Logo" 
+              className="h-24 w-auto"
+            />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Iniciar Sesión
