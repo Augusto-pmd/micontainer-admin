@@ -11,6 +11,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   DropdownMenu,
@@ -35,6 +36,7 @@ export const StorageRooms = () => {
   const [storageRooms, setStorageRooms] = useState<StorageRoom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [filterValue, setFilterValue] = useState("");
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
@@ -179,8 +181,22 @@ export const StorageRooms = () => {
     },
   ];
 
+  const filteredStorageRooms = storageRooms.filter((room) => {
+    if (!filterValue) return true;
+    const searchLower = filterValue.toLowerCase();
+    return (
+      room.space.toLowerCase().includes(searchLower) ||
+      room.floor.toLowerCase().includes(searchLower) ||
+      room.building?.name?.toLowerCase().includes(searchLower) ||
+      room.building?.branch?.name?.toLowerCase().includes(searchLower) ||
+      room.building?.branch?.city?.toLowerCase().includes(searchLower) ||
+      room.price.includes(searchLower) ||
+      room.status.toLowerCase().includes(searchLower)
+    );
+  });
+
   const table = useReactTable({
-    data: storageRooms,
+    data: filteredStorageRooms,
     columns,
     state: {
       sorting,
@@ -211,7 +227,10 @@ export const StorageRooms = () => {
         <div>
           <h1 className="text-3xl font-bold">Espacios de Almacenamiento</h1>
           <p className="text-gray-600 mt-1">
-            Total de espacios: {total}
+            {filterValue 
+              ? `Mostrando ${filteredStorageRooms.length} de ${total} espacios`
+              : `Total de espacios: ${total}`
+            }
           </p>
         </div>
         <Button
@@ -221,6 +240,15 @@ export const StorageRooms = () => {
           <Plus className="mr-2 h-4 w-4" />
           Crear Espacio
         </Button>
+      </div>
+
+      <div className="mb-4">
+        <Input
+          placeholder="Buscar por espacio, piso, edificio, sucursal..."
+          value={filterValue}
+          onChange={(e) => setFilterValue(e.target.value)}
+          className="max-w-sm"
+        />
       </div>
 
       <div className="bg-white rounded-lg shadow">

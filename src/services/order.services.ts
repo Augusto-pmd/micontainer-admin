@@ -36,3 +36,8 @@ export const deleteOrderServices = async (id: number) => {
   const response = await api.delete(`/reservation-order/${id}`);
   return response.data;
 };
+
+export const cancelOrderServices = async (id: number) => {
+  const response = await api.post(`/reservation-order/${id}/cancel`);
+  return response.data;
+};

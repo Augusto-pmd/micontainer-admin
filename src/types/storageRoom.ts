@@ -9,6 +9,14 @@ export const STORAGE_ROOM_STATUS = {
 
 export type StorageRoomStatus = typeof STORAGE_ROOM_STATUS[keyof typeof STORAGE_ROOM_STATUS];
 
+export const RESERVATION_ORDER_STATUS = {
+  PENDING: "PENDING",
+  CONFIRMED: "CONFIRMED",
+  CANCELED: "CANCELED",
+} as const;
+
+export type ReservationOrderStatus = typeof RESERVATION_ORDER_STATUS[keyof typeof RESERVATION_ORDER_STATUS];
+
 export interface ReservationOrder {
   id: number;
   createdAt: string;
@@ -17,6 +25,7 @@ export interface ReservationOrder {
   entryDate: string;
   entryTime: string;
   totalAmount: string;
+  status: ReservationOrderStatus;
 }
 
 export interface StorageRoom {

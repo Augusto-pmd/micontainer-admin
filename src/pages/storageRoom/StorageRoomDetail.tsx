@@ -1,7 +1,8 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Edit, Trash2, Building2, MapPin, Ruler, DollarSign, Calendar, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -16,12 +17,14 @@ import { useStorageRoomStore } from "@/stores/storageRoomStore";
 import { deleteStorageRoomServices } from "@/services/storageRoom.services";
 import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
 import type { StorageRoomStatus } from "@/types/storageRoom";
+import { RESERVATION_ORDER_STATUS } from "@/types/order";
 
 export const StorageRoomDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { selectedStorageRoom, isLoading, fetchStorageRoomById, clearSelectedStorageRoom } =
     useStorageRoomStore();
+  const [orderFilter, setOrderFilter] = useState("");
 
   useEffect(() => {
     if (id) {
@@ -293,6 +296,16 @@ export const StorageRoomDetail = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {/* Buscador */}
+            <div className="mb-4">
+              <Input
+                placeholder="Buscar por ID, monto, estado..."
+                value={orderFilter}
+                onChange={(e) => setOrderFilter(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+
             <Table>
               <TableHeader>
                 <TableRow>
@@ -300,12 +313,46 @@ export const StorageRoomDetail = () => {
                   <TableHead>Fecha de Entrada</TableHead>
                   <TableHead>Hora</TableHead>
                   <TableHead>Monto Total</TableHead>
+                  <TableHead>Estado</TableHead>
                   <TableHead>Fecha de Creación</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {selectedStorageRoom.reservationOrders.map((order) => (
+                {(() => {
+                  const filteredOrders = (selectedStorageRoom.reservationOrders || []).filter((order) => {
+                    if (!orderFilter) return true;
+                    const searchLower = orderFilter.toLowerCase();
+                    const statusText = 
+                      order.status === RESERVATION_ORDER_STATUS.PENDING 
+                        ? "pendiente" 
+                        : order.status === RESERVATION_ORDER_STATUS.CONFIRMED 
+                        ? "confirmada" 
+                        : order.status === RESERVATION_ORDER_STATUS.CANCELED 
+                        ? "cancelada" 
+                        : String(order.status).toLowerCase();
+                    
+                    return (
+                      order.id.toString().includes(searchLower) ||
+                      order.totalAmount.includes(searchLower) ||
+                      statusText.includes(searchLower) ||
+                      order.entryTime.includes(searchLower)
+                    );
+                  });
+
+                  if (filteredOrders.length === 0) {
+                    return (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                          {orderFilter 
+                            ? "No se encontraron órdenes que coincidan con la búsqueda" 
+                            : "No hay órdenes de reserva"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  }
+
+                  return filteredOrders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell className="font-medium">#{order.id}</TableCell>
                     <TableCell>
@@ -318,6 +365,25 @@ export const StorageRoomDetail = () => {
                     <TableCell>{order.entryTime}</TableCell>
                     <TableCell className="font-semibold text-green-600">
                       ${parseFloat(order.totalAmount).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
+                        order.status === RESERVATION_ORDER_STATUS.PENDING 
+                          ? "bg-yellow-100 text-yellow-800 border-yellow-300" 
+                          : order.status === RESERVATION_ORDER_STATUS.CONFIRMED 
+                          ? "bg-green-100 text-green-800 border-green-300" 
+                          : order.status === RESERVATION_ORDER_STATUS.CANCELED 
+                          ? "bg-red-100 text-red-800 border-red-300" 
+                          : "bg-gray-100 text-gray-800 border-gray-300"
+                      }`}>
+                        {order.status === RESERVATION_ORDER_STATUS.PENDING 
+                          ? "Pendiente" 
+                          : order.status === RESERVATION_ORDER_STATUS.CONFIRMED 
+                          ? "Confirmada" 
+                          : order.status === RESERVATION_ORDER_STATUS.CANCELED 
+                          ? "Cancelada" 
+                          : order.status}
+                      </span>
                     </TableCell>
                     <TableCell>
                       {new Date(order.createdAt).toLocaleDateString("es-AR", {
@@ -337,7 +403,8 @@ export const StorageRoomDetail = () => {
                       </Button>
                     </TableCell>
                   </TableRow>
-                ))}
+                  ));
+                })()}
               </TableBody>
             </Table>
           </CardContent>

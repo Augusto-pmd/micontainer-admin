@@ -34,26 +34,33 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Spinner } from "@/components/ui/spinner";
-import { getAllOrdersServices } from "@/services/order.services";
+import { getAllOrdersServices, cancelOrderServices } from "@/services/order.services";
 import type { ReservationOrder as OrderType, PaginatedOrders } from "@/types/order";
+import { RESERVATION_ORDER_STATUS } from "@/types/order";
 import { useOrderStore } from "@/stores/orderStore";
+import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
 
 const columnLabels: Record<string, string> = {
   id: "ID",
   entryDate: "Fecha de Entrada",
   entryTime: "Hora de Entrada",
   totalAmount: "Monto Total",
+  status: "Estado de la Orden",
   "customer.fullName": "Cliente",
   "customer.cuit": "CUIT Cliente",
   "storageRoom.space": "Espacio",
   "storageRoom.floor": "Piso",
-  "storageRoom.status": "Estado",
+  "storageRoom.status": "Estado del Espacio",
   "storageRoom.building.name": "Edificio",
   "storageRoom.building.branch.name": "Sucursal",
   "storageRoom.building.branch.city": "Ciudad",
 };
 
-const columns: ColumnDef<OrderType>[] = [
+const getColumns = (
+  navigate: ReturnType<typeof useNavigate>,
+  setSelectedOrder: (order: OrderType) => void,
+  handleCancelOrder: (orderId: number, orderLabel: string) => Promise<void>
+): ColumnDef<OrderType>[] => [
   {
     accessorKey: "id",
     header: columnLabels.id,
@@ -92,6 +99,33 @@ const columns: ColumnDef<OrderType>[] = [
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("totalAmount"));
       return `$${amount.toFixed(2)}`;
+    },
+  },
+  {
+    accessorKey: "status",
+    header: columnLabels.status,
+    cell: ({ row }) => {
+      const status = row.getValue("status") as string;
+      const statusMap: Record<string, { label: string; color: string }> = {
+        [RESERVATION_ORDER_STATUS.PENDING]: { 
+          label: "Pendiente", 
+          color: "bg-yellow-100 text-yellow-800 border-yellow-300" 
+        },
+        [RESERVATION_ORDER_STATUS.CONFIRMED]: { 
+          label: "Confirmada", 
+          color: "bg-green-100 text-green-800 border-green-300" 
+        },
+        [RESERVATION_ORDER_STATUS.CANCELED]: { 
+          label: "Cancelada", 
+          color: "bg-red-100 text-red-800 border-red-300" 
+        },
+      };
+      const statusInfo = statusMap[status] || { label: status, color: "bg-gray-100 text-gray-800" };
+      return (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${statusInfo.color}`}>
+          {statusInfo.label}
+        </span>
+      );
     },
   },
   {
@@ -138,8 +172,6 @@ const columns: ColumnDef<OrderType>[] = [
     enableHiding: false,
     cell: ({ row }) => {
       const order = row.original;
-      const navigate = useNavigate();
-      const { setSelectedOrder } = useOrderStore();
 
       return (
         <DropdownMenu>
@@ -167,10 +199,17 @@ const columns: ColumnDef<OrderType>[] = [
             >
               Ver detalles
             </DropdownMenuItem>
-            <DropdownMenuItem>Editar orden</DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
-              Cancelar orden
-            </DropdownMenuItem>
+            {order.status !== RESERVATION_ORDER_STATUS.CANCELED && (
+              <>
+                <DropdownMenuItem>Editar orden</DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="text-red-600"
+                  onClick={() => handleCancelOrder(order.id, `#${order.id}`)}
+                >
+                  Cancelar orden
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -180,6 +219,7 @@ const columns: ColumnDef<OrderType>[] = [
 
 export const Orders = () => {
   const navigate = useNavigate();
+  const { setSelectedOrder } = useOrderStore();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -191,6 +231,31 @@ export const Orders = () => {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+
+  const handleCancelOrder = async (orderId: number, orderLabel: string) => {
+    const isConfirmed = await showDeleteConfirm(
+      `¿Estás seguro de que deseas cancelar la orden ${orderLabel}?`,
+      "Esta acción no se puede deshacer"
+    );
+
+    if (isConfirmed) {
+      try {
+        await cancelOrderServices(orderId);
+        showSuccess("Orden cancelada exitosamente");
+        // Recargar las órdenes
+        setLoading(true);
+        const res = await getAllOrdersServices({ page, limit });
+        setOrders(res.data);
+        setTotal(res.total);
+        setTotalPages(res.totalPages);
+        setLoading(false);
+      } catch (error) {
+        showError("Error al cancelar la orden");
+      }
+    }
+  };
+
+  const columns = getColumns(navigate, setSelectedOrder, handleCancelOrder);
 
   useEffect(() => {
     setLoading(true);

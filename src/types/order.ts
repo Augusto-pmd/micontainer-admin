@@ -1,3 +1,11 @@
+export const RESERVATION_ORDER_STATUS = {
+  PENDING: "PENDING",
+  CONFIRMED: "CONFIRMED",
+  CANCELED: "CANCELED",
+} as const;
+
+export type ReservationOrderStatus = typeof RESERVATION_ORDER_STATUS[keyof typeof RESERVATION_ORDER_STATUS];
+
 export interface ReservationOrder {
   id: number;
   createdAt: string;
@@ -6,6 +14,7 @@ export interface ReservationOrder {
   entryDate: string;
   entryTime: string;
   totalAmount: string;
+  status: ReservationOrderStatus;
   customer: OrderCustomer;
   storageRoom: OrderStorageRoom;
 }

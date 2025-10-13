@@ -91,7 +91,7 @@ export const showDeleteConfirm = async (
     showCancelButton: true,
     confirmButtonColor: '#dc2626', // red-600
     cancelButtonColor: '#6b7280', // gray-500
-    confirmButtonText: 'Sí, eliminar',
+    confirmButtonText: 'Aceptar',
     cancelButtonText: 'Cancelar',
     reverseButtons: true,
     focusCancel: true,
