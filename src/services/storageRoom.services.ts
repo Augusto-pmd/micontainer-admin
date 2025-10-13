@@ -1,37 +1,10 @@
 import { api } from "./api";
-
-export interface StorageRoom {
-  id: number;
-  space: string;
-  floor: string;
-  width: string;
-  length: string;
-  height: string;
-  depth: string;
-  areaM2: string;
-  volumeM3: string;
-  price: string;
-  status: 'available' | 'reserved' | 'occupied' | 'maintenance';
-  description: string;
-  image: string;
-  building?: {
-    id: number;
-    name: string;
-    branch?: {
-      id: number;
-      name: string;
-      city: string;
-    };
-  };
-}
-
-export interface PaginatedStorageRooms {
-  data: StorageRoom[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
+import type { 
+  StorageRoom, 
+  PaginatedStorageRooms, 
+  CreateStorageRoomDto, 
+  UpdateStorageRoomDto 
+} from "@/types/storageRoom";
 
 interface GetStorageRoomsParams {
   page?: number;
@@ -54,7 +27,26 @@ export const getAvailableStorageRoomsServices = async (limit: number = 1000): Pr
   return response.data;
 };
 
-export const getStorageRoomByIdServices = async (id: number) => {
+export const getStorageRoomByIdServices = async (id: number): Promise<StorageRoom> => {
   const response = await api.get(`/storage-room/${id}`);
   return response.data;
 };
+
+export const createStorageRoomServices = async (data: CreateStorageRoomDto): Promise<StorageRoom> => {
+  const response = await api.post("/storage-room", data);
+  return response.data;
+};
+
+export const updateStorageRoomServices = async (id: number, data: UpdateStorageRoomDto): Promise<StorageRoom> => {
+  const response = await api.patch(`/storage-room/${id}`, data);
+  return response.data;
+};
+
+export const deleteStorageRoomServices = async (id: number) => {
+  const response = await api.delete(`/storage-room/${id}`);
+  return response.data;
+};
+
+// Re-exportar el tipo para compatibilidad
+export type { StorageRoom } from "@/types/storageRoom";
+

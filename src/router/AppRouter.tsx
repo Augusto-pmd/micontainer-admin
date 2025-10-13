@@ -8,6 +8,7 @@ import { Building, BuildingDetail, BuildingEdit } from "../pages/building";
 import { CustomerDetail, CustomerEdit, Customers, CustomerCreate } from "../pages/customer";
 import { Operators, OperatorDetail, OperatorCreate } from "../pages/operator";
 import { OrderDetail, OrderEdit, Orders, OrderCreate } from "../pages/order";
+import { StorageRooms, StorageRoomDetail, StorageRoomCreate, StorageRoomEdit } from "../pages/storageRoom";
 import { UserRole } from "../types/auth";
 
 export const router = createBrowserRouter([
@@ -199,6 +200,38 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
             <OperatorDetail />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "storage-rooms",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <StorageRooms />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "storage-rooms/create",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <StorageRoomCreate />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "storage-rooms/:id",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <StorageRoomDetail />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "storage-rooms/:id/edit",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <StorageRoomEdit />
           </ProtectedRoute>
         ),
       },
