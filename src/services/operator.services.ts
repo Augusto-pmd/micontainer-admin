@@ -17,6 +17,11 @@ export const getOperatorByIdServices = async (id: number) => {
   return response.data;
 };
 
+export const getOperatorByUserIdServices = async (userId: string) => {
+  const response = await api.get(`/operator/user/${userId}`);
+  return response.data;
+};
+
 export const createOperatorServices = async (operatorData: CreateOperatorDto) => {
   const response = await api.post("/operator", operatorData);
   return response.data;

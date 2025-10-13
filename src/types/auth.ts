@@ -28,6 +28,17 @@ export interface Customer {
   [key: string]: any;
 }
 
+// Interface para el operador desde el backend
+export interface Operator {
+  id: number;
+  branch: {
+    id: number;
+    name: string;
+    city: string;
+    address?: string;
+  };
+}
+
 // Interface para el usuario desde el backend
 export interface BackendUser {
   id: string;
@@ -39,6 +50,7 @@ export interface BackendUser {
   email: string;
   role: Role;
   customer: Customer | null;
+  operator?: Operator | null;
 }
 
 // Interface para el usuario normalizada para el frontend
@@ -56,6 +68,7 @@ export interface User {
   updatedAt: Date;
   lastLogin?: Date;
   customer: Customer | null;
+  operator?: Operator | null;
 }
 
 // Estado de autenticación

@@ -21,7 +21,8 @@ const mapBackendUserToUser = (backendUser: BackendUser): User => {
     isActive: true, // Asumimos que si el usuario puede hacer login, está activo
     createdAt: new Date(backendUser.createdAt),
     updatedAt: new Date(backendUser.updatedAt),
-    customer: backendUser.customer
+    customer: backendUser.customer,
+    operator: backendUser.operator || null
   };
 };
 
