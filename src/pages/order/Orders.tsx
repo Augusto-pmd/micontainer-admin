@@ -225,6 +225,7 @@ export const Orders = () => {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [orders, setOrders] = useState<OrderType[]>([]);
+  const [filterValue, setFilterValue] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -257,6 +258,37 @@ export const Orders = () => {
 
   const columns = getColumns(navigate, setSelectedOrder, handleCancelOrder);
 
+  const filteredOrders = orders.filter((order) => {
+    if (!filterValue) return true;
+    const searchLower = filterValue.toLowerCase();
+    
+    // Obtener nombre completo del cliente
+    const customerName = order.customer?.user 
+      ? `${order.customer.user.firstName} ${order.customer.user.lastName}`.toLowerCase()
+      : "";
+    
+    // Obtener texto del estado
+    const statusText = 
+      order.status === RESERVATION_ORDER_STATUS.PENDING 
+        ? "pendiente" 
+        : order.status === RESERVATION_ORDER_STATUS.CONFIRMED 
+        ? "confirmada" 
+        : order.status === RESERVATION_ORDER_STATUS.CANCELED 
+        ? "cancelada" 
+        : String(order.status).toLowerCase();
+    
+    return (
+      order.id.toString().includes(searchLower) ||
+      customerName.includes(searchLower) ||
+      order.customer?.cuit?.toLowerCase().includes(searchLower) ||
+      order.totalAmount.includes(searchLower) ||
+      statusText.includes(searchLower) ||
+      order.storageRoom?.space?.toLowerCase().includes(searchLower) ||
+      order.storageRoom?.building?.name?.toLowerCase().includes(searchLower) ||
+      order.storageRoom?.building?.branch?.name?.toLowerCase().includes(searchLower)
+    );
+  });
+
   useEffect(() => {
     setLoading(true);
     getAllOrdersServices({ page, limit })
@@ -273,7 +305,7 @@ export const Orders = () => {
   }, [page, limit]);
 
   const table = useReactTable({
-    data: orders,
+    data: filteredOrders,
     columns,
     pageCount: totalPages,
     manualPagination: true,
@@ -309,7 +341,15 @@ export const Orders = () => {
       
       {/* Header with title and create button */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold">Órdenes</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Órdenes</h1>
+          <p className="text-gray-600 mt-1 text-sm">
+            {filterValue 
+              ? `Mostrando ${filteredOrders.length} de ${orders.length} órdenes`
+              : `Total de órdenes: ${orders.length}`
+            }
+          </p>
+        </div>
         <Button 
           onClick={() => navigate('/orders/create')}
           className="bg-green-600 hover:bg-green-700"
@@ -321,11 +361,9 @@ export const Orders = () => {
 
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filtrar por cliente..."
-          value={(table.getColumn("customer.fullName")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("customer.fullName")?.setFilterValue(event.target.value)
-          }
+          placeholder="Buscar por cliente, ID, estado, espacio..."
+          value={filterValue}
+          onChange={(event) => setFilterValue(event.target.value)}
           className="max-w-sm"
         />
         <DropdownMenu>
