@@ -8,6 +8,7 @@ export interface Customer {
   address: string;
   phone: string;
   personType: 'fisica' | 'juridica';
+  documentUrls?: string[];
   user: CustomerUser;
 }
 

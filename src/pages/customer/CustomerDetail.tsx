@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, User, Phone, Mail, MapPin, CreditCard, FileText, Package, Calendar, DollarSign, Eye } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, MapPin, CreditCard, FileText, Package, Calendar, DollarSign, Eye, Download, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useCustomerStore } from "@/stores/customerStore";
 import { getOrdersByCustomerIdServices } from "@/services/order.services";
+import { downloadCustomerFile } from "@/services/customer.services";
+import { showError } from "@/utils/alerts";
 import type { ReservationOrder } from "@/types/order";
 
 export const CustomerDetail = () => {
@@ -14,6 +16,7 @@ export const CustomerDetail = () => {
   
   const [orders, setOrders] = useState<ReservationOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -36,6 +39,38 @@ export const CustomerDetail = () => {
       setOrders([]);
     } finally {
       setLoadingOrders(false);
+    }
+  };
+
+  const getFileNameFromUrl = (url: string): string => {
+    try {
+      const decodedUrl = decodeURIComponent(url);
+      const parts = decodedUrl.split('/');
+      const lastPart = parts[parts.length - 1];
+      
+      // Extraer el nombre del archivo (quitar el UUID si existe)
+      const match = lastPart.match(/(.+?)-[a-f0-9-]{36}\.(.+)$/i);
+      if (match) {
+        return `${match[1]}.${match[2]}`;
+      }
+      
+      return lastPart;
+    } catch (error) {
+      console.error("Error al extraer nombre del archivo:", error);
+      return "Archivo";
+    }
+  };
+
+  const handleDownloadFile = async (fileUrl: string) => {
+    setDownloadingFile(fileUrl);
+    try {
+      const fileName = getFileNameFromUrl(fileUrl);
+      await downloadCustomerFile(fileUrl, fileName);
+    } catch (error: any) {
+      console.error("Error al descargar archivo:", error);
+      showError("Error al descargar el archivo");
+    } finally {
+      setDownloadingFile(null);
     }
   };
 
@@ -203,6 +238,52 @@ export const CustomerDetail = () => {
             </div>
           )}
 
+          {/* Documentos del Cliente */}
+          {customer.documentUrls && customer.documentUrls.length > 0 && (
+            <div className="bg-white rounded-lg border p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <FolderOpen className="h-5 w-5" />
+                Documentos del Cliente
+              </h2>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500 mb-3">
+                  {customer.documentUrls.length} {customer.documentUrls.length === 1 ? 'archivo' : 'archivos'}
+                </p>
+                <div className="space-y-2">
+                  {customer.documentUrls.map((fileUrl, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <FileText className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {getFileNameFromUrl(fileUrl)}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDownloadFile(fileUrl)}
+                        disabled={downloadingFile === fileUrl}
+                        className="flex-shrink-0 hover:bg-green-100 hover:text-green-700"
+                        title="Descargar archivo"
+                      >
+                        {downloadingFile === fileUrl ? (
+                          <Spinner className="h-4 w-4" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Actividad Reciente - Órdenes del Cliente */}
           <div className="bg-white rounded-lg border p-6">
             <div className="flex items-center justify-between mb-4">
@@ -326,6 +407,12 @@ export const CustomerDetail = () => {
                 <span className="text-gray-600">Órdenes activas</span>
                 <span className="font-semibold text-green-600">
                   {loadingOrders ? '...' : orders.length}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Documentos</span>
+                <span className="font-semibold text-blue-600">
+                  {customer.documentUrls?.length || 0}
                 </span>
               </div>
               <div className="flex justify-between items-center">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Upload, X, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
-import { createCustomerServices } from "@/services/customer.services";
+import { createCustomerServices, uploadCustomerFiles } from "@/services/customer.services";
 import { showError, showSuccess } from "@/utils/alerts";
 
 interface CreateCustomerFormData {
@@ -33,6 +33,8 @@ export const CustomerCreate = () => {
   const location = useLocation();
   const returnTo = location.state?.returnTo || "/customers";
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingFiles, setIsUploadingFiles] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [formData, setFormData] = useState<CreateCustomerFormData>({
     firstName: "",
     lastName: "",
@@ -53,6 +55,25 @@ export const CustomerCreate = () => {
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      setSelectedFiles((prev) => [...prev, ...Array.from(files)]);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + " " + sizes[i];
   };
 
   const validateForm = (): boolean => {
@@ -120,8 +141,40 @@ export const CustomerCreate = () => {
 
     setIsLoading(true);
     try {
-      await createCustomerServices(formData);
+      const response = await createCustomerServices(formData);
+      console.log("Respuesta completa del servidor:", response);
+      
+      // El ID puede estar en response.data.id o response.id dependiendo de la estructura
+      const customerId = response.data?.id || response.id;
+      console.log("Customer ID extraído:", customerId);
+      
       showSuccess("Cliente creado exitosamente");
+      
+      // Si hay archivos seleccionados, subirlos
+      if (selectedFiles.length > 0 && customerId) {
+        console.log("Iniciando subida de archivos...", selectedFiles);
+        setIsUploadingFiles(true);
+        try {
+          const uploadResponse = await uploadCustomerFiles(customerId, selectedFiles);
+          console.log("Respuesta de subida:", uploadResponse);
+          const { successCount, failedCount } = uploadResponse.data;
+          
+          if (failedCount > 0) {
+            showError(`${successCount} archivo(s) subido(s), ${failedCount} fallido(s)`);
+          } else {
+            showSuccess(`${successCount} archivo(s) subido(s) exitosamente`);
+          }
+        } catch (uploadError: any) {
+          console.error("Error al subir archivos:", uploadError);
+          showError("Cliente creado, pero hubo un error al subir los archivos");
+        } finally {
+          setIsUploadingFiles(false);
+        }
+      } else if (selectedFiles.length > 0 && !customerId) {
+        console.error("No se pudo obtener el ID del cliente creado");
+        showError("Cliente creado, pero no se pudo obtener el ID para subir archivos");
+      }
+      
       navigate(returnTo);
     } catch (error: any) {
       console.error("Error al crear cliente:", error);
@@ -208,7 +261,7 @@ export const CustomerCreate = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="cuit">
-                    CUIT <span className="text-red-500">*</span>
+                    CUIT/CUIL <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="cuit"
@@ -324,25 +377,95 @@ export const CustomerCreate = () => {
               </div>
             </div>
 
+            {/* Sección de Carga de Archivos */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">
+                Documentos del Cliente (Opcional)
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <Label
+                    htmlFor="file-upload"
+                    className="flex items-center justify-center gap-2 px-4 py-2 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-500 hover:bg-green-50 transition-colors"
+                  >
+                    <Upload className="h-5 w-5 text-gray-500" />
+                    <span className="text-sm text-gray-600">
+                      Seleccionar archivos
+                    </span>
+                    <Input
+                      id="file-upload"
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.svg"
+                    />
+                  </Label>
+                  <p className="text-xs text-gray-500">
+                    Puedes subir múltiples archivos (PDF, DOC, imágenes)
+                  </p>
+                </div>
+
+                {/* Lista de archivos seleccionados */}
+                {selectedFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-700">
+                      Archivos seleccionados ({selectedFiles.length}):
+                    </p>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {selectedFiles.map((file, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                        >
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
+                            <FileText className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {file.name}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {formatFileSize(file.size)}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRemoveFile(index)}
+                            className="flex-shrink-0 hover:bg-red-50 hover:text-red-600"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Botones de Acción */}
             <div className="flex justify-end gap-4 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => navigate(returnTo)}
-                disabled={isLoading}
+                disabled={isLoading || isUploadingFiles}
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 className="bg-green-600 hover:bg-green-700"
-                disabled={isLoading}
+                disabled={isLoading || isUploadingFiles}
               >
                 {isLoading ? (
                   <>
                     <Spinner className="mr-2 h-4 w-4" />
-                    Creando...
+                    {isUploadingFiles ? "Subiendo archivos..." : "Creando..."}
                   </>
                 ) : (
                   "Crear Cliente"
