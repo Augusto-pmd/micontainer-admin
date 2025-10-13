@@ -34,24 +34,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Spinner } from "@/components/ui/spinner";
-import { getAllCustomersServices, deleteCustomerServices } from "@/services/customer.services";
-import type { Customer as CustomerType, PaginatedCustomers } from "@/types/customer";
-import { useCustomerStore } from "@/stores/customerStore";
+import { getAllOperatorsServices, deleteOperatorServices } from "@/services/operator.services";
+import type { Operator, PaginatedOperators } from "@/types/operator";
+import { useOperatorStore } from "@/stores/operatorStore";
 import { showSuccess, showApiError, showDeleteConfirm } from "@/utils/alerts";
 
 const columnLabels: Record<string, string> = {
   id: "ID",
-  dni: "DNI",
-  cuit: "CUIT",
   "user.firstName": "Nombre",
   "user.lastName": "Apellido",
   "user.email": "Email",
-  phone: "Teléfono",
-  address: "Dirección",
-  personType: "Tipo de Persona",
+  "branch.name": "Sucursal",
 };
 
-const columns: ColumnDef<CustomerType>[] = [
+const columns: ColumnDef<Operator>[] = [
   {
     accessorKey: "id",
     header: columnLabels.id,
@@ -67,86 +63,24 @@ const columns: ColumnDef<CustomerType>[] = [
     cell: ({ row }) => row.original.user?.lastName || "-",
   },
   {
-    accessorKey: "dni",
-    header: columnLabels.dni,
-  },
-  {
-    accessorKey: "cuit",
-    header: columnLabels.cuit,
-  },
-  {
     accessorKey: "user.email",
     header: columnLabels["user.email"],
     cell: ({ row }) => row.original.user?.email || "-",
   },
   {
-    accessorKey: "phone",
-    header: columnLabels.phone,
-  },
-  {
-    accessorKey: "address",
-    header: columnLabels.address,
-  },
-  {
-    accessorKey: "personType",
-    header: columnLabels.personType,
-    cell: ({ row }) => {
-      const type = row.getValue("personType") as string;
-      return type === "fisica" ? "Física" : "Jurídica";
-    },
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const customer = row.original;
-      const navigate = useNavigate();
-      const { setSelectedCustomer } = useCustomerStore();
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() =>
-                navigator.clipboard.writeText(customer.id.toString())
-              }
-            >
-              Copiar ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedCustomer(customer);
-                navigate(`/customers/${customer.id}`);
-              }}
-            >
-              Ver detalles
-            </DropdownMenuItem>
-            <DropdownMenuItem>Editar cliente</DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
-              Eliminar cliente
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
+    accessorKey: "branch.name",
+    header: columnLabels["branch.name"],
+    cell: ({ row }) => row.original.branch?.name || "-",
   },
 ];
 
-export const Customers = () => {
+export const Operators = () => {
   const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
-  const [customers, setCustomers] = useState<CustomerType[]>([]);
+  const [operators, setOperators] = useState<Operator[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -154,50 +88,50 @@ export const Customers = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
-  const loadCustomers = () => {
+  const loadOperators = () => {
     setLoading(true);
-    getAllCustomersServices({ page, limit })
-      .then((res: PaginatedCustomers) => {
-        setCustomers(res.data);
+    getAllOperatorsServices({ page, limit })
+      .then((res: PaginatedOperators) => {
+        setOperators(res.data);
         setTotal(res.total);
         setTotalPages(res.totalPages);
         setError(null);
       })
       .catch(() => {
-        setError("Error al cargar clientes");
+        setError("Error al cargar operadores");
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    loadCustomers();
+    loadOperators();
   }, [page, limit]);
 
-  const handleDeleteCustomer = async (customerId: number, customerName: string) => {
-    const confirmed = await showDeleteConfirm(customerName);
+  const handleDeleteOperator = async (operatorId: number, operatorName: string) => {
+    const confirmed = await showDeleteConfirm(operatorName);
     
     if (!confirmed) {
       return;
     }
 
     try {
-      await deleteCustomerServices(customerId);
-      showSuccess("Cliente eliminado exitosamente");
-      loadCustomers(); // Recargar la lista
+      await deleteOperatorServices(operatorId);
+      showSuccess("Operador eliminado exitosamente");
+      loadOperators();
     } catch (error: any) {
-      console.error("Error al eliminar cliente:", error);
+      console.error("Error al eliminar operador:", error);
       showApiError(error);
     }
   };
 
-  const columnsWithActions: ColumnDef<CustomerType>[] = [
+  const columnsWithActions: ColumnDef<Operator>[] = [
     ...columns.filter(col => col.id !== 'actions'),
     {
       id: "actions",
       enableHiding: false,
       cell: ({ row }) => {
-        const customer = row.original;
-        const { setSelectedCustomer } = useCustomerStore();
+        const operator = row.original;
+        const { setSelectedOperator } = useOperatorStore();
 
         return (
           <DropdownMenu>
@@ -211,7 +145,7 @@ export const Customers = () => {
               <DropdownMenuLabel>Acciones</DropdownMenuLabel>
               <DropdownMenuItem
                 onClick={() =>
-                  navigator.clipboard.writeText(customer.id.toString())
+                  navigator.clipboard.writeText(operator.id.toString())
                 }
               >
                 Copiar ID
@@ -219,25 +153,20 @@ export const Customers = () => {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={() => {
-                  setSelectedCustomer(customer);
-                  navigate(`/customers/${customer.id}`);
+                  setSelectedOperator(operator);
+                  navigate(`/operators/${operator.id}`);
                 }}
               >
                 Ver detalles
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => navigate(`/customers/${customer.id}/edit`)}
-              >
-                Editar cliente
-              </DropdownMenuItem>
               <DropdownMenuItem 
                 className="text-red-600"
-                onClick={() => handleDeleteCustomer(
-                  customer.id, 
-                  `${customer.user?.firstName} ${customer.user?.lastName}`
+                onClick={() => handleDeleteOperator(
+                  operator.id, 
+                  `${operator.user?.firstName} ${operator.user?.lastName}`
                 )}
               >
-                Eliminar cliente
+                Eliminar operador
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -247,7 +176,7 @@ export const Customers = () => {
   ];
 
   const table = useReactTable({
-    data: customers,
+    data: operators,
     columns: columnsWithActions,
     pageCount: totalPages,
     manualPagination: true,
@@ -281,15 +210,14 @@ export const Customers = () => {
     <div className="w-full">
       {error && <div className="p-4 text-red-500">{error}</div>}
       
-      {/* Header with title and create button */}
       <div className="flex items-center justify-between py-4">
-        <h1 className="text-2xl font-bold">Clientes</h1>
+        <h1 className="text-2xl font-bold">Operadores</h1>
         <Button 
-          onClick={() => navigate('/customers/create')}
+          onClick={() => navigate('/operators/create')}
           className="bg-green-600 hover:bg-green-700"
         >
           <Plus className="mr-2 h-4 w-4" />
-          Crear Cliente
+          Crear Operador
         </Button>
       </div>
 
@@ -330,6 +258,7 @@ export const Customers = () => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+      
       <div className="overflow-hidden rounded-md border">
         <Table>
           <TableHeader>
@@ -370,7 +299,7 @@ export const Customers = () => {
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={columnsWithActions.length}
                   className="h-24 text-center"
                 >
                   No hay resultados.
@@ -380,6 +309,7 @@ export const Customers = () => {
           </TableBody>
         </Table>
       </div>
+      
       <div className="flex items-center justify-between space-x-2 py-4">
         <div className="text-muted-foreground flex-1 text-sm">
           Página {page} de {totalPages} | Total: {total}
@@ -421,4 +351,3 @@ export const Customers = () => {
     </div>
   );
 };
-

@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useCustomerStore } from "@/stores/customerStore";
 import { getOrdersByCustomerIdServices } from "@/services/order.services";
-import { downloadCustomerFile } from "@/services/customer.services";
-import { showError } from "@/utils/alerts";
+import { downloadCustomerFile, deleteCustomerServices } from "@/services/customer.services";
+import { showError, showSuccess, showApiError, showDeleteConfirm } from "@/utils/alerts";
 import type { ReservationOrder } from "@/types/order";
 
 export const CustomerDetail = () => {
@@ -17,6 +17,7 @@ export const CustomerDetail = () => {
   const [orders, setOrders] = useState<ReservationOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -71,6 +72,40 @@ export const CustomerDetail = () => {
       showError("Error al descargar el archivo");
     } finally {
       setDownloadingFile(null);
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!selectedCustomer) return;
+
+    const customerName = selectedCustomer.user 
+      ? `${selectedCustomer.user.firstName} ${selectedCustomer.user.lastName}` 
+      : `Cliente #${selectedCustomer.id}`;
+
+    const confirmed = await showDeleteConfirm(
+      customerName,
+      undefined,
+      [
+        'Los datos del cliente',
+        'Todos sus documentos',
+        'El usuario asociado',
+      ]
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteCustomerServices(selectedCustomer.id);
+      showSuccess("Cliente eliminado exitosamente");
+      navigate("/customers");
+    } catch (error: any) {
+      console.error("Error al eliminar cliente:", error);
+      showApiError(error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -448,8 +483,20 @@ export const CustomerDetail = () => {
               <Button className="w-full" variant="outline">
                 Enviar email
               </Button>
-              <Button className="w-full" variant="destructive">
-                Eliminar cliente
+              <Button 
+                className="w-full" 
+                variant="destructive"
+                onClick={handleDeleteCustomer}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Spinner className="h-4 w-4 mr-2" />
+                    Eliminando...
+                  </>
+                ) : (
+                  "Eliminar cliente"
+                )}
               </Button>
             </div>
           </div>

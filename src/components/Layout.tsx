@@ -16,6 +16,7 @@ const links: LinkItem[] = [
   { name: "Sucursales", href: "/branch", icon: "🏬", roles: [UserRole.ADMIN] },
   { name: "Órdenes", href: "/orders", icon: "📦", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
   { name: "Clientes", href: "/customers", icon: "🧑‍🤝‍🧑", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
+  { name: "Operadores", href: "/operators", icon: "👥", roles: [UserRole.ADMIN] },
 ];
 
 export default function DashboardLayout() {

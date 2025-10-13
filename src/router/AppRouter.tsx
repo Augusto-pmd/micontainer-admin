@@ -6,6 +6,7 @@ import { Login, UserProfile } from "../pages/auth";
 import { Branch, BranchDetail, BranchEdit} from "../pages/branch";
 import { Building, BuildingDetail, BuildingEdit } from "../pages/building";
 import { CustomerDetail, CustomerEdit, Customers, CustomerCreate } from "../pages/customer";
+import { Operators, OperatorDetail, OperatorCreate } from "../pages/operator";
 import { OrderDetail, OrderEdit, Orders, OrderCreate } from "../pages/order";
 import { UserRole } from "../types/auth";
 
@@ -174,6 +175,30 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <CustomerEdit />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "operators",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
+            <Operators />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "operators/create",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
+            <OperatorCreate />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "operators/:id",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
+            <OperatorDetail />
           </ProtectedRoute>
         ),
       },
