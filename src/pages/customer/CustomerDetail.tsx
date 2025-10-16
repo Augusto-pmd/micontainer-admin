@@ -7,7 +7,7 @@ import { useCustomerStore } from "@/stores/customerStore";
 import { getOrdersByCustomerIdServices } from "@/services/order.services";
 import { downloadCustomerFile, deleteCustomerServices, approveCustomerServices } from "@/services/customer.services";
 import { showError, showSuccess, showApiError, showDeleteConfirm } from "@/utils/alerts";
-import type { ReservationOrder } from "@/types/order";
+import { RESERVATION_ORDER_STATUS, type ReservationOrder } from "@/types/order";
 
 export const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -377,14 +377,15 @@ export const CustomerDetail = () => {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-semibold text-gray-900">Orden #{order.id}</span>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            order.storageRoom.status === 'reserved' 
-                              ? 'bg-yellow-100 text-yellow-800' 
-                              : order.storageRoom.status === 'occupied'
+                            order.status === RESERVATION_ORDER_STATUS.PENDING 
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : order.status === RESERVATION_ORDER_STATUS.CONFIRMED
                               ? 'bg-green-100 text-green-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {order.storageRoom.status === 'reserved' ? 'Reservado' : 
-                             order.storageRoom.status === 'occupied' ? 'Ocupado' : 
+                            {order.status === RESERVATION_ORDER_STATUS.PENDING ? 'Pendiente' : 
+                             order.status === RESERVATION_ORDER_STATUS.CONFIRMED ? 'Confirmada' : 
+                             order.status === RESERVATION_ORDER_STATUS.CANCELED ? 'Cancelada' : 
                              order.storageRoom.status}
                           </span>
                         </div>
