@@ -9,6 +9,7 @@ export interface Customer {
   phone: string;
   personType: 'fisica' | 'juridica';
   documentUrls?: string[];
+  isApproved: boolean;
   user: CustomerUser;
 }
 

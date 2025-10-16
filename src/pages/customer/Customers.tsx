@@ -34,8 +34,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Spinner } from "@/components/ui/spinner";
-import { getAllCustomersServices, deleteCustomerServices } from "@/services/customer.services";
-import type { Customer as CustomerType, PaginatedCustomers } from "@/types/customer";
+import {
+  getAllCustomersServices,
+  deleteCustomerServices,
+} from "@/services/customer.services";
+import type {
+  Customer as CustomerType,
+  PaginatedCustomers,
+} from "@/types/customer";
 import { useCustomerStore } from "@/stores/customerStore";
 import { showSuccess, showApiError, showDeleteConfirm } from "@/utils/alerts";
 
@@ -46,6 +52,8 @@ const columnLabels: Record<string, string> = {
   "user.firstName": "Nombre",
   "user.lastName": "Apellido",
   "user.email": "Email",
+  isActive: "Activo",
+  isApproved: "Aprobado",
   phone: "Teléfono",
   address: "Dirección",
   personType: "Tipo de Persona",
@@ -78,6 +86,12 @@ const columns: ColumnDef<CustomerType>[] = [
     accessorKey: "user.email",
     header: columnLabels["user.email"],
     cell: ({ row }) => row.original.user?.email || "-",
+  },
+
+  {
+    accessorKey: "isApproved",
+    header: columnLabels.isApproved,
+    cell: ({ row }) => (row.original.isApproved ? "Sí" : "No"),
   },
   {
     accessorKey: "phone",
@@ -173,9 +187,12 @@ export const Customers = () => {
     loadCustomers();
   }, [page, limit]);
 
-  const handleDeleteCustomer = async (customerId: number, customerName: string) => {
+  const handleDeleteCustomer = async (
+    customerId: number,
+    customerName: string
+  ) => {
     const confirmed = await showDeleteConfirm(customerName);
-    
+
     if (!confirmed) {
       return;
     }
@@ -191,7 +208,7 @@ export const Customers = () => {
   };
 
   const columnsWithActions: ColumnDef<CustomerType>[] = [
-    ...columns.filter(col => col.id !== 'actions'),
+    ...columns.filter((col) => col.id !== "actions"),
     {
       id: "actions",
       enableHiding: false,
@@ -230,12 +247,14 @@ export const Customers = () => {
               >
                 Editar cliente
               </DropdownMenuItem>
-              <DropdownMenuItem 
+              <DropdownMenuItem
                 className="text-red-600"
-                onClick={() => handleDeleteCustomer(
-                  customer.id, 
-                  `${customer.user?.firstName} ${customer.user?.lastName}`
-                )}
+                onClick={() =>
+                  handleDeleteCustomer(
+                    customer.id,
+                    `${customer.user?.firstName} ${customer.user?.lastName}`
+                  )
+                }
               >
                 Eliminar cliente
               </DropdownMenuItem>
@@ -280,12 +299,12 @@ export const Customers = () => {
   return (
     <div className="w-full">
       {error && <div className="p-4 text-red-500">{error}</div>}
-      
+
       {/* Header with title and create button */}
       <div className="flex items-center justify-between py-4">
         <h1 className="text-2xl font-bold">Clientes</h1>
-        <Button 
-          onClick={() => navigate('/customers/create')}
+        <Button
+          onClick={() => navigate("/customers/create")}
           className="bg-green-600 hover:bg-green-700"
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -296,7 +315,9 @@ export const Customers = () => {
       <div className="flex items-center py-4">
         <Input
           placeholder="Filtrar por email..."
-          value={(table.getColumn("user.email")?.getFilterValue() as string) ?? ""}
+          value={
+            (table.getColumn("user.email")?.getFilterValue() as string) ?? ""
+          }
           onChange={(event) =>
             table.getColumn("user.email")?.setFilterValue(event.target.value)
           }
@@ -421,4 +442,3 @@ export const Customers = () => {
     </div>
   );
 };
-
