@@ -65,6 +65,41 @@ export const showConfirm = async (title: string, text?: string, confirmButtonTex
   return result.isConfirmed;
 };
 
+export const showDeleteConfirm = async (
+  itemName: string,
+  customMessage?: string,
+  additionalInfo?: string[]
+) => {
+  const htmlContent = additionalInfo 
+    ? `
+      <div style="text-align: left; margin-top: 10px;">
+        <p style="margin-bottom: 10px;"><strong>Esta acción eliminará:</strong></p>
+        <ul style="margin-left: 20px; color: #666;">
+          ${additionalInfo.map(info => `<li>${info}</li>`).join('')}
+        </ul>
+        <p style="margin-top: 15px; color: #991b1b; font-weight: 500;">
+          ⚠️ Esta acción no se puede deshacer
+        </p>
+      </div>
+    `
+    : undefined;
+
+  const result = await Swal.fire({
+    title: '¿Está seguro?',
+    html: htmlContent || `<p>Está a punto de eliminar <strong>"${itemName}"</strong></p>${customMessage ? `<p style="margin-top: 10px; color: #666;">${customMessage}</p>` : ''}<p style="margin-top: 15px; color: #991b1b; font-weight: 500;">⚠️ Esta acción no se puede deshacer</p>`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc2626', // red-600
+    cancelButtonColor: '#6b7280', // gray-500
+    confirmButtonText: 'Aceptar',
+    cancelButtonText: 'Cancelar',
+    reverseButtons: true,
+    focusCancel: true,
+  });
+  
+  return result.isConfirmed;
+};
+
 export const showApiError = (error: any, fallbackMessage = 'Ocurrió un error inesperado') => {
   // Intenta extraer mensaje de error del backend
   const message = error?.response?.data?.message || error?.message || fallbackMessage;

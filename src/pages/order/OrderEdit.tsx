@@ -18,6 +18,7 @@ import { updateOrderServices } from "@/services/order.services";
 import { getAllCustomersServices } from "@/services/customer.services";
 import { showSuccess, showApiError } from "@/utils/alerts";
 import type { Customer } from "@/types/customer";
+import { RESERVATION_ORDER_STATUS } from "@/types/order";
 
 export const OrderEdit = () => {
   const { id } = useParams<{ id: string }>();
@@ -57,6 +58,12 @@ export const OrderEdit = () => {
 
   useEffect(() => {
     if (selectedOrder) {
+      // Si la orden está cancelada, redirigir al detalle
+      if (selectedOrder.status === RESERVATION_ORDER_STATUS.CANCELED) {
+        navigate(`/orders/${id}`);
+        return;
+      }
+      
       setFormData({
         entryDate: selectedOrder.entryDate.split("T")[0], // Extract date from ISO string
         entryTime: selectedOrder.entryTime,
@@ -64,7 +71,7 @@ export const OrderEdit = () => {
         customerId: selectedOrder.customer.id,
       });
     }
-  }, [selectedOrder]);
+  }, [selectedOrder, navigate, id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

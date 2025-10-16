@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, User, Phone, Mail, MapPin, CreditCard, FileText, Package, Calendar, DollarSign, Eye } from "lucide-react";
+import { ArrowLeft, User, Phone, Mail, MapPin, CreditCard, FileText, Package, Calendar, DollarSign, Eye, Download, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useCustomerStore } from "@/stores/customerStore";
 import { getOrdersByCustomerIdServices } from "@/services/order.services";
-import type { ReservationOrder } from "@/types/order";
+import { downloadCustomerFile, deleteCustomerServices, approveCustomerServices } from "@/services/customer.services";
+import { showError, showSuccess, showApiError, showDeleteConfirm } from "@/utils/alerts";
+import { RESERVATION_ORDER_STATUS, type ReservationOrder } from "@/types/order";
 
 export const CustomerDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +16,8 @@ export const CustomerDetail = () => {
   
   const [orders, setOrders] = useState<ReservationOrder[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -36,6 +40,86 @@ export const CustomerDetail = () => {
       setOrders([]);
     } finally {
       setLoadingOrders(false);
+    }
+  };
+
+  const getFileNameFromUrl = (url: string): string => {
+    try {
+      const decodedUrl = decodeURIComponent(url);
+      const parts = decodedUrl.split('/');
+      const lastPart = parts[parts.length - 1];
+      
+      // Extraer el nombre del archivo (quitar el UUID si existe)
+      const match = lastPart.match(/(.+?)-[a-f0-9-]{36}\.(.+)$/i);
+      if (match) {
+        return `${match[1]}.${match[2]}`;
+      }
+      
+      return lastPart;
+    } catch (error) {
+      console.error("Error al extraer nombre del archivo:", error);
+      return "Archivo";
+    }
+  };
+
+  const handleDownloadFile = async (fileUrl: string) => {
+    setDownloadingFile(fileUrl);
+    try {
+      const fileName = getFileNameFromUrl(fileUrl);
+      await downloadCustomerFile(fileUrl, fileName);
+    } catch (error: any) {
+      console.error("Error al descargar archivo:", error);
+      showError("Error al descargar el archivo");
+    } finally {
+      setDownloadingFile(null);
+    }
+  };
+
+  const handleDeleteCustomer = async () => {
+    if (!selectedCustomer) return;
+
+    const customerName = selectedCustomer.user 
+      ? `${selectedCustomer.user.firstName} ${selectedCustomer.user.lastName}` 
+      : `Cliente #${selectedCustomer.id}`;
+
+    const confirmed = await showDeleteConfirm(
+      customerName,
+      undefined,
+      [
+        'Los datos del cliente',
+        'Todos sus documentos',
+        'El usuario asociado',
+      ]
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteCustomerServices(selectedCustomer.id);
+      showSuccess("Cliente eliminado exitosamente");
+      navigate("/customers");
+    } catch (error: any) {
+      console.error("Error al eliminar cliente:", error);
+      showApiError(error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleApproveCustomer = async () => {
+    if (!selectedCustomer) return;
+
+    try {
+      await approveCustomerServices(selectedCustomer.id);
+      showSuccess("Cliente aprobado exitosamente");
+      // Recargar los datos del cliente
+      fetchCustomerById(selectedCustomer.id);
+    } catch (error: any) {
+      console.error("Error al aprobar cliente:", error);
+      showApiError(error);
     }
   };
 
@@ -149,6 +233,16 @@ export const CustomerDetail = () => {
                   {customer.personType === 'fisica' ? 'Física' : 'Jurídica'}
                 </span>
               </div>
+              <div>
+                <p className="text-sm text-gray-500">Estado de aprobación</p>
+                <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${
+                  customer.isApproved 
+                    ? "bg-green-100 text-green-800" 
+                    : "bg-yellow-100 text-yellow-800"
+                }`}>
+                  {customer.isApproved ? 'Aprobado' : 'Pendiente'}
+                </span>
+              </div>
               <div className="col-span-2">
                 <p className="text-sm text-gray-500">Dirección</p>
                 <p className="font-medium flex items-center gap-2">
@@ -203,6 +297,52 @@ export const CustomerDetail = () => {
             </div>
           )}
 
+          {/* Documentos del Cliente */}
+          {customer.documentUrls && customer.documentUrls.length > 0 && (
+            <div className="bg-white rounded-lg border p-6">
+              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <FolderOpen className="h-5 w-5" />
+                Documentos del Cliente
+              </h2>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500 mb-3">
+                  {customer.documentUrls.length} {customer.documentUrls.length === 1 ? 'archivo' : 'archivos'}
+                </p>
+                <div className="space-y-2">
+                  {customer.documentUrls.map((fileUrl, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <FileText className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {getFileNameFromUrl(fileUrl)}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDownloadFile(fileUrl)}
+                        disabled={downloadingFile === fileUrl}
+                        className="flex-shrink-0 hover:bg-green-100 hover:text-green-700"
+                        title="Descargar archivo"
+                      >
+                        {downloadingFile === fileUrl ? (
+                          <Spinner className="h-4 w-4" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Actividad Reciente - Órdenes del Cliente */}
           <div className="bg-white rounded-lg border p-6">
             <div className="flex items-center justify-between mb-4">
@@ -237,14 +377,15 @@ export const CustomerDetail = () => {
                         <div className="flex items-center gap-2 mb-2">
                           <span className="font-semibold text-gray-900">Orden #{order.id}</span>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            order.storageRoom.status === 'reserved' 
-                              ? 'bg-yellow-100 text-yellow-800' 
-                              : order.storageRoom.status === 'occupied'
+                            order.status === RESERVATION_ORDER_STATUS.PENDING 
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : order.status === RESERVATION_ORDER_STATUS.CONFIRMED
                               ? 'bg-green-100 text-green-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}>
-                            {order.storageRoom.status === 'reserved' ? 'Reservado' : 
-                             order.storageRoom.status === 'occupied' ? 'Ocupado' : 
+                            {order.status === RESERVATION_ORDER_STATUS.PENDING ? 'Pendiente' : 
+                             order.status === RESERVATION_ORDER_STATUS.CONFIRMED ? 'Confirmada' : 
+                             order.status === RESERVATION_ORDER_STATUS.CANCELED ? 'Cancelada' : 
                              order.storageRoom.status}
                           </span>
                         </div>
@@ -329,6 +470,12 @@ export const CustomerDetail = () => {
                 </span>
               </div>
               <div className="flex justify-between items-center">
+                <span className="text-gray-600">Documentos</span>
+                <span className="font-semibold text-blue-600">
+                  {customer.documentUrls?.length || 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-gray-600">Cliente desde</span>
                 <span className="font-semibold">
                   {new Date(customer.createdAt).toLocaleDateString('es-AR', { 
@@ -351,6 +498,14 @@ export const CustomerDetail = () => {
               >
                 Editar cliente
               </Button>
+              {!customer.isApproved && (
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white" 
+                  onClick={handleApproveCustomer}
+                >
+                  Aprobar cliente
+                </Button>
+              )}
               <Button 
                 className="w-full" 
                 variant="outline"
@@ -361,8 +516,20 @@ export const CustomerDetail = () => {
               <Button className="w-full" variant="outline">
                 Enviar email
               </Button>
-              <Button className="w-full" variant="destructive">
-                Eliminar cliente
+              <Button 
+                className="w-full" 
+                variant="destructive"
+                onClick={handleDeleteCustomer}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Spinner className="h-4 w-4 mr-2" />
+                    Eliminando...
+                  </>
+                ) : (
+                  "Eliminar cliente"
+                )}
               </Button>
             </div>
           </div>

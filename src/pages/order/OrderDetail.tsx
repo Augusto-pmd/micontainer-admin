@@ -4,6 +4,10 @@ import { ArrowLeft, Calendar, Clock, DollarSign, User, MapPin, Package } from "l
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useOrderStore } from "@/stores/orderStore";
+import { cancelOrderServices } from "@/services/order.services";
+import { assignCustomerToStorageRoomServices } from "@/services/storageRoom.services";
+import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
+import { RESERVATION_ORDER_STATUS } from "@/types/order";
 
 export const OrderDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +23,48 @@ export const OrderDetail = () => {
       clearSelectedOrder();
     };
   }, [id, fetchOrderById, clearSelectedOrder]);
+
+  const handleCancelOrder = async () => {
+    if (!selectedOrder) return;
+
+    const confirmed = await showDeleteConfirm(
+      "esta orden",
+      `¿Estás seguro de que deseas cancelar la orden #${selectedOrder.id}?`,
+      [
+        "Esta acción no se puede deshacer",
+        "El espacio de almacenamiento quedará disponible nuevamente"
+      ]
+    );
+
+    if (confirmed) {
+      try {
+        await cancelOrderServices(selectedOrder.id);
+        showSuccess("Orden cancelada exitosamente");
+        // Recargar los datos de la orden
+        fetchOrderById(selectedOrder.id);
+      } catch (error: any) {
+        console.error("Error canceling order:", error);
+        showError(error.response?.data?.message || "Error al cancelar la orden");
+      }
+    }
+  };
+
+  const handleAssignCustomer = async () => {
+    if (!selectedOrder || !selectedOrder.storageRoom || !selectedOrder.customer) return;
+
+    try {
+      await assignCustomerToStorageRoomServices(
+        selectedOrder.storageRoom.id,
+        selectedOrder.customer.id
+      );
+      showSuccess("Cliente asignado al espacio exitosamente");
+      // Recargar los datos de la orden para ver el cambio de estado
+      fetchOrderById(selectedOrder.id);
+    } catch (error: any) {
+      console.error("Error assigning customer:", error);
+      showError(error.response?.data?.message || "Error al asignar el cliente");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -109,6 +155,29 @@ export const OrderDetail = () => {
                 <div>
                   <p className="text-sm text-gray-500">Monto total</p>
                   <p className="font-medium text-green-600 text-lg">${parseFloat(order.totalAmount).toFixed(2)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Package className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-500">Estado de la orden</p>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium border mt-1 ${
+                    order.status === RESERVATION_ORDER_STATUS.PENDING 
+                      ? "bg-yellow-100 text-yellow-800 border-yellow-300" 
+                      : order.status === RESERVATION_ORDER_STATUS.CONFIRMED 
+                      ? "bg-green-100 text-green-800 border-green-300" 
+                      : order.status === RESERVATION_ORDER_STATUS.CANCELED 
+                      ? "bg-red-100 text-red-800 border-red-300" 
+                      : "bg-gray-100 text-gray-800 border-gray-300"
+                  }`}>
+                    {order.status === RESERVATION_ORDER_STATUS.PENDING 
+                      ? "Pendiente" 
+                      : order.status === RESERVATION_ORDER_STATUS.CONFIRMED 
+                      ? "Confirmada" 
+                      : order.status === RESERVATION_ORDER_STATUS.CANCELED 
+                      ? "Cancelada" 
+                      : order.status}
+                  </span>
                 </div>
               </div>
             </div>
@@ -259,21 +328,36 @@ export const OrderDetail = () => {
           </div>
 
           {/* Acciones */}
-          <div className="bg-white rounded-lg border p-6">
-            <h2 className="text-xl font-semibold mb-4">Acciones</h2>
-            <div className="space-y-2">
-              <Button 
-                className="w-full" 
-                variant="outline"
-                onClick={() => navigate(`/orders/${id}/edit`)}
-              >
-                Editar orden
-              </Button>
-              <Button className="w-full" variant="destructive">
-                Cancelar orden
-              </Button>
+          {order.status !== RESERVATION_ORDER_STATUS.CANCELED && (
+            <div className="bg-white rounded-lg border p-6">
+              <h2 className="text-xl font-semibold mb-4">Acciones</h2>
+              <div className="space-y-2">
+                {order.status === RESERVATION_ORDER_STATUS.PENDING && 
+                 storageRoom?.status === 'reserved' && (
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700 text-white" 
+                    onClick={handleAssignCustomer}
+                  >
+                    Asignar espacio al cliente
+                  </Button>
+                )}
+                <Button 
+                  className="w-full" 
+                  variant="outline"
+                  onClick={() => navigate(`/orders/${id}/edit`)}
+                >
+                  Editar orden
+                </Button>
+                <Button 
+                  className="w-full" 
+                  variant="destructive"
+                  onClick={handleCancelOrder}
+                >
+                  Cancelar orden
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

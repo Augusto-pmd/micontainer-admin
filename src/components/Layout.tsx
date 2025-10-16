@@ -14,8 +14,10 @@ const links: LinkItem[] = [
   { name: "Mi Perfil", href: "/profile", icon: "👤" },
   { name: "Edificios", href: "/building", icon: "🏢", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
   { name: "Sucursales", href: "/branch", icon: "🏬", roles: [UserRole.ADMIN] },
-  { name: "Órdenes", href: "/orders", icon: "📦", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
+  { name: "Espacios", href: "/storage-rooms", icon: "📦", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
+  { name: "Órdenes", href: "/orders", icon: "�", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
   { name: "Clientes", href: "/customers", icon: "🧑‍🤝‍🧑", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
+  { name: "Operadores", href: "/operators", icon: "👥", roles: [UserRole.ADMIN] },
 ];
 
 export default function DashboardLayout() {
