@@ -99,3 +99,8 @@ export const downloadCustomerFile = async (fileUrl: string, fileName: string) =>
     throw error;
   }
 };
+
+export const approveCustomerServices = async (id: number) => {
+  const response = await api.patch(`/customer/${id}/approve`);
+  return response.data;
+};

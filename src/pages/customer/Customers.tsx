@@ -37,6 +37,7 @@ import { Spinner } from "@/components/ui/spinner";
 import {
   getAllCustomersServices,
   deleteCustomerServices,
+  approveCustomerServices,
 } from "@/services/customer.services";
 import type {
   Customer as CustomerType,
@@ -207,6 +208,17 @@ export const Customers = () => {
     }
   };
 
+  const handleApproveCustomer = async (customerId: number, customerName: string) => {
+    try {
+      await approveCustomerServices(customerId);
+      showSuccess(`Cliente ${customerName} aprobado exitosamente`);
+      loadCustomers(); // Recargar la lista
+    } catch (error: any) {
+      console.error("Error al aprobar cliente:", error);
+      showApiError(error);
+    }
+  };
+
   const columnsWithActions: ColumnDef<CustomerType>[] = [
     ...columns.filter((col) => col.id !== "actions"),
     {
@@ -247,6 +259,19 @@ export const Customers = () => {
               >
                 Editar cliente
               </DropdownMenuItem>
+              {!customer.isApproved && (
+                <DropdownMenuItem
+                  className="text-green-600"
+                  onClick={() =>
+                    handleApproveCustomer(
+                      customer.id,
+                      `${customer.user?.firstName} ${customer.user?.lastName}`
+                    )
+                  }
+                >
+                  Aprobar cliente
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem
                 className="text-red-600"
                 onClick={() =>

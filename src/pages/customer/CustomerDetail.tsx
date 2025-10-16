@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useCustomerStore } from "@/stores/customerStore";
 import { getOrdersByCustomerIdServices } from "@/services/order.services";
-import { downloadCustomerFile, deleteCustomerServices } from "@/services/customer.services";
+import { downloadCustomerFile, deleteCustomerServices, approveCustomerServices } from "@/services/customer.services";
 import { showError, showSuccess, showApiError, showDeleteConfirm } from "@/utils/alerts";
 import type { ReservationOrder } from "@/types/order";
 
@@ -106,6 +106,20 @@ export const CustomerDetail = () => {
       showApiError(error);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleApproveCustomer = async () => {
+    if (!selectedCustomer) return;
+
+    try {
+      await approveCustomerServices(selectedCustomer.id);
+      showSuccess("Cliente aprobado exitosamente");
+      // Recargar los datos del cliente
+      fetchCustomerById(selectedCustomer.id);
+    } catch (error: any) {
+      console.error("Error al aprobar cliente:", error);
+      showApiError(error);
     }
   };
 
@@ -217,6 +231,16 @@ export const CustomerDetail = () => {
                     : "bg-purple-100 text-purple-800"
                 }`}>
                   {customer.personType === 'fisica' ? 'Física' : 'Jurídica'}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Estado de aprobación</p>
+                <span className={`inline-block px-2 py-1 rounded text-sm font-medium ${
+                  customer.isApproved 
+                    ? "bg-green-100 text-green-800" 
+                    : "bg-yellow-100 text-yellow-800"
+                }`}>
+                  {customer.isApproved ? 'Aprobado' : 'Pendiente'}
                 </span>
               </div>
               <div className="col-span-2">
@@ -473,6 +497,14 @@ export const CustomerDetail = () => {
               >
                 Editar cliente
               </Button>
+              {!customer.isApproved && (
+                <Button 
+                  className="w-full bg-green-600 hover:bg-green-700 text-white" 
+                  onClick={handleApproveCustomer}
+                >
+                  Aprobar cliente
+                </Button>
+              )}
               <Button 
                 className="w-full" 
                 variant="outline"
