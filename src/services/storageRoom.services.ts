@@ -47,6 +47,13 @@ export const deleteStorageRoomServices = async (id: number) => {
   return response.data;
 };
 
+export const assignCustomerToStorageRoomServices = async (storageRoomId: number, customerId: number): Promise<StorageRoom> => {
+  const response = await api.patch(`/storage-room/${storageRoomId}/assign-customer`, {
+    customerId
+  });
+  return response.data;
+};
+
 // Re-exportar el tipo para compatibilidad
 export type { StorageRoom } from "@/types/storageRoom";
 

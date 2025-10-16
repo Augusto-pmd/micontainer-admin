@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useOrderStore } from "@/stores/orderStore";
 import { cancelOrderServices } from "@/services/order.services";
+import { assignCustomerToStorageRoomServices } from "@/services/storageRoom.services";
 import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
 import { RESERVATION_ORDER_STATUS } from "@/types/order";
 
@@ -45,6 +46,23 @@ export const OrderDetail = () => {
         console.error("Error canceling order:", error);
         showError(error.response?.data?.message || "Error al cancelar la orden");
       }
+    }
+  };
+
+  const handleAssignCustomer = async () => {
+    if (!selectedOrder || !selectedOrder.storageRoom || !selectedOrder.customer) return;
+
+    try {
+      await assignCustomerToStorageRoomServices(
+        selectedOrder.storageRoom.id,
+        selectedOrder.customer.id
+      );
+      showSuccess("Cliente asignado al espacio exitosamente");
+      // Recargar los datos de la orden para ver el cambio de estado
+      fetchOrderById(selectedOrder.id);
+    } catch (error: any) {
+      console.error("Error assigning customer:", error);
+      showError(error.response?.data?.message || "Error al asignar el cliente");
     }
   };
 
@@ -314,6 +332,15 @@ export const OrderDetail = () => {
             <div className="bg-white rounded-lg border p-6">
               <h2 className="text-xl font-semibold mb-4">Acciones</h2>
               <div className="space-y-2">
+                {order.status === RESERVATION_ORDER_STATUS.PENDING && 
+                 storageRoom?.status === 'reserved' && (
+                  <Button 
+                    className="w-full bg-green-600 hover:bg-green-700 text-white" 
+                    onClick={handleAssignCustomer}
+                  >
+                    Asignar espacio al cliente
+                  </Button>
+                )}
                 <Button 
                   className="w-full" 
                   variant="outline"

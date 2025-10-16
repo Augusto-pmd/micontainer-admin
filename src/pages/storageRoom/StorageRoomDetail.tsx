@@ -1,10 +1,25 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, Trash2, Building2, MapPin, Ruler, DollarSign, Calendar, Eye } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Building2, MapPin, Ruler, DollarSign, Calendar, Eye, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -14,7 +29,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useStorageRoomStore } from "@/stores/storageRoomStore";
-import { deleteStorageRoomServices } from "@/services/storageRoom.services";
+import { deleteStorageRoomServices, assignCustomerToStorageRoomServices } from "@/services/storageRoom.services";
+import { getAllCustomersServices } from "@/services/customer.services";
 import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
 import type { StorageRoomStatus } from "@/types/storageRoom";
 import { RESERVATION_ORDER_STATUS } from "@/types/order";
@@ -25,6 +41,10 @@ export const StorageRoomDetail = () => {
   const { selectedStorageRoom, isLoading, fetchStorageRoomById, clearSelectedStorageRoom } =
     useStorageRoomStore();
   const [orderFilter, setOrderFilter] = useState("");
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
+  const [isAssigning, setIsAssigning] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -51,6 +71,43 @@ export const StorageRoomDetail = () => {
         console.error("Error deleting storage room:", error);
         showError(error.response?.data?.message || "Error al eliminar el espacio");
       }
+    }
+  };
+
+  const loadCustomers = async () => {
+    try {
+      const response = await getAllCustomersServices({ page: 1, limit: 1000 });
+      setCustomers(response.data);
+    } catch (error) {
+      console.error("Error loading customers:", error);
+      showError("Error al cargar la lista de clientes");
+    }
+  };
+
+  const handleOpenAssignDialog = () => {
+    loadCustomers();
+    setShowAssignDialog(true);
+  };
+
+  const handleAssignCustomer = async () => {
+    if (!selectedStorageRoom || !selectedCustomerId) return;
+
+    setIsAssigning(true);
+    try {
+      await assignCustomerToStorageRoomServices(
+        selectedStorageRoom.id,
+        parseInt(selectedCustomerId)
+      );
+      showSuccess("Cliente asignado exitosamente");
+      setShowAssignDialog(false);
+      setSelectedCustomerId("");
+      // Recargar los datos del storage room
+      fetchStorageRoomById(selectedStorageRoom.id);
+    } catch (error: any) {
+      console.error("Error assigning customer:", error);
+      showError(error.response?.data?.message || "Error al asignar el cliente");
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -120,6 +177,15 @@ export const StorageRoomDetail = () => {
           </div>
         </div>
         <div className="flex gap-2">
+          {(selectedStorageRoom.status === 'reserved' || selectedStorageRoom.status === 'available') && (
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              onClick={handleOpenAssignDialog}
+            >
+              <UserPlus className="mr-2 h-4 w-4" />
+              Asignar Cliente
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => navigate(`/storage-rooms/${selectedStorageRoom.id}/edit`)}
@@ -431,6 +497,59 @@ export const StorageRoomDetail = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog para asignar cliente */}
+      <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Asignar Cliente al Espacio</DialogTitle>
+            <DialogDescription>
+              Selecciona el cliente que ocupará el espacio {selectedStorageRoom.space}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar cliente..." />
+              </SelectTrigger>
+              <SelectContent>
+                {customers.map((customer) => (
+                  <SelectItem key={customer.id} value={customer.id.toString()}>
+                    {customer.user?.firstName} {customer.user?.lastName} - {customer.dni}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAssignDialog(false);
+                setSelectedCustomerId("");
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700"
+              onClick={handleAssignCustomer}
+              disabled={!selectedCustomerId || isAssigning}
+            >
+              {isAssigning ? (
+                <>
+                  <Spinner className="h-4 w-4 mr-2" />
+                  Asignando...
+                </>
+              ) : (
+                "Asignar Cliente"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
