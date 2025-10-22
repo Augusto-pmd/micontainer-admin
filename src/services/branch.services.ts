@@ -4,11 +4,16 @@ import type { PaginatedBranches } from "@/types/branch";
 interface GetAllBranchesParams {
   page?: number;
   limit?: number;
+  search?: string;
 }
 
 export const getAllBranchesServices = async (params?: GetAllBranchesParams): Promise<PaginatedBranches> => {
-  const { page = 1, limit = 10 } = params || {};
-  const response = await api.get(`/branch?page=${page}&limit=${limit}`);
+  const { page = 1, limit = 10, search } = params || {};
+  let url = `/branch?page=${page}&limit=${limit}`;
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
+  const response = await api.get(url);
   return response.data;
 };
 

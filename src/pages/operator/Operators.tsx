@@ -87,25 +87,33 @@ export const Operators = () => {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const loadOperators = () => {
     setLoading(true);
-    getAllOperatorsServices({ page, limit })
+    getAllOperatorsServices({ page, limit, search: searchQuery || undefined })
       .then((res: PaginatedOperators) => {
         setOperators(res.data);
         setTotal(res.total);
         setTotalPages(res.totalPages);
         setError(null);
+        setIsInitialLoad(false);
       })
       .catch(() => {
         setError("Error al cargar operadores");
+        setIsInitialLoad(false);
       })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
-    loadOperators();
-  }, [page, limit]);
+    const timeoutId = setTimeout(() => {
+      loadOperators();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [page, limit, searchQuery]);
 
   const handleDeleteOperator = async (operatorId: number, operatorName: string) => {
     const confirmed = await showDeleteConfirm(operatorName);
@@ -196,7 +204,7 @@ export const Operators = () => {
     },
   });
 
-  if (loading) {
+  if (isInitialLoad && loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
@@ -223,11 +231,12 @@ export const Operators = () => {
 
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filtrar por email..."
-          value={(table.getColumn("user.email")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("user.email")?.setFilterValue(event.target.value)
-          }
+          placeholder="Buscar por nombre, email, sucursal..."
+          value={searchQuery}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            setPage(1);
+          }}
           className="max-w-sm"
         />
         <DropdownMenu>
@@ -280,7 +289,20 @@ export const Operators = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading && operators.length > 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columnsWithActions.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex justify-center items-center">
+                    <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
+                      <Spinner className="h-8 w-8 text-green-500" />
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -302,7 +324,7 @@ export const Operators = () => {
                   colSpan={columnsWithActions.length}
                   className="h-24 text-center"
                 >
-                  No hay resultados.
+                  {searchQuery ? "No se encontraron resultados para tu búsqueda." : "No hay resultados."}
                 </TableCell>
               </TableRow>
             )}
@@ -319,7 +341,7 @@ export const Operators = () => {
             variant="outline"
             size="sm"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
+            disabled={page === 1 || loading}
           >
             Anterior
           </Button>
@@ -328,7 +350,7 @@ export const Operators = () => {
             variant="outline"
             size="sm"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
+            disabled={page === totalPages || loading}
           >
             Siguiente
           </Button>
@@ -339,6 +361,7 @@ export const Operators = () => {
               setLimit(Number(e.target.value));
               setPage(1);
             }}
+            disabled={loading}
           >
             {[10, 20, 50, 100].map((size) => (
               <option key={size} value={size}>

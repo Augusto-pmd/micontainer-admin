@@ -169,6 +169,7 @@ export const Customers = () => {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const loadCustomers = () => {
     setLoading(true);
@@ -178,9 +179,11 @@ export const Customers = () => {
         setTotal(res.total);
         setTotalPages(res.totalPages);
         setError(null);
+        setIsInitialLoad(false);
       })
       .catch(() => {
         setError("Error al cargar clientes");
+        setIsInitialLoad(false);
       })
       .finally(() => setLoading(false));
   };
@@ -316,7 +319,7 @@ export const Customers = () => {
     },
   });
 
-  if (loading && customers.length === 0) {
+  if (isInitialLoad && loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="animate-spin" style={{ animationDuration: "0.8s" }}>

@@ -10,13 +10,17 @@ interface GetStorageRoomsParams {
   page?: number;
   limit?: number;
   status?: string;
+  search?: string;
 }
 
 export const getAllStorageRoomsServices = async (params?: GetStorageRoomsParams): Promise<PaginatedStorageRooms> => {
-  const { page = 1, limit = 10, status } = params || {};
+  const { page = 1, limit = 10, status, search } = params || {};
   let url = `/storage-room?page=${page}&limit=${limit}`;
   if (status) {
     url += `&status=${status}`;
+  }
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
   }
   const response = await api.get(url);
   return response.data;
