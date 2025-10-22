@@ -2,7 +2,7 @@ import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "../stores/authStore";
 import { UserRole } from "../types/auth";
 import { useState } from "react";
-import { FaBoxesPacking, FaClipboardList, FaUserTie } from "react-icons/fa6";
+import { FaClipboardList, FaUserTie } from "react-icons/fa6";
 import { MdDashboard, MdWarehouse } from "react-icons/md";
 import { HiOfficeBuilding, HiUsers, HiUserCircle } from "react-icons/hi";
 import { BsBuilding } from "react-icons/bs";
