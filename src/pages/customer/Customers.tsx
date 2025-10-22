@@ -168,10 +168,11 @@ export const Customers = () => {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const loadCustomers = () => {
     setLoading(true);
-    getAllCustomersServices({ page, limit })
+    getAllCustomersServices({ page, limit, search: searchQuery || undefined })
       .then((res: PaginatedCustomers) => {
         setCustomers(res.data);
         setTotal(res.total);
@@ -185,8 +186,12 @@ export const Customers = () => {
   };
 
   useEffect(() => {
-    loadCustomers();
-  }, [page, limit]);
+    const timeoutId = setTimeout(() => {
+      loadCustomers();
+    }, 300); // Debounce de 300ms
+
+    return () => clearTimeout(timeoutId);
+  }, [page, limit, searchQuery]);
 
   const handleDeleteCustomer = async (
     customerId: number,
@@ -311,7 +316,7 @@ export const Customers = () => {
     },
   });
 
-  if (loading) {
+  if (loading && customers.length === 0) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
@@ -327,7 +332,12 @@ export const Customers = () => {
 
       {/* Header with title and create button */}
       <div className="flex items-center justify-between py-4">
-        <h1 className="text-2xl font-bold">Clientes</h1>
+        <div>
+          {/* <h1 className="text-2xl font-bold">Clientes</h1>
+          <p className="text-gray-600 mt-1">
+            Total de clientes: {total}
+          </p> */}
+        </div>
         <Button
           onClick={() => navigate("/customers/create")}
           className="bg-green-600 hover:bg-green-700"
@@ -339,13 +349,12 @@ export const Customers = () => {
 
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filtrar por email..."
-          value={
-            (table.getColumn("user.email")?.getFilterValue() as string) ?? ""
-          }
-          onChange={(event) =>
-            table.getColumn("user.email")?.setFilterValue(event.target.value)
-          }
+          placeholder="Buscar por nombre, email, DNI, CUIT..."
+          value={searchQuery}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            setPage(1); // Reset a la primera página al buscar
+          }}
           className="max-w-sm"
         />
         <DropdownMenu>
@@ -397,7 +406,20 @@ export const Customers = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading && customers.length > 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columnsWithActions.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex justify-center items-center">
+                    <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
+                      <Spinner className="h-8 w-8 text-green-500" />
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -416,10 +438,10 @@ export const Customers = () => {
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={columnsWithActions.length}
                   className="h-24 text-center"
                 >
-                  No hay resultados.
+                  {searchQuery ? "No se encontraron resultados para tu búsqueda." : "No hay resultados."}
                 </TableCell>
               </TableRow>
             )}
@@ -435,7 +457,7 @@ export const Customers = () => {
             variant="outline"
             size="sm"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
+            disabled={page === 1 || loading}
           >
             Anterior
           </Button>
@@ -444,7 +466,7 @@ export const Customers = () => {
             variant="outline"
             size="sm"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
+            disabled={page === totalPages || loading}
           >
             Siguiente
           </Button>
@@ -455,6 +477,7 @@ export const Customers = () => {
               setLimit(Number(e.target.value));
               setPage(1);
             }}
+            disabled={loading}
           >
             {[10, 20, 50, 100].map((size) => (
               <option key={size} value={size}>

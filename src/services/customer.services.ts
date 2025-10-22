@@ -4,11 +4,16 @@ import type { PaginatedCustomers } from "@/types/customer";
 interface GetAllCustomersParams {
   page?: number;
   limit?: number;
+  search?: string;
 }
 
 export const getAllCustomersServices = async (params?: GetAllCustomersParams): Promise<PaginatedCustomers> => {
-  const { page = 1, limit = 10 } = params || {};
-  const response = await api.get(`/customer?page=${page}&limit=${limit}`);
+  const { page = 1, limit = 10, search } = params || {};
+  let url = `/customer?page=${page}&limit=${limit}`;
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
+  const response = await api.get(url);
   return response.data;
 };
 
