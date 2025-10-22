@@ -66,11 +66,13 @@ const columns: ColumnDef<CustomerType>[] = [
     header: columnLabels.id,
   },
   {
+    id: "user.firstName",
     accessorKey: "user.firstName",
     header: columnLabels["user.firstName"],
     cell: ({ row }) => row.original.user?.firstName || "-",
   },
   {
+    id: "user.lastName",
     accessorKey: "user.lastName",
     header: columnLabels["user.lastName"],
     cell: ({ row }) => row.original.user?.lastName || "-",
@@ -84,6 +86,7 @@ const columns: ColumnDef<CustomerType>[] = [
     header: columnLabels.cuit,
   },
   {
+    id: "user.email",
     accessorKey: "user.email",
     header: columnLabels["user.email"],
     cell: ({ row }) => row.original.user?.email || "-",

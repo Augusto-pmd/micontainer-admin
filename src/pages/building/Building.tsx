@@ -79,6 +79,7 @@ const columns: ColumnDef<BuildingType>[] = [
     header: columnLabels.description,
   },
   {
+    id: "branch.name",
     accessorKey: "branch.name",
     header: columnLabels["branch.name"],
     cell: ({ row }) => row.original.branch?.name || "-",

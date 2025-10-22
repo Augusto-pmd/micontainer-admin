@@ -53,21 +53,25 @@ const columns: ColumnDef<Operator>[] = [
     header: columnLabels.id,
   },
   {
+    id: "user.firstName",
     accessorKey: "user.firstName",
     header: columnLabels["user.firstName"],
     cell: ({ row }) => row.original.user?.firstName || "-",
   },
   {
+    id: "user.lastName",
     accessorKey: "user.lastName",
     header: columnLabels["user.lastName"],
     cell: ({ row }) => row.original.user?.lastName || "-",
   },
   {
+    id: "user.email",
     accessorKey: "user.email",
     header: columnLabels["user.email"],
     cell: ({ row }) => row.original.user?.email || "-",
   },
   {
+    id: "branch.name",
     accessorKey: "branch.name",
     header: columnLabels["branch.name"],
     cell: ({ row }) => row.original.branch?.name || "-",

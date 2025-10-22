@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Eye, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, MoreHorizontal, ChevronDown } from "lucide-react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,12 +9,14 @@ import {
   type ColumnDef,
   flexRender,
   type SortingState,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -31,11 +33,22 @@ import { getAllStorageRoomsServices, deleteStorageRoomServices } from "@/service
 import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
 import type { StorageRoom, StorageRoomStatus } from "@/types/storageRoom";
 
+const columnLabels: Record<string, string> = {
+  space: "Espacio",
+  "building.name": "Edificio",
+  "building.branch.name": "Sucursal",
+  floor: "Piso",
+  areaM2: "Área (m²)",
+  price: "Precio",
+  status: "Estado",
+};
+
 export const StorageRooms = () => {
   const navigate = useNavigate();
   const [storageRooms, setStorageRooms] = useState<StorageRoom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [searchQuery, setSearchQuery] = useState("");
   const [pagination, setPagination] = useState({
     pageIndex: 0,
@@ -124,11 +137,13 @@ export const StorageRooms = () => {
       ),
     },
     {
+      id: "building.name",
       accessorKey: "building.name",
       header: "Edificio",
       cell: ({ row }) => row.original.building?.name || "N/A",
     },
     {
+      id: "building.branch.name",
       accessorKey: "building.branch.name",
       header: "Sucursal",
       cell: ({ row }) => row.original.building?.branch?.name || "N/A",
@@ -155,6 +170,7 @@ export const StorageRooms = () => {
     },
     {
       id: "actions",
+      enableHiding: false,
       header: "Acciones",
       cell: ({ row }) => (
         <DropdownMenu>
@@ -195,10 +211,12 @@ export const StorageRooms = () => {
     state: {
       sorting,
       pagination,
+      columnVisibility,
     },
     pageCount: totalPages,
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -233,7 +251,7 @@ export const StorageRooms = () => {
         </Button>
       </div>
 
-      <div className="mb-4">
+      <div className="flex items-center py-4">
         <Input
           placeholder="Buscar por espacio, piso, edificio, sucursal..."
           value={searchQuery}
@@ -243,6 +261,33 @@ export const StorageRooms = () => {
           }}
           className="max-w-sm"
         />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="ml-auto">
+              Columnas <ChevronDown />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {table
+              .getAllColumns()
+              .filter((column) => column.getCanHide())
+              .map((column) => {
+                const label = columnLabels[column.id as string] || column.id;
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) =>
+                      column.toggleVisibility(!!value)
+                    }
+                  >
+                    {label}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="bg-white rounded-lg shadow">

@@ -66,6 +66,7 @@ const getColumns = (
     header: columnLabels.id,
   },
   {
+    id: "customer.fullName",
     accessorKey: "customer.fullName",
     header: columnLabels["customer.fullName"],
     cell: ({ row }) => {
@@ -77,6 +78,7 @@ const getColumns = (
     },
   },
   {
+    id: "customer.cuit",
     accessorKey: "customer.cuit",
     header: columnLabels["customer.cuit"],
     cell: ({ row }) => row.original.customer?.cuit || "-",
@@ -129,16 +131,19 @@ const getColumns = (
     },
   },
   {
+    id: "storageRoom.space",
     accessorKey: "storageRoom.space",
     header: columnLabels["storageRoom.space"],
     cell: ({ row }) => row.original.storageRoom?.space || "-",
   },
   {
+    id: "storageRoom.floor",
     accessorKey: "storageRoom.floor",
     header: columnLabels["storageRoom.floor"],
     cell: ({ row }) => row.original.storageRoom?.floor || "-",
   },
   {
+    id: "storageRoom.status",
     accessorKey: "storageRoom.status",
     header: columnLabels["storageRoom.status"],
     cell: ({ row }) => {
@@ -153,16 +158,19 @@ const getColumns = (
     },
   },
   {
+    id: "storageRoom.building.name",
     accessorKey: "storageRoom.building.name",
     header: columnLabels["storageRoom.building.name"],
     cell: ({ row }) => row.original.storageRoom?.building?.name || "-",
   },
   {
+    id: "storageRoom.building.branch.name",
     accessorKey: "storageRoom.building.branch.name",
     header: columnLabels["storageRoom.building.branch.name"],
     cell: ({ row }) => row.original.storageRoom?.building?.branch?.name || "-",
   },
   {
+    id: "storageRoom.building.branch.city",
     accessorKey: "storageRoom.building.branch.city",
     header: columnLabels["storageRoom.building.branch.city"],
     cell: ({ row }) => row.original.storageRoom?.building?.branch?.city || "-",
