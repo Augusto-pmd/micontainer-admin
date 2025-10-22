@@ -65,10 +65,12 @@ function MenuItem({
   link,
   userRole,
   level = 0,
+  onLinkClick,
 }: {
   link: LinkItem;
   userRole?: UserRole;
   level?: number;
+  onLinkClick?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -113,6 +115,7 @@ function MenuItem({
           {link.href ? (
             <Link
               to={link.href}
+              onClick={onLinkClick}
               className="flex-1 text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-green-50 group"
               style={{ paddingLeft }}
             >
@@ -157,6 +160,7 @@ function MenuItem({
                 link={child}
                 userRole={userRole}
                 level={level + 1}
+                onLinkClick={onLinkClick}
               />
             ))}
           </ul>
@@ -169,6 +173,7 @@ function MenuItem({
     <li>
       <Link
         to={link.href!}
+        onClick={onLinkClick}
         className="text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-green-50 group"
         style={{ paddingLeft }}
       >
@@ -181,6 +186,11 @@ function MenuItem({
 
 export default function DashboardLayout() {
   const { user, logout, isLoading } = useAuth();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
 
   if (isLoading) {
     return (
@@ -197,37 +207,38 @@ export default function DashboardLayout() {
           <div className="flex items-center justify-between">
             <div className="flex items-center justify-start">
               <button
-                id="toggleSidebarMobile"
-                aria-expanded="true"
+                onClick={toggleSidebar}
+                aria-expanded={isSidebarOpen}
                 aria-controls="sidebar"
                 className="lg:hidden mr-2 text-gray-600 hover:text-green-700 cursor-pointer p-2 hover:bg-green-50 focus:bg-green-50 focus:ring-2 focus:ring-green-100 rounded"
               >
-                <svg
-                  id="toggleSidebarMobileHamburger"
-                  className="w-6 h-6"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                    clipRule="evenodd"
-                  ></path>
-                </svg>
-                <svg
-                  id="toggleSidebarMobileClose"
-                  className="w-6 h-6 hidden"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                    clipRule="evenodd"
-                  ></path>
-                </svg>
+                {!isSidebarOpen ? (
+                  <svg
+                    className="w-6 h-6"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                      clipRule="evenodd"
+                    ></path>
+                  </svg>
+                ) : (
+                  <svg
+                    className="w-6 h-6"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    ></path>
+                  </svg>
+                )}
               </button>
               <Link
                 to="/"
@@ -292,7 +303,9 @@ export default function DashboardLayout() {
       <div className="flex overflow-hidden bg-white pt-16">
         <aside
           id="sidebar"
-          className="fixed hidden z-20 h-full top-0 left-0 pt-16 lg:flex flex-shrink-0 flex-col w-64 transition-width duration-75"
+          className={`fixed z-20 h-full top-0 left-0 pt-16 flex-shrink-0 flex-col w-64 transition-transform duration-300 ${
+            isSidebarOpen ? "flex translate-x-0" : "-translate-x-full lg:translate-x-0"
+          } lg:flex`}
           aria-label="Sidebar"
         >
           <div className="relative flex-1 flex flex-col min-h-0 border-r border-gray-200 bg-white pt-0">
@@ -305,6 +318,7 @@ export default function DashboardLayout() {
                       key={link.href || link.name}
                       link={link}
                       userRole={user?.role as UserRole}
+                      onLinkClick={() => setIsSidebarOpen(false)}
                     />
                   ))}
                 </ul>
@@ -312,10 +326,13 @@ export default function DashboardLayout() {
             </div>
           </div>
         </aside>
-        <div
-          className="bg-gray-900 opacity-50 hidden fixed inset-0 z-10"
-          id="sidebarBackdrop"
-        ></div>
+        {isSidebarOpen && (
+          <div
+            className="bg-gray-900 opacity-50 fixed inset-0 z-10 lg:hidden"
+            id="sidebarBackdrop"
+            onClick={toggleSidebar}
+          ></div>
+        )}
         <div
           id="main-content"
           className="h-full w-full bg-gray-50 relative overflow-y-auto lg:ml-64"
