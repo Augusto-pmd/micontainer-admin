@@ -2,6 +2,10 @@ import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "../stores/authStore";
 import { UserRole } from "../types/auth";
 import { useState } from "react";
+import { FaBoxesPacking, FaClipboardList, FaUserTie } from "react-icons/fa6";
+import { MdDashboard, MdWarehouse } from "react-icons/md";
+import { HiOfficeBuilding, HiUsers, HiUserCircle } from "react-icons/hi";
+import { BsBuilding } from "react-icons/bs";
 
 interface LinkItem {
   name: string;
@@ -12,24 +16,24 @@ interface LinkItem {
 }
 
 const links: LinkItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: "🏠" },
-  { name: "Mi Perfil", href: "/profile", icon: "👤" },
+  { name: "Dashboard", href: "/dashboard", icon: "dashboard" },
+  { name: "Mi Perfil", href: "/profile", icon: "profile" },
   {
     name: "Sucursales",
     href: "/branch",
-    icon: "🏬",
+    icon: "branch",
     roles: [UserRole.ADMIN],
     children: [
       {
         name: "Edificios",
         href: "/building",
-        icon: "🏬",
+        icon: "building",
         roles: [UserRole.ADMIN, UserRole.OPERATOR],
         children: [
           {
             name: "Espacios",
             href: "/storage-rooms",
-            icon: "📦",
+            icon: "storage",
             roles: [UserRole.ADMIN, UserRole.OPERATOR],
           },
         ],
@@ -39,19 +43,19 @@ const links: LinkItem[] = [
   {
     name: "Órdenes",
     href: "/orders",
-    icon: "📋",
+    icon: "orders",
     roles: [UserRole.ADMIN, UserRole.OPERATOR],
   },
   {
     name: "Clientes",
     href: "/customers",
-    icon: "🧑‍🤝‍🧑",
+    icon: "customers",
     roles: [UserRole.ADMIN, UserRole.OPERATOR],
   },
   {
     name: "Operadores",
     href: "/operators",
-    icon: "👥",
+    icon: "operators",
     roles: [UserRole.ADMIN],
   },
 ];
@@ -78,6 +82,30 @@ function MenuItem({
   const hasChildren = link.children && link.children.length > 0;
   const paddingLeft = `${level * 1}rem`;
 
+  // Función para renderizar el icono
+  const renderIcon = (icon: string) => {
+    switch (icon) {
+      case "dashboard":
+        return <MdDashboard className="text-xl" />;
+      case "profile":
+        return <HiUserCircle className="text-xl" />;
+      case "branch":
+        return <HiOfficeBuilding className="text-xl" />;
+      case "building":
+        return <BsBuilding className="text-xl" />;
+      case "storage":
+        return <MdWarehouse className="text-xl" />;
+      case "orders":
+        return <FaClipboardList className="text-xl" />;
+      case "customers":
+        return <HiUsers className="text-xl" />;
+      case "operators":
+        return <FaUserTie className="text-xl" />;
+      default:
+        return <span>{icon}</span>;
+    }
+  };
+
   if (hasChildren) {
     return (
       <li>
@@ -88,7 +116,7 @@ function MenuItem({
               className="flex-1 text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-green-50 group"
               style={{ paddingLeft }}
             >
-              <span className="mr-3">{link.icon}</span>
+              <span className="mr-3">{renderIcon(link.icon)}</span>
               <span>{link.name}</span>
             </Link>
           ) : (
@@ -96,7 +124,7 @@ function MenuItem({
               className="flex-1 text-base capitalize text-gray-900 font-normal flex items-center p-2"
               style={{ paddingLeft }}
             >
-              <span className="mr-3">{link.icon}</span>
+              <span className="mr-3">{renderIcon(link.icon)}</span>
               <span>{link.name}</span>
             </div>
           )}
@@ -144,7 +172,7 @@ function MenuItem({
         className="text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-green-50 group"
         style={{ paddingLeft }}
       >
-        <span className="mr-3">{link.icon}</span>
+        <span className="mr-3">{renderIcon(link.icon)}</span>
         <span>{link.name}</span>
       </Link>
     </li>

@@ -319,9 +319,9 @@ export const Orders = () => {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">Órdenes</h1>
-          <p className="text-gray-600 mt-1 text-sm">
+          {/* <p className="text-gray-600 mt-1 text-sm">
             Total de órdenes: {total}
-          </p>
+          </p> */}
         </div>
         <Button 
           onClick={() => navigate('/orders/create')}

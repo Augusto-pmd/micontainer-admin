@@ -336,8 +336,8 @@ export const Customers = () => {
       {/* Header with title and create button */}
       <div className="flex items-center justify-between py-4">
         <div>
-          {/* <h1 className="text-2xl font-bold">Clientes</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold">Clientes</h1>
+          {/* <p className="text-gray-600 mt-1">
             Total de clientes: {total}
           </p> */}
         </div>
