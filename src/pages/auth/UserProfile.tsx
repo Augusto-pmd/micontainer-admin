@@ -1,11 +1,52 @@
-import { Button } from "@/components";
+import { Button, Modal } from "@/components";
 import { useAuth } from "@/stores/authStore";
 import { UserRole } from "@/types/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { showSuccess } from "@/utils/alerts";
+import { updateUserSilent, getUserById } from "@/services/user.services";
+import { Spinner } from "@/components/ui/spinner";
 
 const UserProfile = () => {
   const { user, logout } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
+  const [userData, setUserData] = useState<any>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+  const [profileData, setProfileData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+  });
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [profileError, setProfileError] = useState("");
+
+  // Cargar datos del usuario desde el backend
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user?.id) return;
+
+      try {
+        setIsLoadingUser(true);
+        const response = await getUserById(user.id);
+        setUserData(response);
+      } catch (error) {
+        console.error("Error al cargar datos del usuario:", error);
+      } finally {
+        setIsLoadingUser(false);
+      }
+    };
+
+    fetchUserData();
+  }, [user?.id]);
 
   const getRoleDisplayName = (role: UserRole) => {
     switch (role) {
@@ -19,6 +60,78 @@ const UserProfile = () => {
         return "Invitado";
       default:
         return role;
+    }
+  };
+
+  const openEditProfileModal = () => {
+    // Pre-cargar los datos actuales del usuario desde userData
+    setProfileData({
+      firstName: userData?.firstName || "",
+      lastName: userData?.lastName || "",
+      email: userData?.email || "",
+    });
+    setIsEditProfileModalOpen(true);
+  };
+
+  const handleProfileUpdate = async () => {
+    // Limpiar error previo
+    setProfileError("");
+
+    // Validaciones
+    if (!profileData.firstName.trim()) {
+      setProfileError("El nombre es obligatorio");
+      return;
+    }
+
+    if (!profileData.lastName.trim()) {
+      setProfileError("El apellido es obligatorio");
+      return;
+    }
+
+    if (!profileData.email.trim()) {
+      setProfileError("El email es obligatorio");
+      return;
+    }
+
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(profileData.email)) {
+      setProfileError("El formato del email no es válido");
+      return;
+    }
+
+    try {
+      setIsUpdatingProfile(true);
+
+      if (!user?.id) {
+        setProfileError("No se pudo identificar el usuario");
+        return;
+      }
+
+      // Actualizar perfil usando el servicio updateUserSilent (sin alert automático)
+      await updateUserSilent(user.id, {
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        email: profileData.email,
+      });
+
+      showSuccess("Perfil actualizado exitosamente");
+      setIsEditProfileModalOpen(false);
+      setProfileData({ firstName: "", lastName: "", email: "" });
+      setProfileError("");
+
+      // Recargar los datos del usuario
+      const response = await getUserById(user.id);
+      setUserData(response);
+    } catch (error: any) {
+      // El error ya se mostró en el interceptor de la API, solo actualizamos el estado
+      console.error("Error al actualizar perfil:", error);
+      setProfileError(
+        error.response?.data?.message || 
+        "Error al actualizar el perfil. Intenta nuevamente."
+      );
+    } finally {
+      setIsUpdatingProfile(false);
     }
   };
 
@@ -36,6 +149,61 @@ const UserProfile = () => {
         return "bg-gray-100 text-gray-800";
     }
   };
+
+  const handlePasswordChange = async () => {
+    // Limpiar error previo
+    setPasswordError("");
+
+    // Validaciones
+    if (!passwordData.newPassword || !passwordData.confirmPassword) {
+      setPasswordError("Por favor completa todos los campos");
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError("Las contraseñas no coinciden");
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+      
+      if (!user?.id) {
+        setPasswordError("No se pudo identificar el usuario");
+        return;
+      }
+
+      // Actualizar contraseña usando el servicio updateUserSilent (sin alert automático)
+      await updateUserSilent(user.id, { password: passwordData.newPassword });
+      
+      showSuccess("Contraseña actualizada exitosamente");
+      setIsPasswordModalOpen(false);
+      setPasswordData({ newPassword: "", confirmPassword: "" });
+      setPasswordError("");
+    } catch (error: any) {
+      // El error ya se mostró en el interceptor de la API, solo actualizamos el estado
+      console.error("Error al cambiar contraseña:", error);
+      setPasswordError(
+        error.response?.data?.message || 
+        "Error al cambiar la contraseña. Intenta nuevamente."
+      );
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  if (isLoadingUser) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Spinner className="h-12 w-12 text-green-700" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -57,14 +225,14 @@ const UserProfile = () => {
           <div className="flex items-center space-x-6 mb-6">
             <div className="flex-shrink-0">
               <div className="h-20 w-20 rounded-full bg-green-700 flex items-center justify-center text-white text-2xl font-bold">
-                {user?.avatar || user?.name?.charAt(0)?.toUpperCase() || "U"}
+                {userData?.avatar || userData?.firstName?.charAt(0)?.toUpperCase() || "U"}
               </div>
             </div>
             <div>
               <h4 className="text-xl font-semibold text-gray-900">
-                {user?.name}
+                {userData?.firstName} {userData?.lastName}
               </h4>
-              <p className="text-gray-500">{user?.email}</p>
+              <p className="text-gray-500">{userData?.email}</p>
               <span
                 className={`inline-flex mt-2 px-3 py-1 text-sm font-medium rounded-full ${getRoleBadgeColor(
                   user?.role || UserRole.GUEST
@@ -78,10 +246,19 @@ const UserProfile = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nombre completo
+                Nombre
               </label>
               <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm text-gray-900">
-                {user?.name || "No disponible"}
+                {userData?.firstName || "No disponible"}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Apellido
+              </label>
+              <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm text-gray-900">
+                {userData?.lastName || "No disponible"}
               </div>
             </div>
 
@@ -90,7 +267,7 @@ const UserProfile = () => {
                 Correo electrónico
               </label>
               <div className="mt-1 p-3 bg-gray-50 rounded-md text-sm text-gray-900">
-                {user?.email || "No disponible"}
+                {userData?.email || "No disponible"}
               </div>
             </div>
 
@@ -169,9 +346,85 @@ const UserProfile = () => {
                 Cambia tu contraseña y configura la autenticación de dos
                 factores.
               </p>
-              <Button variant="primary" size="sm">
-                Cambiar Contraseña
-              </Button>
+              <Modal
+                trigger={
+                  <Button variant="primary" size="sm">
+                    Cambiar Contraseña
+                  </Button>
+                }
+                title="Cambiar Contraseña"
+                description="Ingresa y confirma tu nueva contraseña"
+                open={isPasswordModalOpen}
+                onOpenChange={setIsPasswordModalOpen}
+              >
+                <div className="space-y-4">
+                  {passwordError && (
+                    <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md text-sm">
+                      {passwordError}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">Nueva Contraseña</Label>
+                    <Input
+                      id="newPassword"
+                      type="password"
+                      placeholder="Ingresa tu nueva contraseña"
+                      value={passwordData.newPassword}
+                      onChange={(e) =>
+                        setPasswordData({
+                          ...passwordData,
+                          newPassword: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">
+                      Confirmar Contraseña
+                    </Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      placeholder="Confirma tu nueva contraseña"
+                      value={passwordData.confirmPassword}
+                      onChange={(e) =>
+                        setPasswordData({
+                          ...passwordData,
+                          confirmPassword: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setIsPasswordModalOpen(false);
+                        setPasswordData({
+                          newPassword: "",
+                          confirmPassword: "",
+                        });
+                        setPasswordError("");
+                      }}
+                      disabled={isChangingPassword}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handlePasswordChange}
+                      disabled={isChangingPassword}
+                    >
+                      {isChangingPassword ? "Guardando..." : "Guardar"}
+                    </Button>
+                  </div>
+                </div>
+              </Modal>
             </div>
 
             {/* <div className="border border-gray-200 rounded-lg p-4">
@@ -206,13 +459,100 @@ const UserProfile = () => {
             Acciones de Cuenta
           </h3>
           <div className="flex flex-wrap gap-4">
-            <Button
-              onClick={() => setIsEditing(!isEditing)}
-              variant="primary"
-              size="sm"
+            <Modal
+              trigger={
+                <Button variant="primary" size="sm" onClick={openEditProfileModal}>
+                  Editar Perfil
+                </Button>
+              }
+              title="Editar Perfil"
+              description="Actualiza tu información personal"
+              open={isEditProfileModalOpen}
+              onOpenChange={setIsEditProfileModalOpen}
             >
-              {isEditing ? "Cancelar Edición" : "Editar Perfil"}
-            </Button>
+              <div className="space-y-4">
+                {profileError && (
+                  <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md text-sm">
+                    {profileError}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Nombre</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="Ingresa tu nombre"
+                    value={profileData.firstName}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        firstName: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Apellido</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Ingresa tu apellido"
+                    value={profileData.lastName}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        lastName: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="Ingresa tu email"
+                    value={profileData.email}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        email: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setIsEditProfileModalOpen(false);
+                      setProfileData({
+                        firstName: "",
+                        lastName: "",
+                        email: "",
+                      });
+                      setProfileError("");
+                    }}
+                    disabled={isUpdatingProfile}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleProfileUpdate}
+                    disabled={isUpdatingProfile}
+                  >
+                    {isUpdatingProfile ? "Guardando..." : "Guardar"}
+                  </Button>
+                </div>
+              </div>
+            </Modal>
             <Button onClick={logout} variant="danger" size="sm">
               Cerrar Sesión
             </Button>

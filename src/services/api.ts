@@ -48,10 +48,13 @@ api.interceptors.response.use(
 
     // Evitar mostrar múltiples errores simultáneos (opcional se podría mejorar con cola)
     if (status >= 400) {
+      // Permitir que las peticiones con la config 'skipErrorAlert' manejen sus propios errores
+      const skipErrorAlert = error.config?.skipErrorAlert;
+      
       // Errores de validación (422/400) podrían manejarse distinto
       if (status === 422 && error.response?.data?.errors) {
         // Dejamos que cada pantalla llame showApiValidationErrors si lo necesita
-      } else {
+      } else if (!skipErrorAlert) {
         showApiError(error);
       }
     }
