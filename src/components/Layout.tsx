@@ -1,24 +1,112 @@
 import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "../stores/authStore";
 import { UserRole } from "../types/auth";
+import { useState } from "react";
 
 interface LinkItem {
   name: string;
-  href: string;
+  href?: string;
   icon: string;
   roles?: UserRole[];
+  children?: LinkItem[];
 }
 
 const links: LinkItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: "🏠" },
   { name: "Mi Perfil", href: "/profile", icon: "👤" },
-  { name: "Edificios", href: "/building", icon: "🏢", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
-  { name: "Sucursales", href: "/branch", icon: "🏬", roles: [UserRole.ADMIN] },
-  { name: "Espacios", href: "/storage-rooms", icon: "📦", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
-  { name: "Órdenes", href: "/orders", icon: "�", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
+  { 
+    name: "Sucursales", 
+    href: "/branch",
+    icon: "🏬", 
+    roles: [UserRole.ADMIN],
+    children: [
+      { 
+        name: "Edificios", 
+        href: "/building", 
+        icon: "🏬", 
+        roles: [UserRole.ADMIN, UserRole.OPERATOR],
+        children: [
+          { name: "Espacios", href: "/storage-rooms", icon: "📦", roles: [UserRole.ADMIN, UserRole.OPERATOR] }
+        ]
+      }
+    ]
+  },
+  { name: "Órdenes", href: "/orders", icon: "📋", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
   { name: "Clientes", href: "/customers", icon: "🧑‍🤝‍🧑", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
   { name: "Operadores", href: "/operators", icon: "👥", roles: [UserRole.ADMIN] },
 ];
+
+// Componente para renderizar items del menú con soporte para submenús
+function MenuItem({ link, userRole, level = 0 }: { link: LinkItem; userRole?: UserRole; level?: number }) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  // Verificar permisos
+  if (link.roles && link.roles.length > 0) {
+    if (!userRole || !link.roles.includes(userRole as UserRole)) {
+      return null;
+    }
+  }
+
+  const hasChildren = link.children && link.children.length > 0;
+  const paddingLeft = `${level * 1}rem`;
+
+  if (hasChildren) {
+    return (
+      <li>
+        <div className="flex items-center">
+          {link.href ? (
+            <Link
+              to={link.href}
+              className="flex-1 text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-green-50 group"
+              style={{ paddingLeft }}
+            >
+              <span className="mr-3">{link.icon}</span>
+              <span>{link.name}</span>
+            </Link>
+          ) : (
+            <div className="flex-1 text-base capitalize text-gray-900 font-normal flex items-center p-2" style={{ paddingLeft }}>
+              <span className="mr-3">{link.icon}</span>
+              <span>{link.name}</span>
+            </div>
+          )}
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="p-2 hover:bg-green-50 rounded-lg"
+          >
+            <svg
+              className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+        {isOpen && link.children && (
+          <ul className="space-y-1 mt-1">
+            {link.children.map((child) => (
+              <MenuItem key={child.href || child.name} link={child} userRole={userRole} level={level + 1} />
+            ))}
+          </ul>
+        )}
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <Link
+        to={link.href!}
+        className="text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-green-50 group"
+        style={{ paddingLeft }}
+      >
+        <span className="mr-3">{link.icon}</span>
+        <span>{link.name}</span>
+      </Link>
+    </li>
+  );
+}
 
 export default function DashboardLayout() {
   const { user, logout, isLoading } = useAuth();
@@ -126,24 +214,9 @@ export default function DashboardLayout() {
                 
                 {/* Enlaces */}
                 <ul className="space-y-2">
-                  {links
-                    .filter((link) => {
-                      // Si no tiene roles definidos, mostrarlo a todos
-                      if (!link.roles || link.roles.length === 0) return true;
-                      // Si tiene roles, verificar que el usuario tenga uno de esos roles
-                      return user?.role && link.roles.includes(user.role as UserRole);
-                    })
-                    .map((link) => (
-                      <li key={link.href}>
-                        <Link
-                          to={link.href}
-                          className="text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-green-50 group"
-                        >
-                          <span className="mr-3">{link.icon}</span>
-                          <span>{link.name}</span>
-                        </Link>
-                      </li>
-                    ))}
+                  {links.map((link) => (
+                    <MenuItem key={link.href || link.name} link={link} userRole={user?.role as UserRole} />
+                  ))}
                 </ul>
 
               </div>
