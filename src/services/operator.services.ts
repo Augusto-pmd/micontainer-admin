@@ -4,11 +4,16 @@ import type { PaginatedOperators, CreateOperatorDto } from "@/types/operator";
 interface GetAllOperatorsParams {
   page?: number;
   limit?: number;
+  search?: string;
 }
 
 export const getAllOperatorsServices = async (params?: GetAllOperatorsParams): Promise<PaginatedOperators> => {
-  const { page = 1, limit = 10 } = params || {};
-  const response = await api.get(`/operator?page=${page}&limit=${limit}`);
+  const { page = 1, limit = 10, search } = params || {};
+  let url = `/operator?page=${page}&limit=${limit}`;
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
+  const response = await api.get(url);
   return response.data;
 };
 

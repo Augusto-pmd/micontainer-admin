@@ -1,7 +1,12 @@
 import { api } from "./api";
 
-export const getAllBuildings = async (params?: { page?: number; limit?: number }) => {
-  const response = await api.get("/building", { params });
+export const getAllBuildings = async (params?: { page?: number; limit?: number; search?: string }) => {
+  const { page = 1, limit = 10, search } = params || {};
+  let url = `/building?page=${page}&limit=${limit}`;
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
+  const response = await api.get(url);
   return response.data;
 };
 

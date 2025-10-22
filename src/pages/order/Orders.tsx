@@ -66,6 +66,7 @@ const getColumns = (
     header: columnLabels.id,
   },
   {
+    id: "customer.fullName",
     accessorKey: "customer.fullName",
     header: columnLabels["customer.fullName"],
     cell: ({ row }) => {
@@ -77,6 +78,7 @@ const getColumns = (
     },
   },
   {
+    id: "customer.cuit",
     accessorKey: "customer.cuit",
     header: columnLabels["customer.cuit"],
     cell: ({ row }) => row.original.customer?.cuit || "-",
@@ -129,16 +131,19 @@ const getColumns = (
     },
   },
   {
+    id: "storageRoom.space",
     accessorKey: "storageRoom.space",
     header: columnLabels["storageRoom.space"],
     cell: ({ row }) => row.original.storageRoom?.space || "-",
   },
   {
+    id: "storageRoom.floor",
     accessorKey: "storageRoom.floor",
     header: columnLabels["storageRoom.floor"],
     cell: ({ row }) => row.original.storageRoom?.floor || "-",
   },
   {
+    id: "storageRoom.status",
     accessorKey: "storageRoom.status",
     header: columnLabels["storageRoom.status"],
     cell: ({ row }) => {
@@ -153,16 +158,19 @@ const getColumns = (
     },
   },
   {
+    id: "storageRoom.building.name",
     accessorKey: "storageRoom.building.name",
     header: columnLabels["storageRoom.building.name"],
     cell: ({ row }) => row.original.storageRoom?.building?.name || "-",
   },
   {
+    id: "storageRoom.building.branch.name",
     accessorKey: "storageRoom.building.branch.name",
     header: columnLabels["storageRoom.building.branch.name"],
     cell: ({ row }) => row.original.storageRoom?.building?.branch?.name || "-",
   },
   {
+    id: "storageRoom.building.branch.city",
     accessorKey: "storageRoom.building.branch.city",
     header: columnLabels["storageRoom.building.branch.city"],
     cell: ({ row }) => row.original.storageRoom?.building?.branch?.city || "-",
@@ -225,13 +233,14 @@ export const Orders = () => {
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [orders, setOrders] = useState<OrderType[]>([]);
-  const [filterValue, setFilterValue] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const handleCancelOrder = async (orderId: number, orderLabel: string) => {
     const isConfirmed = await showDeleteConfirm(
@@ -245,7 +254,7 @@ export const Orders = () => {
         showSuccess("Orden cancelada exitosamente");
         // Recargar las órdenes
         setLoading(true);
-        const res = await getAllOrdersServices({ page, limit });
+        const res = await getAllOrdersServices({ page, limit, search: searchQuery || undefined });
         setOrders(res.data);
         setTotal(res.total);
         setTotalPages(res.totalPages);
@@ -258,54 +267,29 @@ export const Orders = () => {
 
   const columns = getColumns(navigate, setSelectedOrder, handleCancelOrder);
 
-  const filteredOrders = orders.filter((order) => {
-    if (!filterValue) return true;
-    const searchLower = filterValue.toLowerCase();
-    
-    // Obtener nombre completo del cliente
-    const customerName = order.customer?.user 
-      ? `${order.customer.user.firstName} ${order.customer.user.lastName}`.toLowerCase()
-      : "";
-    
-    // Obtener texto del estado
-    const statusText = 
-      order.status === RESERVATION_ORDER_STATUS.PENDING 
-        ? "pendiente" 
-        : order.status === RESERVATION_ORDER_STATUS.CONFIRMED 
-        ? "confirmada" 
-        : order.status === RESERVATION_ORDER_STATUS.CANCELED 
-        ? "cancelada" 
-        : String(order.status).toLowerCase();
-    
-    return (
-      order.id.toString().includes(searchLower) ||
-      customerName.includes(searchLower) ||
-      order.customer?.cuit?.toLowerCase().includes(searchLower) ||
-      order.totalAmount.includes(searchLower) ||
-      statusText.includes(searchLower) ||
-      order.storageRoom?.space?.toLowerCase().includes(searchLower) ||
-      order.storageRoom?.building?.name?.toLowerCase().includes(searchLower) ||
-      order.storageRoom?.building?.branch?.name?.toLowerCase().includes(searchLower)
-    );
-  });
-
   useEffect(() => {
-    setLoading(true);
-    getAllOrdersServices({ page, limit })
-      .then((res: PaginatedOrders) => {
-        setOrders(res.data);
-        setTotal(res.total);
-        setTotalPages(res.totalPages);
-        setError(null);
-      })
-      .catch(() => {
-        setError("Error al cargar órdenes");
-      })
-      .finally(() => setLoading(false));
-  }, [page, limit]);
+    const timeoutId = setTimeout(() => {
+      setLoading(true);
+      getAllOrdersServices({ page, limit, search: searchQuery || undefined })
+        .then((res: PaginatedOrders) => {
+          setOrders(res.data);
+          setTotal(res.total);
+          setTotalPages(res.totalPages);
+          setError(null);
+          setIsInitialLoad(false);
+        })
+        .catch(() => {
+          setError("Error al cargar órdenes");
+          setIsInitialLoad(false);
+        })
+        .finally(() => setLoading(false));
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [page, limit, searchQuery]);
 
   const table = useReactTable({
-    data: filteredOrders,
+    data: orders,
     columns,
     pageCount: totalPages,
     manualPagination: true,
@@ -325,7 +309,7 @@ export const Orders = () => {
     },
   });
 
-  if (loading) {
+  if (isInitialLoad && loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
@@ -343,12 +327,9 @@ export const Orders = () => {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold">Órdenes</h1>
-          <p className="text-gray-600 mt-1 text-sm">
-            {filterValue 
-              ? `Mostrando ${filteredOrders.length} de ${orders.length} órdenes`
-              : `Total de órdenes: ${orders.length}`
-            }
-          </p>
+          {/* <p className="text-gray-600 mt-1 text-sm">
+            Total de órdenes: {total}
+          </p> */}
         </div>
         <Button 
           onClick={() => navigate('/orders/create')}
@@ -362,8 +343,11 @@ export const Orders = () => {
       <div className="flex items-center py-4">
         <Input
           placeholder="Buscar por cliente, ID, estado, espacio..."
-          value={filterValue}
-          onChange={(event) => setFilterValue(event.target.value)}
+          value={searchQuery}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            setPage(1);
+          }}
           className="max-w-sm"
         />
         <DropdownMenu>
@@ -415,7 +399,20 @@ export const Orders = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading && orders.length > 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex justify-center items-center">
+                    <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
+                      <Spinner className="h-8 w-8 text-green-500" />
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -437,7 +434,7 @@ export const Orders = () => {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No hay resultados.
+                  {searchQuery ? "No se encontraron resultados para tu búsqueda." : "No hay resultados."}
                 </TableCell>
               </TableRow>
             )}
@@ -453,7 +450,7 @@ export const Orders = () => {
             variant="outline"
             size="sm"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
+            disabled={page === 1 || loading}
           >
             Anterior
           </Button>
@@ -462,7 +459,7 @@ export const Orders = () => {
             variant="outline"
             size="sm"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
+            disabled={page === totalPages || loading}
           >
             Siguiente
           </Button>
@@ -473,6 +470,7 @@ export const Orders = () => {
               setLimit(Number(e.target.value));
               setPage(1);
             }}
+            disabled={loading}
           >
             {[10, 20, 50, 100].map((size) => (
               <option key={size} value={size}>
