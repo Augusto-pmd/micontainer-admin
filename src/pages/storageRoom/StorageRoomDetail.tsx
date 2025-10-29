@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, Trash2, Building2, MapPin, Ruler, DollarSign, Calendar, Eye, UserPlus } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Building2, MapPin, Ruler, DollarSign, Calendar, Eye, UserPlus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,8 +28,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { FileUpload } from "@/components/FileUpload";
 import { useStorageRoomStore } from "@/stores/storageRoomStore";
-import { deleteStorageRoomServices, assignCustomerToStorageRoomServices } from "@/services/storageRoom.services";
+import { 
+  deleteStorageRoomServices, 
+  assignCustomerToStorageRoomServices,
+  uploadStorageRoomFiles,
+  deleteStorageRoomFile,
+  downloadStorageRoomFile 
+} from "@/services/storageRoom.services";
 import { getAllCustomersServices } from "@/services/customer.services";
 import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
 import type { StorageRoomStatus } from "@/types/storageRoom";
@@ -45,6 +52,7 @@ export const StorageRoomDetail = () => {
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [isAssigning, setIsAssigning] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -52,6 +60,13 @@ export const StorageRoomDetail = () => {
     }
     return () => clearSelectedStorageRoom();
   }, [id]);
+
+  // Cargar archivos cuando se carga el storage room
+  useEffect(() => {
+    if (selectedStorageRoom && selectedStorageRoom.files) {
+      setUploadedFiles(selectedStorageRoom.files);
+    }
+  }, [selectedStorageRoom]);
 
   const handleDelete = async () => {
     if (!selectedStorageRoom) return;
@@ -109,6 +124,26 @@ export const StorageRoomDetail = () => {
     } finally {
       setIsAssigning(false);
     }
+  };
+
+  const handleFileUpload = async (files: File[]) => {
+    if (!id) return;
+
+    const response = await uploadStorageRoomFiles(parseInt(id), files);
+    if (response.urls) {
+      setUploadedFiles(prev => [...prev, ...response.urls]);
+    }
+  };
+
+  const handleFileDelete = async (fileUrl: string) => {
+    if (!id) return;
+    
+    await deleteStorageRoomFile(parseInt(id), fileUrl);
+    setUploadedFiles(prev => prev.filter(url => url !== fileUrl));
+  };
+
+  const handleFileDownload = async (fileUrl: string, fileName: string) => {
+    await downloadStorageRoomFile(fileUrl, fileName);
   };
 
   const getStatusBadge = (status: StorageRoomStatus) => {
@@ -318,6 +353,29 @@ export const StorageRoomDetail = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Archivos del Espacio */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-green-600" />
+            Archivos del Espacio ({uploadedFiles.length})
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <FileUpload
+            files={uploadedFiles}
+            onUpload={handleFileUpload}
+            onDelete={handleFileDelete}
+            onDownload={handleFileDownload}
+            acceptedTypes={[".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".svg"]}
+            maxFiles={10}
+            maxFileSize={10}
+            title="Imágenes y Documentos"
+            description="Sube imágenes del espacio, planos, documentos relacionados"
+          />
+        </CardContent>
+      </Card>
 
       {/* Información de registro */}
       <Card className="mt-6">

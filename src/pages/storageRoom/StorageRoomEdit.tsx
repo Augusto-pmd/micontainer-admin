@@ -15,7 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { updateStorageRoomServices, getStorageRoomByIdServices } from "@/services/storageRoom.services";
+import { FileUpload } from "@/components/FileUpload";
+import { 
+  updateStorageRoomServices, 
+  getStorageRoomByIdServices,
+  uploadStorageRoomFiles,
+  deleteStorageRoomFile,
+  downloadStorageRoomFile
+} from "@/services/storageRoom.services";
 import { getAllBuildings } from "@/services/building.services";
 import { showError, showSuccess } from "@/utils/alerts";
 import { STORAGE_ROOM_STATUS, type StorageRoomStatus, type UpdateStorageRoomDto } from "@/types/storageRoom";
@@ -45,6 +52,7 @@ export const StorageRoomEdit = () => {
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof UpdateStorageRoomDto, string>>>({});
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -77,6 +85,11 @@ export const StorageRoomEdit = () => {
           status: storageRoomData.status,
           description: storageRoomData.description,
         });
+
+        // Cargar archivos si existen
+        if (storageRoomData.files) {
+          setUploadedFiles(storageRoomData.files);
+        }
       } catch (error) {
         console.error("Error loading data:", error);
         showError("Error al cargar los datos");
@@ -187,6 +200,26 @@ export const StorageRoomEdit = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFileUpload = async (files: File[]) => {
+    if (!id) return;
+
+    const response = await uploadStorageRoomFiles(parseInt(id), files);
+    if (response.urls) {
+      setUploadedFiles(prev => [...prev, ...response.urls]);
+    }
+  };
+
+  const handleFileDelete = async (fileUrl: string) => {
+    if (!id) return;
+    
+    await deleteStorageRoomFile(parseInt(id), fileUrl);
+    setUploadedFiles(prev => prev.filter(url => url !== fileUrl));
+  };
+
+  const handleFileDownload = async (fileUrl: string, fileName: string) => {
+    await downloadStorageRoomFile(fileUrl, fileName);
   };
 
   if (loadingData) {
@@ -465,6 +498,24 @@ export const StorageRoomEdit = () => {
                   rows={4}
                 />
               </div>
+            </div>
+
+            {/* Archivos del Espacio */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b pb-2">
+                Archivos del Espacio
+              </h3>
+              <FileUpload
+                files={uploadedFiles}
+                onUpload={handleFileUpload}
+                onDelete={handleFileDelete}
+                onDownload={handleFileDownload}
+                acceptedTypes={[".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".svg"]}
+                maxFiles={10}
+                maxFileSize={10}
+                title="Imágenes y Documentos"
+                description="Sube imágenes del espacio, planos, documentos relacionados"
+              />
             </div>
 
             {/* Botones de Acción */}

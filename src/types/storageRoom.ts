@@ -45,6 +45,7 @@ export interface StorageRoom {
   image: string;
   status: StorageRoomStatus;
   description: string;
+  files?: string[];
   building?: Building;
   reservationOrders?: ReservationOrder[];
 }

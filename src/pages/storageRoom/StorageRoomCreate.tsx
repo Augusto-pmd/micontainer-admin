@@ -15,7 +15,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createStorageRoomServices } from "@/services/storageRoom.services";
+import { FileUpload } from "@/components/FileUpload";
+import { 
+  createStorageRoomServices, 
+  uploadStorageRoomFiles, 
+  deleteStorageRoomFile, 
+  downloadStorageRoomFile 
+} from "@/services/storageRoom.services";
 import { getAllBuildings } from "@/services/building.services";
 import { showError, showSuccess } from "@/utils/alerts";
 import { STORAGE_ROOM_STATUS, type StorageRoomStatus, type CreateStorageRoomDto } from "@/types/storageRoom";
@@ -42,6 +48,9 @@ export const StorageRoomCreate = () => {
     status: STORAGE_ROOM_STATUS.BLOCKED,
     description: "",
   });
+
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [storageRoomId, setStorageRoomId] = useState<number | null>(null);
 
   const [errors, setErrors] = useState<Partial<Record<keyof CreateStorageRoomDto, string>>>({});
 
@@ -126,9 +135,8 @@ export const StorageRoomCreate = () => {
       newErrors.price = "El precio debe ser mayor a 0";
     }
 
-    if (!formData.image.trim()) {
-      newErrors.image = "La URL de la imagen es requerida";
-    } else if (!formData.image.match(/^https?:\/\/.+/)) {
+    // La imagen ahora es opcional
+    if (formData.image.trim() && !formData.image.match(/^https?:\/\/.+/)) {
       newErrors.image = "Debe ser una URL válida";
     }
 
@@ -153,11 +161,12 @@ export const StorageRoomCreate = () => {
         depth: formData.depth || undefined,
         volumeM3: formData.volumeM3 || undefined,
         description: formData.description || undefined,
+        image: formData.image || "",
       };
 
-      await createStorageRoomServices(dataToSend);
-      showSuccess("Espacio creado exitosamente");
-      navigate("/storage-rooms");
+      const createdStorageRoom = await createStorageRoomServices(dataToSend);
+      setStorageRoomId(createdStorageRoom.id);
+      showSuccess("Espacio creado exitosamente. Ahora puedes subir archivos.");
     } catch (error: any) {
       console.error("Error creating storage room:", error);
       const errorMessage = error.response?.data?.message || "Error al crear el espacio";
@@ -165,6 +174,33 @@ export const StorageRoomCreate = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFileUpload = async (files: File[]) => {
+    if (!storageRoomId) {
+      showError("Primero debes crear el espacio antes de subir archivos");
+      return;
+    }
+
+    const response = await uploadStorageRoomFiles(storageRoomId, files);
+    if (response.urls) {
+      setUploadedFiles(prev => [...prev, ...response.urls]);
+    }
+  };
+
+  const handleFileDelete = async (fileUrl: string) => {
+    if (!storageRoomId) return;
+    
+    await deleteStorageRoomFile(storageRoomId, fileUrl);
+    setUploadedFiles(prev => prev.filter(url => url !== fileUrl));
+  };
+
+  const handleFileDownload = async (fileUrl: string, fileName: string) => {
+    await downloadStorageRoomFile(fileUrl, fileName);
+  };
+
+  const handleFinish = () => {
+    navigate("/storage-rooms");
   };
 
   if (loadingData) {
@@ -416,7 +452,7 @@ export const StorageRoomCreate = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="image">
-                    URL de Imagen <span className="text-red-500">*</span>
+                    URL de Imagen (opcional)
                   </Label>
                   <Input
                     id="image"
@@ -429,6 +465,9 @@ export const StorageRoomCreate = () => {
                   {errors.image && (
                     <p className="text-sm text-red-500">{errors.image}</p>
                   )}
+                  <p className="text-xs text-gray-500">
+                    También puedes subir archivos después de crear el espacio
+                  </p>
                 </div>
               </div>
             </div>
@@ -453,6 +492,26 @@ export const StorageRoomCreate = () => {
               </div>
             </div>
 
+            {/* Sección de archivos (solo después de crear) */}
+            {storageRoomId && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">
+                  Archivos del Espacio
+                </h3>
+                <FileUpload
+                  files={uploadedFiles}
+                  onUpload={handleFileUpload}
+                  onDelete={handleFileDelete}
+                  onDownload={handleFileDownload}
+                  acceptedTypes={[".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".svg"]}
+                  maxFiles={10}
+                  maxFileSize={10}
+                  title="Imágenes y Documentos"
+                  description="Sube imágenes del espacio, planos, documentos relacionados"
+                />
+              </div>
+            )}
+
             {/* Botones de Acción */}
             <div className="flex justify-end gap-4 pt-4">
               <Button
@@ -463,20 +522,31 @@ export const StorageRoomCreate = () => {
               >
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                className="bg-green-600 hover:bg-green-700"
-                disabled={isLoading || buildings.length === 0}
-              >
-                {isLoading ? (
-                  <>
-                    <Spinner className="mr-2 h-4 w-4" />
-                    Creando...
-                  </>
-                ) : (
-                  "Crear Espacio"
-                )}
-              </Button>
+              
+              {!storageRoomId ? (
+                <Button
+                  type="submit"
+                  className="bg-green-600 hover:bg-green-700"
+                  disabled={isLoading || buildings.length === 0}
+                >
+                  {isLoading ? (
+                    <>
+                      <Spinner className="mr-2 h-4 w-4" />
+                      Creando...
+                    </>
+                  ) : (
+                    "Crear Espacio"
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  onClick={handleFinish}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Finalizar
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>
