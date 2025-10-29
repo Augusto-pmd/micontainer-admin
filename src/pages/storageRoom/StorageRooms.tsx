@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Eye, Pencil, Trash2, MoreHorizontal } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, MoreHorizontal, ChevronDown } from "lucide-react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,12 +9,14 @@ import {
   type ColumnDef,
   flexRender,
   type SortingState,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
@@ -31,18 +33,30 @@ import { getAllStorageRoomsServices, deleteStorageRoomServices } from "@/service
 import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
 import type { StorageRoom, StorageRoomStatus } from "@/types/storageRoom";
 
+const columnLabels: Record<string, string> = {
+  space: "Espacio",
+  "building.name": "Edificio",
+  "building.branch.name": "Sucursal",
+  floor: "Piso",
+  areaM2: "Área (m²)",
+  price: "Precio",
+  status: "Estado",
+};
+
 export const StorageRooms = () => {
   const navigate = useNavigate();
   const [storageRooms, setStorageRooms] = useState<StorageRoom[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [filterValue, setFilterValue] = useState("");
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [searchQuery, setSearchQuery] = useState("");
   const [pagination, setPagination] = useState({
     pageIndex: 0,
     pageSize: 10,
   });
   const [totalPages, setTotalPages] = useState(0);
   const [total, setTotal] = useState(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   const loadStorageRooms = async () => {
     setIsLoading(true);
@@ -50,21 +64,28 @@ export const StorageRooms = () => {
       const response = await getAllStorageRoomsServices({
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
+        search: searchQuery || undefined,
       });
       setStorageRooms(response.data);
       setTotal(response.total);
       setTotalPages(response.totalPages);
+      setIsInitialLoad(false);
     } catch (error: any) {
       console.error("Error loading storage rooms:", error);
       showError("Error al cargar los espacios de almacenamiento");
+      setIsInitialLoad(false);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadStorageRooms();
-  }, [pagination.pageIndex, pagination.pageSize]);
+    const timeoutId = setTimeout(() => {
+      loadStorageRooms();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [pagination.pageIndex, pagination.pageSize, searchQuery]);
 
   const handleDeleteStorageRoom = async (id: number, space: string) => {
     const confirmed = await showDeleteConfirm(
@@ -116,11 +137,13 @@ export const StorageRooms = () => {
       ),
     },
     {
+      id: "building.name",
       accessorKey: "building.name",
       header: "Edificio",
       cell: ({ row }) => row.original.building?.name || "N/A",
     },
     {
+      id: "building.branch.name",
       accessorKey: "building.branch.name",
       header: "Sucursal",
       cell: ({ row }) => row.original.building?.branch?.name || "N/A",
@@ -147,6 +170,7 @@ export const StorageRooms = () => {
     },
     {
       id: "actions",
+      enableHiding: false,
       header: "Acciones",
       cell: ({ row }) => (
         <DropdownMenu>
@@ -181,37 +205,25 @@ export const StorageRooms = () => {
     },
   ];
 
-  const filteredStorageRooms = storageRooms.filter((room) => {
-    if (!filterValue) return true;
-    const searchLower = filterValue.toLowerCase();
-    return (
-      room.space.toLowerCase().includes(searchLower) ||
-      room.floor.toLowerCase().includes(searchLower) ||
-      room.building?.name?.toLowerCase().includes(searchLower) ||
-      room.building?.branch?.name?.toLowerCase().includes(searchLower) ||
-      room.building?.branch?.city?.toLowerCase().includes(searchLower) ||
-      room.price.includes(searchLower) ||
-      room.status.toLowerCase().includes(searchLower)
-    );
-  });
-
   const table = useReactTable({
-    data: filteredStorageRooms,
+    data: storageRooms,
     columns,
     state: {
       sorting,
       pagination,
+      columnVisibility,
     },
     pageCount: totalPages,
     onSortingChange: setSorting,
     onPaginationChange: setPagination,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
   });
 
-  if (isLoading) {
+  if (isInitialLoad && isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
@@ -227,10 +239,7 @@ export const StorageRooms = () => {
         <div>
           <h1 className="text-3xl font-bold">Espacios de Almacenamiento</h1>
           <p className="text-gray-600 mt-1">
-            {filterValue 
-              ? `Mostrando ${filteredStorageRooms.length} de ${total} espacios`
-              : `Total de espacios: ${total}`
-            }
+            Total de espacios: {total}
           </p>
         </div>
         <Button
@@ -242,13 +251,43 @@ export const StorageRooms = () => {
         </Button>
       </div>
 
-      <div className="mb-4">
+      <div className="flex items-center py-4">
         <Input
           placeholder="Buscar por espacio, piso, edificio, sucursal..."
-          value={filterValue}
-          onChange={(e) => setFilterValue(e.target.value)}
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setPagination(prev => ({ ...prev, pageIndex: 0 }));
+          }}
           className="max-w-sm"
         />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="ml-auto">
+              Columnas <ChevronDown />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {table
+              .getAllColumns()
+              .filter((column) => column.getCanHide())
+              .map((column) => {
+                const label = columnLabels[column.id as string] || column.id;
+                return (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    className="capitalize"
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) =>
+                      column.toggleVisibility(!!value)
+                    }
+                  >
+                    {label}
+                  </DropdownMenuCheckboxItem>
+                );
+              })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <div className="bg-white rounded-lg shadow">
@@ -270,7 +309,20 @@ export const StorageRooms = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.length > 0 ? (
+            {isLoading && storageRooms.length > 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex justify-center items-center">
+                    <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
+                      <Spinner className="h-8 w-8 text-green-500" />
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows.length > 0 ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
@@ -289,7 +341,7 @@ export const StorageRooms = () => {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No se encontraron espacios de almacenamiento.
+                  {searchQuery ? "No se encontraron resultados para tu búsqueda." : "No se encontraron espacios de almacenamiento."}
                 </TableCell>
               </TableRow>
             )}
@@ -308,7 +360,7 @@ export const StorageRooms = () => {
               variant="outline"
               size="sm"
               onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+              disabled={!table.getCanPreviousPage() || isLoading}
             >
               Anterior
             </Button>
@@ -316,7 +368,7 @@ export const StorageRooms = () => {
               variant="outline"
               size="sm"
               onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
+              disabled={!table.getCanNextPage() || isLoading}
             >
               Siguiente
             </Button>

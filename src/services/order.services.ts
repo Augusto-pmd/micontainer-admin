@@ -4,11 +4,16 @@ import type { PaginatedOrders, ReservationOrder } from "@/types/order";
 interface GetAllOrdersParams {
   page?: number;
   limit?: number;
+  search?: string;
 }
 
 export const getAllOrdersServices = async (params?: GetAllOrdersParams): Promise<PaginatedOrders> => {
-  const { page = 1, limit = 10 } = params || {};
-  const response = await api.get(`/reservation-order?page=${page}&limit=${limit}`);
+  const { page = 1, limit = 10, search } = params || {};
+  let url = `/reservation-order?page=${page}&limit=${limit}`;
+  if (search) {
+    url += `&search=${encodeURIComponent(search)}`;
+  }
+  const response = await api.get(url);
   return response.data;
 };
 

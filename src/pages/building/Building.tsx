@@ -79,6 +79,7 @@ const columns: ColumnDef<BuildingType>[] = [
     header: columnLabels.description,
   },
   {
+    id: "branch.name",
     accessorKey: "branch.name",
     header: columnLabels["branch.name"],
     cell: ({ row }) => row.original.branch?.name || "-",
@@ -145,21 +146,29 @@ export const Building = () => {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   useEffect(() => {
-    setLoading(true);
-    getAllBuildings({ page, limit })
-      .then((res: PaginatedBuildings) => {
-        setBuildings(res.data);
-        setTotal(res.total);
-        setTotalPages(res.totalPages);
-        setError(null);
-      })
-      .catch(() => {
-        setError("Error al cargar edificios");
-      })
-      .finally(() => setLoading(false));
-  }, [page, limit]);
+    const timeoutId = setTimeout(() => {
+      setLoading(true);
+      getAllBuildings({ page, limit, search: searchQuery || undefined })
+        .then((res: PaginatedBuildings) => {
+          setBuildings(res.data);
+          setTotal(res.total);
+          setTotalPages(res.totalPages);
+          setError(null);
+          setIsInitialLoad(false);
+        })
+        .catch(() => {
+          setError("Error al cargar edificios");
+          setIsInitialLoad(false);
+        })
+        .finally(() => setLoading(false));
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [page, limit, searchQuery]);
 
   const table = useReactTable({
     data: buildings,
@@ -182,7 +191,7 @@ export const Building = () => {
     },
   });
 
-  if (loading) {
+  if (isInitialLoad && loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
@@ -197,11 +206,12 @@ export const Building = () => {
       {error && <div className="p-4 text-red-500">{error}</div>}
       <div className="flex items-center py-4">
         <Input
-          placeholder="Filtrar por nombre..."
-          value={(table.getColumn("name")?.getFilterValue() as string) ?? ""}
-          onChange={(event) =>
-            table.getColumn("name")?.setFilterValue(event.target.value)
-          }
+          placeholder="Buscar por nombre, sucursal..."
+          value={searchQuery}
+          onChange={(event) => {
+            setSearchQuery(event.target.value);
+            setPage(1);
+          }}
           className="max-w-sm"
         />
         <DropdownMenu>
@@ -253,7 +263,20 @@ export const Building = () => {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {loading && buildings.length > 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex justify-center items-center">
+                    <div className="animate-spin" style={{ animationDuration: "0.8s" }}>
+                      <Spinner className="h-8 w-8 text-green-500" />
+                    </div>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -275,7 +298,7 @@ export const Building = () => {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No hay resultados.
+                  {searchQuery ? "No se encontraron resultados para tu búsqueda." : "No hay resultados."}
                 </TableCell>
               </TableRow>
             )}
@@ -291,7 +314,7 @@ export const Building = () => {
             variant="outline"
             size="sm"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={page === 1}
+            disabled={page === 1 || loading}
           >
             Anterior
           </Button>
@@ -300,7 +323,7 @@ export const Building = () => {
             variant="outline"
             size="sm"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
+            disabled={page === totalPages || loading}
           >
             Siguiente
           </Button>
@@ -311,6 +334,7 @@ export const Building = () => {
               setLimit(Number(e.target.value));
               setPage(1);
             }}
+            disabled={loading}
           >
             {[10, 20, 50, 100].map((size) => (
               <option key={size} value={size}>
