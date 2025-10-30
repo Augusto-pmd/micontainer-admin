@@ -123,6 +123,13 @@ const columns: ColumnDef<BuildingType>[] = [
             >
               Ver detalles
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                navigate(`/building/${building.id}/map`);
+              }}
+            >
+              🗺️ Ver mapa de espacios
+            </DropdownMenuItem>
             <DropdownMenuItem>Editar edificio</DropdownMenuItem>
             <DropdownMenuItem className="text-red-600">
               Eliminar edificio

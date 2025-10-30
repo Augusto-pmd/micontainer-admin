@@ -4,7 +4,7 @@ import DashboardLayout from "../components/Layout";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { Login, UserProfile } from "../pages/auth";
 import { Branch, BranchDetail, BranchEdit} from "../pages/branch";
-import { Building, BuildingDetail, BuildingEdit } from "../pages/building";
+import { Building, BuildingDetail, BuildingEdit, BuildingMap } from "../pages/building";
 import { CustomerDetail, CustomerEdit, Customers, CustomerCreate } from "../pages/customer";
 import { Operators, OperatorDetail, OperatorCreate } from "../pages/operator";
 import { OrderDetail, OrderEdit, Orders, OrderCreate } from "../pages/order";
@@ -88,6 +88,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <BuildingEdit />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "building/:id/map",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <BuildingMap />
           </ProtectedRoute>
         ),
       },

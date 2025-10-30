@@ -42,7 +42,7 @@ export interface StorageRoom {
   areaM2: string;
   volumeM3: string;
   price: string;
-  image: string;
+  images: string[];
   status: StorageRoomStatus;
   description: string;
   building?: Building;
@@ -68,7 +68,7 @@ export interface CreateStorageRoomDto {
   areaM2: number;
   volumeM3?: number;
   price: number;
-  image: string;
+  images: string[];
   status: StorageRoomStatus;
   description?: string;
 }
@@ -84,7 +84,7 @@ export interface UpdateStorageRoomDto {
   areaM2?: number;
   volumeM3?: number;
   price?: number;
-  image?: string;
+  images?: string[];
   status?: StorageRoomStatus;
   description?: string;
 }

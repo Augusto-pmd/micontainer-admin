@@ -15,7 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { updateStorageRoomServices, getStorageRoomByIdServices } from "@/services/storageRoom.services";
+import { 
+  updateStorageRoomServices, 
+  getStorageRoomByIdServices,
+  uploadStorageRoomFiles,
+  deleteStorageRoomFile
+} from "@/services/storageRoom.services";
 import { getAllBuildings } from "@/services/building.services";
 import { showError, showSuccess } from "@/utils/alerts";
 import { STORAGE_ROOM_STATUS, type StorageRoomStatus, type UpdateStorageRoomDto } from "@/types/storageRoom";
@@ -39,12 +44,13 @@ export const StorageRoomEdit = () => {
     areaM2: 0,
     volumeM3: 0,
     price: 0,
-    image: "",
+    images: [],
     status: STORAGE_ROOM_STATUS.BLOCKED,
     description: "",
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof UpdateStorageRoomDto, string>>>({});
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -73,10 +79,15 @@ export const StorageRoomEdit = () => {
           areaM2: parseFloat(storageRoomData.areaM2),
           volumeM3: parseFloat(storageRoomData.volumeM3),
           price: parseFloat(storageRoomData.price),
-          image: storageRoomData.image,
+          images: storageRoomData.images || [],
           status: storageRoomData.status,
           description: storageRoomData.description,
         });
+
+        // Cargar imágenes si existen
+        if (storageRoomData.images && storageRoomData.images.length > 0) {
+          setUploadedFiles(storageRoomData.images);
+        }
       } catch (error) {
         console.error("Error loading data:", error);
         showError("Error al cargar los datos");
@@ -141,10 +152,6 @@ export const StorageRoomEdit = () => {
       newErrors.price = "El precio debe ser mayor a 0";
     }
 
-    if (formData.image && !formData.image.match(/^https?:\/\/.+/)) {
-      newErrors.image = "Debe ser una URL válida";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -172,7 +179,6 @@ export const StorageRoomEdit = () => {
         areaM2: formData.areaM2 || undefined,
         volumeM3: formData.volumeM3 || undefined,
         price: formData.price || undefined,
-        image: formData.image || undefined,
         status: formData.status as StorageRoomStatus,
         description: formData.description || undefined,
       };
@@ -187,6 +193,22 @@ export const StorageRoomEdit = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFileUpload = async (files: File[]) => {
+    if (!id) return;
+
+    const response = await uploadStorageRoomFiles(parseInt(id), files);
+    if (response.urls) {
+      setUploadedFiles(prev => [...prev, ...response.urls]);
+    }
+  };
+
+  const handleFileDelete = async (fileUrl: string) => {
+    if (!id) return;
+    
+    await deleteStorageRoomFile(parseInt(id), fileUrl);
+    setUploadedFiles(prev => prev.filter(url => url !== fileUrl));
   };
 
   if (loadingData) {
@@ -403,47 +425,28 @@ export const StorageRoomEdit = () => {
               </div>
             </div>
 
-            {/* Precio e Imagen */}
+            {/* Precio */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold border-b pb-2">
-                Precio e Imagen
+                Precio
               </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price">
-                    Precio Mensual (ARS)
-                  </Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    placeholder="200.50"
-                    value={formData.price || ""}
-                    onChange={(e) => handleChange("price", parseFloat(e.target.value) || 0)}
-                    className={errors.price ? "border-red-500" : ""}
-                  />
-                  {errors.price && (
-                    <p className="text-sm text-red-500">{errors.price}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="image">
-                    URL de Imagen
-                  </Label>
-                  <Input
-                    id="image"
-                    type="url"
-                    placeholder="https://example.com/image.jpg"
-                    value={formData.image}
-                    onChange={(e) => handleChange("image", e.target.value)}
-                    className={errors.image ? "border-red-500" : ""}
-                  />
-                  {errors.image && (
-                    <p className="text-sm text-red-500">{errors.image}</p>
-                  )}
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">
+                  Precio Mensual (ARS)
+                </Label>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  placeholder="200.50"
+                  value={formData.price || ""}
+                  onChange={(e) => handleChange("price", parseFloat(e.target.value) || 0)}
+                  className={errors.price ? "border-red-500" : ""}
+                />
+                {errors.price && (
+                  <p className="text-sm text-red-500">{errors.price}</p>
+                )}
               </div>
             </div>
 
@@ -465,6 +468,106 @@ export const StorageRoomEdit = () => {
                   rows={4}
                 />
               </div>
+            </div>
+
+            {/* Imágenes del Espacio */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <h3 className="text-lg font-semibold">
+                  Imágenes del Espacio ({uploadedFiles.length})
+                </h3>
+                <div>
+                  <input
+                    type="file"
+                    multiple
+                    accept=".jpg,.jpeg,.png,.svg,.webp"
+                    id="image-upload-input-edit"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const files = Array.from(e.target.files || []);
+                      if (files.length > 0) {
+                        await handleFileUpload(files);
+                        e.target.value = '';
+                      }
+                    }}
+                  />
+                  <Button 
+                    type="button" 
+                    size="sm" 
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => document.getElementById('image-upload-input-edit')?.click()}
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Agregar Imágenes
+                  </Button>
+                </div>
+              </div>
+              
+              {uploadedFiles.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {uploadedFiles.map((imageUrl, index) => (
+                    <div 
+                      key={index} 
+                      className="relative group"
+                    >
+                      <a 
+                        href={imageUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <div 
+                          className="relative w-full rounded-lg border-2 border-gray-300 hover:border-green-500 overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md"
+                          style={{ 
+                            height: '256px',
+                            backgroundColor: '#f9fafb'
+                          }}
+                        >
+                          <img
+                            src={imageUrl}
+                            alt={`Imagen ${index + 1}`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              display: 'block'
+                            }}
+                            onError={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              img.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      </a>
+                      {/* Botón eliminar */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleFileDelete(imageUrl);
+                        }}
+                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-lg transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
+                        title="Eliminar imagen"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
+                  <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p className="text-lg font-medium mb-2">No hay imágenes</p>
+                  <p className="text-sm">Haz clic en "Agregar Imágenes" para subir fotos del espacio</p>
+                </div>
+              )}
             </div>
 
             {/* Botones de Acción */}
