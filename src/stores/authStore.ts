@@ -44,6 +44,18 @@ export const useAuthStore = create<AuthStore>()(
           const response: LoginResponse = await loginService({ email, password });
           const { user: backendUser, token } = response;
           
+          // Validar que el usuario no sea un customer
+          if (backendUser.role.code === UserRole.CUSTOMER) {
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: 'Los clientes no tienen acceso al panel de administración'
+            });
+            throw new Error('Los clientes no tienen acceso al panel de administración');
+          }
+          
           // Mapear el usuario del backend al formato del frontend
           const user = mapBackendUserToUser(backendUser);
           
