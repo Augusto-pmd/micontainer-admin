@@ -2,7 +2,7 @@ import { createBrowserRouter } from "react-router-dom";
 import App from "../App";
 import DashboardLayout from "../components/Layout";
 import { ProtectedRoute } from "../components/ProtectedRoute";
-import { Login, UserProfile } from "../pages/auth";
+import { Login, UserProfile, ForgotPassword, ResetPassword } from "../pages/auth";
 import { Branch, BranchDetail, BranchEdit} from "../pages/branch";
 import { Building, BuildingDetail, BuildingEdit, BuildingMap } from "../pages/building";
 import { CustomerDetail, CustomerEdit, Customers, CustomerCreate } from "../pages/customer";
@@ -12,10 +12,18 @@ import { StorageRooms, StorageRoomDetail, StorageRoomCreate, StorageRoomEdit } f
 import { UserRole } from "../types/auth";
 
 export const router = createBrowserRouter([
-  // Ruta pública de login
+  // Rutas públicas de autenticación
   {
     path: "/login",
     Component: Login,
+  },
+  {
+    path: "/forgot-password",
+    Component: ForgotPassword,
+  },
+  {
+    path: "/reset-password",
+    Component: ResetPassword,
   },
   // Rutas protegidas con layout
   {

@@ -2,7 +2,7 @@ import { Button } from '@/components';
 import { useAuth } from '@/stores/authStore';
 import React, { useState } from 'react';
 
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import MiContainerLogo from '@/assets/img/MiContainerLogo.png';
 
 const Login = () => {
@@ -101,6 +101,17 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end">
+            <div className="text-sm">
+              <Link 
+                to="/forgot-password" 
+                className="font-medium text-green-600 hover:text-green-500"
+              >
+                ¿Olvidaste tu contraseña?
+              </Link>
             </div>
           </div>
 
