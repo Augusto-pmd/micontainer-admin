@@ -147,7 +147,13 @@ const columns: ColumnDef<CustomerType>[] = [
             >
               Ver detalles
             </DropdownMenuItem>
-            <DropdownMenuItem>Editar cliente</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                navigate(`/customers/${customer.id}/edit`);
+              }}
+            >
+              Editar cliente
+            </DropdownMenuItem>
             <DropdownMenuItem className="text-red-600">
               Eliminar cliente
             </DropdownMenuItem>
