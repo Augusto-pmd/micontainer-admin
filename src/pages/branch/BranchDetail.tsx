@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, MapPin, Building2, Phone, Mail, Globe, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, MapPin, Building2, Phone, Mail, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useBranchStore } from "@/stores/branchStore";
@@ -206,32 +206,8 @@ export const BranchDetail = () => {
           </div>
         </div>
 
-        {/* Sidebar - Imágenes y Acciones */}
+        {/* Sidebar - Resumen */}
         <div className="space-y-6">
-          {/* Imágenes */}
-          {branch.images && branch.images.length > 0 && (
-            <div className="bg-white rounded-lg border p-6">
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                <ImageIcon className="h-5 w-5" />
-                Imágenes ({branch.images.length})
-              </h2>
-              <div className="space-y-3">
-                {branch.images.map((image, index) => (
-                  <div key={index} className="rounded-lg overflow-hidden border">
-                    <img 
-                      src={image} 
-                      alt={`${branch.name} - Imagen ${index + 1}`}
-                      className="w-full h-48 object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Imagen+no+disponible';
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Resumen */}
           <div className="bg-white rounded-lg border p-6">
             <h2 className="text-xl font-semibold mb-4">Resumen</h2>
@@ -264,17 +240,17 @@ export const BranchDetail = () => {
               >
                 Editar sucursal
               </Button>
-              <Button 
+              {/* <Button 
                 className="w-full" 
                 variant={branch.isActive ? "destructive" : "default"}
               >
                 {branch.isActive ? "Desactivar sucursal" : "Activar sucursal"}
-              </Button>
-              {branch.gps_location && (
+              </Button> */}
+              {/* {branch.gps_location && (
                 <Button className="w-full" variant="outline">
                   Ver en mapa
                 </Button>
-              )}
+              )} */}
             </div>
           </div>
         </div>
