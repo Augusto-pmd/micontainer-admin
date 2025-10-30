@@ -85,9 +85,9 @@ export const uploadStorageRoomFiles = async (storageRoomId: number, files: File[
 export const deleteStorageRoomFile = async (storageRoomId: number, fileUrl: string) => {
   console.log(`Eliminando archivo para storage room ID: ${storageRoomId}, URL: ${fileUrl}`);
   
-  const response = await api.delete(`/s3/storage-room/${storageRoomId}/file`, {
+  const response = await api.delete(`/s3/storage-room/${storageRoomId}/image`, {
     data: {
-      fileUrl: fileUrl
+      imageUrl: fileUrl
     }
   });
   

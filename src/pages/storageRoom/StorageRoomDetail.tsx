@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, Trash2, Building2, MapPin, Ruler, DollarSign, Calendar, Eye, UserPlus, FileText } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Building2, MapPin, Ruler, DollarSign, Calendar, Eye, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,14 +28,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { FileUpload } from "@/components/FileUpload";
 import { useStorageRoomStore } from "@/stores/storageRoomStore";
 import { 
   deleteStorageRoomServices, 
-  assignCustomerToStorageRoomServices,
-  uploadStorageRoomFiles,
-  deleteStorageRoomFile,
-  downloadStorageRoomFile 
+  assignCustomerToStorageRoomServices
 } from "@/services/storageRoom.services";
 import { getAllCustomersServices } from "@/services/customer.services";
 import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
@@ -52,7 +48,6 @@ export const StorageRoomDetail = () => {
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [isAssigning, setIsAssigning] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
   useEffect(() => {
     if (id) {
@@ -60,13 +55,6 @@ export const StorageRoomDetail = () => {
     }
     return () => clearSelectedStorageRoom();
   }, [id]);
-
-  // Cargar archivos cuando se carga el storage room
-  useEffect(() => {
-    if (selectedStorageRoom && selectedStorageRoom.files) {
-      setUploadedFiles(selectedStorageRoom.files);
-    }
-  }, [selectedStorageRoom]);
 
   const handleDelete = async () => {
     if (!selectedStorageRoom) return;
@@ -124,26 +112,6 @@ export const StorageRoomDetail = () => {
     } finally {
       setIsAssigning(false);
     }
-  };
-
-  const handleFileUpload = async (files: File[]) => {
-    if (!id) return;
-
-    const response = await uploadStorageRoomFiles(parseInt(id), files);
-    if (response.urls) {
-      setUploadedFiles(prev => [...prev, ...response.urls]);
-    }
-  };
-
-  const handleFileDelete = async (fileUrl: string) => {
-    if (!id) return;
-    
-    await deleteStorageRoomFile(parseInt(id), fileUrl);
-    setUploadedFiles(prev => prev.filter(url => url !== fileUrl));
-  };
-
-  const handleFileDownload = async (fileUrl: string, fileName: string) => {
-    await downloadStorageRoomFile(fileUrl, fileName);
   };
 
   const getStatusBadge = (status: StorageRoomStatus) => {
@@ -235,18 +203,59 @@ export const StorageRoomDetail = () => {
         </div>
       </div>
 
-      {/* Imagen del espacio */}
-      {selectedStorageRoom.image && (
-        <Card className="mb-6">
-          <CardContent className="p-0">
-            <img
-              src={selectedStorageRoom.image}
-              alt={selectedStorageRoom.space}
-              className="w-full h-64 object-cover rounded-t-lg"
-            />
-          </CardContent>
-        </Card>
-      )}
+      {/* Imágenes del espacio */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Imágenes del Espacio ({selectedStorageRoom.images?.length || 0})</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {selectedStorageRoom.images && selectedStorageRoom.images.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {selectedStorageRoom.images.map((imageUrl, index) => (
+                <a 
+                  key={index} 
+                  href={imageUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <div 
+                    className="relative w-full rounded-lg border-2 border-gray-300 hover:border-green-500 overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md"
+                    style={{ 
+                      height: '256px',
+                      backgroundColor: '#f9fafb'
+                    }}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={`${selectedStorageRoom.space} - Imagen ${index + 1}`}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        display: 'block'
+                      }}
+                      onError={(e) => {
+                        console.error(`❌ Error imagen ${index + 1}`);
+                        const img = e.target as HTMLImageElement;
+                        img.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              <svg className="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-lg font-medium mb-2">No hay imágenes</p>
+              <p className="text-sm">Este espacio no tiene imágenes cargadas</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Información de Ubicación */}
@@ -353,29 +362,6 @@ export const StorageRoomDetail = () => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Archivos del Espacio */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-green-600" />
-            Archivos del Espacio ({uploadedFiles.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <FileUpload
-            files={uploadedFiles}
-            onUpload={handleFileUpload}
-            onDelete={handleFileDelete}
-            onDownload={handleFileDownload}
-            acceptedTypes={[".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".svg"]}
-            maxFiles={10}
-            maxFileSize={10}
-            title="Imágenes y Documentos"
-            description="Sube imágenes del espacio, planos, documentos relacionados"
-          />
-        </CardContent>
-      </Card>
 
       {/* Información de registro */}
       <Card className="mt-6">

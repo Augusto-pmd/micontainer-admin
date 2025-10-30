@@ -44,7 +44,7 @@ export const StorageRoomCreate = () => {
     areaM2: 0,
     volumeM3: 0,
     price: 0,
-    image: "",
+    images: [],
     status: STORAGE_ROOM_STATUS.BLOCKED,
     description: "",
   });
@@ -135,11 +135,6 @@ export const StorageRoomCreate = () => {
       newErrors.price = "El precio debe ser mayor a 0";
     }
 
-    // La imagen ahora es opcional
-    if (formData.image.trim() && !formData.image.match(/^https?:\/\/.+/)) {
-      newErrors.image = "Debe ser una URL válida";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -161,7 +156,7 @@ export const StorageRoomCreate = () => {
         depth: formData.depth || undefined,
         volumeM3: formData.volumeM3 || undefined,
         description: formData.description || undefined,
-        image: formData.image || "",
+        images: [],
       };
 
       const createdStorageRoom = await createStorageRoomServices(dataToSend);
@@ -425,50 +420,28 @@ export const StorageRoomCreate = () => {
               </div>
             </div>
 
-            {/* Precio e Imagen */}
+            {/* Precio */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold border-b pb-2">
-                Precio e Imagen
+                Precio
               </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price">
-                    Precio Mensual (ARS) <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    placeholder="200.50"
-                    value={formData.price || ""}
-                    onChange={(e) => handleChange("price", parseFloat(e.target.value) || 0)}
-                    className={errors.price ? "border-red-500" : ""}
-                  />
-                  {errors.price && (
-                    <p className="text-sm text-red-500">{errors.price}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="image">
-                    URL de Imagen (opcional)
-                  </Label>
-                  <Input
-                    id="image"
-                    type="url"
-                    placeholder="https://example.com/image.jpg"
-                    value={formData.image}
-                    onChange={(e) => handleChange("image", e.target.value)}
-                    className={errors.image ? "border-red-500" : ""}
-                  />
-                  {errors.image && (
-                    <p className="text-sm text-red-500">{errors.image}</p>
-                  )}
-                  <p className="text-xs text-gray-500">
-                    También puedes subir archivos después de crear el espacio
-                  </p>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">
+                  Precio Mensual (ARS) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  placeholder="200.50"
+                  value={formData.price || ""}
+                  onChange={(e) => handleChange("price", parseFloat(e.target.value) || 0)}
+                  className={errors.price ? "border-red-500" : ""}
+                />
+                {errors.price && (
+                  <p className="text-sm text-red-500">{errors.price}</p>
+                )}
               </div>
             </div>
 
@@ -492,22 +465,22 @@ export const StorageRoomCreate = () => {
               </div>
             </div>
 
-            {/* Sección de archivos (solo después de crear) */}
+            {/* Sección de imágenes (solo después de crear) */}
             {storageRoomId && (
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold border-b pb-2">
-                  Archivos del Espacio
+                  Imágenes del Espacio
                 </h3>
                 <FileUpload
                   files={uploadedFiles}
                   onUpload={handleFileUpload}
                   onDelete={handleFileDelete}
                   onDownload={handleFileDownload}
-                  acceptedTypes={[".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".svg"]}
+                  acceptedTypes={[".jpg", ".jpeg", ".png", ".svg", ".webp"]}
                   maxFiles={10}
                   maxFileSize={10}
-                  title="Imágenes y Documentos"
-                  description="Sube imágenes del espacio, planos, documentos relacionados"
+                  title="Imágenes del Storage Room"
+                  description="Sube fotos del espacio de almacenamiento (máximo 10 imágenes)"
                 />
               </div>
             )}
