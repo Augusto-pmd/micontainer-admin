@@ -50,8 +50,10 @@ export const StorageRoomEdit = () => {
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof UpdateStorageRoomDto, string>>>({});
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]); // URLs de imágenes ya guardadas en S3
   const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]); // Archivos pendientes de subir
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]); // URLs temporales para preview
 
   useEffect(() => {
     const loadData = async () => {
@@ -169,6 +171,7 @@ export const StorageRoomEdit = () => {
 
     setIsLoading(true);
     try {
+      // 1. Primero actualizar los datos del storage room
       const dataToSend: UpdateStorageRoomDto = {
         space: formData.space || undefined,
         buildingId: formData.buildingId ? parseInt(formData.buildingId) : undefined,
@@ -185,6 +188,14 @@ export const StorageRoomEdit = () => {
       };
 
       await updateStorageRoomServices(parseInt(id), dataToSend);
+
+      // 2. Si hay imágenes pendientes, subirlas ahora
+      if (pendingFiles.length > 0) {
+        setIsUploadingImages(true);
+        const response = await uploadStorageRoomFiles(parseInt(id), pendingFiles);
+        console.log("Imágenes subidas:", response);
+      }
+
       showSuccess("Espacio actualizado exitosamente");
       navigate(`/storage-rooms/${id}`);
     } catch (error: any) {
@@ -196,54 +207,45 @@ export const StorageRoomEdit = () => {
     }
   };
 
-  const handleFileUpload = async (files: File[]) => {
-    if (!id) return;
-
-    try {
-      setIsUploadingImages(true);
-      const response = await uploadStorageRoomFiles(parseInt(id), files);
-      
-      // La respuesta tiene esta estructura:
-      // { success: true, message: '...', data: { uploadedFiles: [{fileName, key, url, downloadUrl}] } }
-      let newUrls: string[] = [];
-      
-      if (response.data?.uploadedFiles && Array.isArray(response.data.uploadedFiles)) {
-        // Usar downloadUrl si está disponible (evita problemas de CORS)
-        // Si no, usar url
-        newUrls = response.data.uploadedFiles.map((file: any) => file.downloadUrl || file.url);
-      }
-      
-      if (newUrls.length > 0) {
-        setUploadedFiles(prev => [...prev, ...newUrls]);
-        showSuccess(response.message || `${files.length} imagen(es) subida(s) exitosamente`);
-      } else {
-        // Si no hay URLs en la respuesta, recargar desde el servidor
-        const storageRoomData = await getStorageRoomByIdServices(parseInt(id));
-        if (storageRoomData.images && storageRoomData.images.length > 0) {
-          setUploadedFiles(storageRoomData.images);
+  const handleFileUpload = (files: File[]) => {
+    // Crear previews locales sin subir al servidor todavía
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setPreviewUrls(prev => [...prev, e.target!.result as string]);
         }
-        showSuccess(response.message || "Imágenes subidas exitosamente");
-      }
-    } catch (error: any) {
-      console.error("Error uploading files:", error);
-      const errorMessage = error.response?.data?.message || "Error al subir las imágenes";
-      showError(errorMessage);
-    } finally {
-      setIsUploadingImages(false);
-    }
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Guardar archivos para subir más tarde
+    setPendingFiles(prev => [...prev, ...files]);
+    showSuccess(`${files.length} imagen(es) lista(s) para subir`);
   };
 
-  const handleFileDelete = async (fileUrl: string) => {
-    if (!id) return;
-    
-    try {
-      await deleteStorageRoomFile(parseInt(id), fileUrl);
-      setUploadedFiles(prev => prev.filter(url => url !== fileUrl));
-      showSuccess("Imagen eliminada exitosamente");
-    } catch (error: any) {
-      console.error("Error deleting file:", error);
-      const errorMessage = error.response?.data?.message || "Error al eliminar la imagen";
-      showError(errorMessage);
+  const handleFileDelete = async (fileUrl: string, isPending: boolean = false) => {
+    if (isPending) {
+      // Es un preview local, solo remover del estado
+      const index = previewUrls.indexOf(fileUrl);
+      if (index > -1) {
+        setPreviewUrls(prev => prev.filter(url => url !== fileUrl));
+        setPendingFiles(prev => prev.filter((_, i) => i !== index));
+        showSuccess("Imagen removida");
+      }
+    } else {
+      // Es una imagen ya guardada en S3, eliminarla del servidor
+      if (!id) return;
+      
+      try {
+        await deleteStorageRoomFile(parseInt(id), fileUrl);
+        setUploadedFiles(prev => prev.filter(url => url !== fileUrl));
+        showSuccess("Imagen eliminada exitosamente");
+      } catch (error: any) {
+        console.error("Error deleting file:", error);
+        const errorMessage = error.response?.data?.message || "Error al eliminar la imagen";
+        showError(errorMessage);
+      }
     }
   };
 
@@ -512,7 +514,12 @@ export const StorageRoomEdit = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b pb-2">
                 <h3 className="text-lg font-semibold">
-                  Imágenes del Espacio ({uploadedFiles.length})
+                  Imágenes del Espacio ({uploadedFiles.length + previewUrls.length})
+                  {previewUrls.length > 0 && (
+                    <span className="ml-2 text-sm text-yellow-600 font-normal">
+                      ({previewUrls.length} pendiente{previewUrls.length > 1 ? 's' : ''})
+                    </span>
+                  )}
                 </h3>
                 <div>
                   <input
@@ -553,10 +560,11 @@ export const StorageRoomEdit = () => {
                 </div>
               </div>
               
-              {uploadedFiles.length > 0 ? (
+              {(uploadedFiles.length > 0 || previewUrls.length > 0) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {/* Imágenes ya guardadas en S3 */}
                   {uploadedFiles.map((imageUrl, index) => {
-                    console.log(`Renderizando imagen ${index + 1}:`, imageUrl);
+                    console.log(`Renderizando imagen guardada ${index + 1}:`, imageUrl);
                     return (
                     <div 
                       key={index} 
@@ -612,7 +620,7 @@ export const StorageRoomEdit = () => {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          handleFileDelete(imageUrl);
+                          handleFileDelete(imageUrl, false);
                         }}
                         className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-lg transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
                         title="Eliminar imagen"
@@ -624,6 +632,54 @@ export const StorageRoomEdit = () => {
                     </div>
                   );
                   })}
+
+                  {/* Previews de imágenes pendientes de subir */}
+                  {previewUrls.map((previewUrl, index) => (
+                    <div 
+                      key={`preview-${index}`} 
+                      className="relative group"
+                    >
+                      <div className="block">
+                        <div 
+                          className="relative w-full rounded-lg border-2 border-yellow-300 hover:border-yellow-500 overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md"
+                          style={{ 
+                            height: '256px',
+                            backgroundColor: '#fffbeb'
+                          }}
+                        >
+                          <img
+                            src={previewUrl}
+                            alt={`Preview ${index + 1}`}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              display: 'block'
+                            }}
+                          />
+                          {/* Badge de "Pendiente" */}
+                          <div className="absolute top-2 left-2 bg-yellow-500 text-white text-xs font-semibold px-2 py-1 rounded">
+                            Pendiente
+                          </div>
+                        </div>
+                      </div>
+                      {/* Botón eliminar preview */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleFileDelete(previewUrl, true);
+                        }}
+                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-lg transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
+                        title="Remover imagen"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
@@ -641,7 +697,12 @@ export const StorageRoomEdit = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate(`/storage-rooms/${id}`)}
+                onClick={() => {
+                  // Limpiar previews y archivos pendientes
+                  setPreviewUrls([]);
+                  setPendingFiles([]);
+                  navigate(`/storage-rooms/${id}`);
+                }}
                 disabled={isLoading || isUploadingImages}
               >
                 Cancelar
