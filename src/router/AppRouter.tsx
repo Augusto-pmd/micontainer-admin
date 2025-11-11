@@ -38,7 +38,10 @@ export const router = createBrowserRouter([
         index: true,
         element: (
           <ProtectedRoute>
-            <App />
+            <div className="p-6">
+              <h1 className="text-2xl font-bold">Dashboard de Usuario</h1>
+              <p>Página en construcción</p>
+            </div>
           </ProtectedRoute>
         ),
       },

@@ -6,6 +6,7 @@ import { FaClipboardList, FaUserTie } from "react-icons/fa6";
 import { MdDashboard, MdWarehouse } from "react-icons/md";
 import { HiOfficeBuilding, HiUsers, HiUserCircle } from "react-icons/hi";
 import { BsBuilding } from "react-icons/bs";
+import MiContainerLogo from "../assets/img/MiContainerLogo.png";
 
 interface LinkItem {
   name: string;
@@ -246,9 +247,9 @@ export default function DashboardLayout() {
               >
                 {/* Logo */}
                 <img
-                  src="/src/assets/img/MiContainerLogo.png"
+                  src={MiContainerLogo}
                   alt="Mi Container Logo"
-                  className="h-8"
+                  className="h-15"
                 />
               </Link>
             </div>
@@ -323,6 +324,31 @@ export default function DashboardLayout() {
                   ))}
                 </ul>
               </div>
+            </div>
+            {/* Botón de cerrar sesión */}
+            <div className="px-3 py-4 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  logout();
+                  setIsSidebarOpen(false);
+                }}
+                className="w-full text-base text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-red-50 group"
+              >
+                <svg
+                  className="w-5 h-5 mr-3 text-gray-500 group-hover:text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                  />
+                </svg>
+                <span className="group-hover:text-red-600">Cerrar Sesión</span>
+              </button>
             </div>
           </div>
         </aside>
