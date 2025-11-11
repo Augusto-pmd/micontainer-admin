@@ -51,6 +51,7 @@ export const StorageRoomEdit = () => {
 
   const [errors, setErrors] = useState<Partial<Record<keyof UpdateStorageRoomDto, string>>>({});
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -198,18 +199,55 @@ export const StorageRoomEdit = () => {
   const handleFileUpload = async (files: File[]) => {
     if (!id) return;
 
-    const response = await uploadStorageRoomFiles(parseInt(id), files);
-    if (response.urls) {
-      setUploadedFiles(prev => [...prev, ...response.urls]);
+    try {
+      setIsUploadingImages(true);
+      const response = await uploadStorageRoomFiles(parseInt(id), files);
+      
+      // La respuesta tiene esta estructura:
+      // { success: true, message: '...', data: { uploadedFiles: [{fileName, key, url, downloadUrl}] } }
+      let newUrls: string[] = [];
+      
+      if (response.data?.uploadedFiles && Array.isArray(response.data.uploadedFiles)) {
+        // Usar downloadUrl si está disponible (evita problemas de CORS)
+        // Si no, usar url
+        newUrls = response.data.uploadedFiles.map((file: any) => file.downloadUrl || file.url);
+      }
+      
+      if (newUrls.length > 0) {
+        setUploadedFiles(prev => [...prev, ...newUrls]);
+        showSuccess(response.message || `${files.length} imagen(es) subida(s) exitosamente`);
+      } else {
+        // Si no hay URLs en la respuesta, recargar desde el servidor
+        const storageRoomData = await getStorageRoomByIdServices(parseInt(id));
+        if (storageRoomData.images && storageRoomData.images.length > 0) {
+          setUploadedFiles(storageRoomData.images);
+        }
+        showSuccess(response.message || "Imágenes subidas exitosamente");
+      }
+    } catch (error: any) {
+      console.error("Error uploading files:", error);
+      const errorMessage = error.response?.data?.message || "Error al subir las imágenes";
+      showError(errorMessage);
+    } finally {
+      setIsUploadingImages(false);
     }
   };
 
   const handleFileDelete = async (fileUrl: string) => {
     if (!id) return;
     
-    await deleteStorageRoomFile(parseInt(id), fileUrl);
-    setUploadedFiles(prev => prev.filter(url => url !== fileUrl));
+    try {
+      await deleteStorageRoomFile(parseInt(id), fileUrl);
+      setUploadedFiles(prev => prev.filter(url => url !== fileUrl));
+      showSuccess("Imagen eliminada exitosamente");
+    } catch (error: any) {
+      console.error("Error deleting file:", error);
+      const errorMessage = error.response?.data?.message || "Error al eliminar la imagen";
+      showError(errorMessage);
+    }
   };
+
+
 
   if (loadingData) {
     return (
@@ -496,18 +534,30 @@ export const StorageRoomEdit = () => {
                     size="sm" 
                     className="bg-green-600 hover:bg-green-700"
                     onClick={() => document.getElementById('image-upload-input-edit')?.click()}
+                    disabled={isUploadingImages}
                   >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Agregar Imágenes
+                    {isUploadingImages ? (
+                      <>
+                        <Spinner className="w-4 h-4 mr-2" />
+                        Subiendo...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Agregar Imágenes
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
               
               {uploadedFiles.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {uploadedFiles.map((imageUrl, index) => (
+                  {uploadedFiles.map((imageUrl, index) => {
+                    console.log(`Renderizando imagen ${index + 1}:`, imageUrl);
+                    return (
                     <div 
                       key={index} 
                       className="relative group"
@@ -534,9 +584,24 @@ export const StorageRoomEdit = () => {
                               objectFit: 'contain',
                               display: 'block'
                             }}
+                            onLoad={() => {
+                              console.log(`Imagen cargada exitosamente: ${imageUrl}`);
+                            }}
                             onError={(e) => {
+                              console.error(`Error cargando imagen: ${imageUrl}`);
                               const img = e.target as HTMLImageElement;
-                              img.style.display = 'none';
+                              const container = img.parentElement;
+                              if (container) {
+                                container.innerHTML = `
+                                  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #6b7280;">
+                                    <svg style="width: 48px; height: 48px; margin-bottom: 8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <p style="font-size: 14px; font-weight: 500;">Error al cargar</p>
+                                    <p style="font-size: 12px; margin-top: 4px;">URL: ${imageUrl.substring(0, 50)}...</p>
+                                  </div>
+                                `;
+                              }
                             }}
                           />
                         </div>
@@ -557,7 +622,8 @@ export const StorageRoomEdit = () => {
                         </svg>
                       </button>
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg text-gray-500">
@@ -576,7 +642,7 @@ export const StorageRoomEdit = () => {
                 type="button"
                 variant="outline"
                 onClick={() => navigate(`/storage-rooms/${id}`)}
-                disabled={isLoading}
+                disabled={isLoading || isUploadingImages}
               >
                 Cancelar
               </Button>
