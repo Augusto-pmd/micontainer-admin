@@ -89,21 +89,21 @@ function MenuItem({
   const renderIcon = (icon: string) => {
     switch (icon) {
       case "dashboard":
-        return <MdDashboard className="text-xl" />;
+        return <MdDashboard className="text-xl text-green-600" />;
       case "profile":
-        return <HiUserCircle className="text-xl" />;
+        return <HiUserCircle className="text-xl text-green-600" />;
       case "branch":
-        return <HiOfficeBuilding className="text-xl" />;
+        return <HiOfficeBuilding className="text-xl text-green-600" />;
       case "building":
-        return <BsBuilding className="text-xl" />;
+        return <BsBuilding className="text-xl text-green-600" />;
       case "storage":
-        return <MdWarehouse className="text-xl" />;
+        return <MdWarehouse className="text-xl text-green-600" />;
       case "orders":
-        return <FaClipboardList className="text-xl" />;
+        return <FaClipboardList className="text-xl text-green-600" />;
       case "customers":
-        return <HiUsers className="text-xl" />;
+        return <HiUsers className="text-xl text-green-600" />;
       case "operators":
-        return <FaUserTie className="text-xl" />;
+        return <FaUserTie className="text-xl text-green-600" />;
       default:
         return <span>{icon}</span>;
     }

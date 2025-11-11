@@ -1,5 +1,4 @@
 import { createBrowserRouter } from "react-router-dom";
-import App from "../App";
 import DashboardLayout from "../components/Layout";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { Login, UserProfile, ForgotPassword, ResetPassword } from "../pages/auth";
@@ -9,6 +8,7 @@ import { CustomerDetail, CustomerEdit, Customers, CustomerCreate } from "../page
 import { Operators, OperatorDetail, OperatorCreate } from "../pages/operator";
 import { OrderDetail, OrderEdit, Orders, OrderCreate } from "../pages/order";
 import { StorageRooms, StorageRoomDetail, StorageRoomCreate, StorageRoomEdit } from "../pages/storageRoom";
+import { Dashboard, GlobalMap } from "../pages/dashboard";
 import { UserRole } from "../types/auth";
 
 export const router = createBrowserRouter([
@@ -38,10 +38,7 @@ export const router = createBrowserRouter([
         index: true,
         element: (
           <ProtectedRoute>
-            <div className="p-6">
-              <h1 className="text-2xl font-bold">Dashboard de Usuario</h1>
-              <p>Página en construcción</p>
-            </div>
+            <Dashboard />
           </ProtectedRoute>
         ),
       },
@@ -49,10 +46,15 @@ export const router = createBrowserRouter([
         path: "dashboard",
         element: (
           <ProtectedRoute>
-            <div className="p-6">
-              <h1 className="text-2xl font-bold">Dashboard de Usuario</h1>
-              <p>Página en construcción</p>
-            </div>
+            <Dashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "global-map",
+        element: (
+          <ProtectedRoute>
+            <GlobalMap />
           </ProtectedRoute>
         ),
       },
