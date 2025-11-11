@@ -42,7 +42,7 @@ const Login = () => {
             <img 
               src={MiContainerLogo} 
               alt="MiContainer Logo" 
-              className="h-24 w-auto"
+              className="h-40 w-auto"
             />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
