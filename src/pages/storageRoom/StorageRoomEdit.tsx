@@ -54,6 +54,7 @@ export const StorageRoomEdit = () => {
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]); // Archivos pendientes de subir
   const [previewUrls, setPreviewUrls] = useState<string[]>([]); // URLs temporales para preview
+  const [filesToDelete, setFilesToDelete] = useState<string[]>([]); // Imágenes marcadas para eliminar
 
   useEffect(() => {
     const loadData = async () => {
@@ -189,15 +190,50 @@ export const StorageRoomEdit = () => {
 
       await updateStorageRoomServices(parseInt(id), dataToSend);
 
-      // 2. Si hay imágenes pendientes, subirlas ahora
+      // 2. Eliminar imágenes marcadas para eliminar
+      if (filesToDelete.length > 0) {
+        console.log(`=== ELIMINANDO IMÁGENES ===`);
+        console.log(`Total marcadas para eliminar: ${filesToDelete.length}`);
+        console.log(`URLs a eliminar:`, filesToDelete);
+        
+        const deletePromises = filesToDelete.map(async (fileUrl, index) => {
+          try {
+            console.log(`[${index + 1}/${filesToDelete.length}] Eliminando: ${fileUrl}`);
+            const result = await deleteStorageRoomFile(parseInt(id), fileUrl);
+            console.log(`[${index + 1}/${filesToDelete.length}] Eliminada exitosamente`);
+            return result;
+          } catch (error) {
+            console.error(`[${index + 1}/${filesToDelete.length}] Error eliminando:`, error);
+            throw error;
+          }
+        });
+        
+        await Promise.all(deletePromises);
+        console.log(`✓ Todas las ${filesToDelete.length} imagen(es) eliminada(s)`);
+        
+        // Actualizar el estado local para reflejar las eliminaciones
+        setUploadedFiles(prev => prev.filter(url => !filesToDelete.includes(url)));
+        setFilesToDelete([]);
+      }
+
+      // 3. Si hay imágenes pendientes, subirlas ahora
       if (pendingFiles.length > 0) {
         setIsUploadingImages(true);
         const response = await uploadStorageRoomFiles(parseInt(id), pendingFiles);
         console.log("Imágenes subidas:", response);
       }
 
+      // 4. Verificar qué imágenes tiene el storage room después de las operaciones
+      const updatedStorageRoom = await getStorageRoomByIdServices(parseInt(id));
+      console.log("=== VERIFICACIÓN FINAL ===");
+      console.log("Imágenes en el servidor después de guardar:", updatedStorageRoom.images);
+      console.log("Total de imágenes:", updatedStorageRoom.images?.length || 0);
+      
+      // Navegar inmediatamente para evitar renderizados con datos antiguos
       showSuccess("Espacio actualizado exitosamente");
-      navigate(`/storage-rooms/${id}`);
+      
+      // Usar replace en lugar de push para evitar que el usuario vuelva atrás
+      navigate(`/storage-rooms/${id}`, { replace: true });
     } catch (error: any) {
       console.error("Error updating storage room:", error);
       const errorMessage = error.response?.data?.message || "Error al actualizar el espacio";
@@ -224,7 +260,7 @@ export const StorageRoomEdit = () => {
     showSuccess(`${files.length} imagen(es) lista(s) para subir`);
   };
 
-  const handleFileDelete = async (fileUrl: string, isPending: boolean = false) => {
+  const handleFileDelete = (fileUrl: string, isPending: boolean = false) => {
     if (isPending) {
       // Es un preview local, solo remover del estado
       const index = previewUrls.indexOf(fileUrl);
@@ -234,19 +270,16 @@ export const StorageRoomEdit = () => {
         showSuccess("Imagen removida");
       }
     } else {
-      // Es una imagen ya guardada en S3, eliminarla del servidor
-      if (!id) return;
-      
-      try {
-        await deleteStorageRoomFile(parseInt(id), fileUrl);
-        setUploadedFiles(prev => prev.filter(url => url !== fileUrl));
-        showSuccess("Imagen eliminada exitosamente");
-      } catch (error: any) {
-        console.error("Error deleting file:", error);
-        const errorMessage = error.response?.data?.message || "Error al eliminar la imagen";
-        showError(errorMessage);
-      }
+      // Es una imagen ya guardada en S3, marcarla para eliminar
+      setFilesToDelete(prev => [...prev, fileUrl]);
+      showSuccess("Imagen marcada para eliminar");
     }
+  };
+
+  const handleRestoreFile = (fileUrl: string) => {
+    // Restaurar una imagen marcada para eliminar
+    setFilesToDelete(prev => prev.filter(url => url !== fileUrl));
+    showSuccess("Imagen restaurada");
   };
 
 
@@ -514,10 +547,15 @@ export const StorageRoomEdit = () => {
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b pb-2">
                 <h3 className="text-lg font-semibold">
-                  Imágenes del Espacio ({uploadedFiles.length + previewUrls.length})
+                  Imágenes del Espacio ({uploadedFiles.length - filesToDelete.length + previewUrls.length})
                   {previewUrls.length > 0 && (
                     <span className="ml-2 text-sm text-yellow-600 font-normal">
                       ({previewUrls.length} pendiente{previewUrls.length > 1 ? 's' : ''})
+                    </span>
+                  )}
+                  {filesToDelete.length > 0 && (
+                    <span className="ml-2 text-sm text-red-600 font-normal">
+                      ({filesToDelete.length} se eliminarán)
                     </span>
                   )}
                 </h3>
@@ -564,6 +602,7 @@ export const StorageRoomEdit = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {/* Imágenes ya guardadas en S3 */}
                   {uploadedFiles.map((imageUrl, index) => {
+                    const isMarkedForDeletion = filesToDelete.includes(imageUrl);
                     console.log(`Renderizando imagen guardada ${index + 1}:`, imageUrl);
                     return (
                     <div 
@@ -577,10 +616,15 @@ export const StorageRoomEdit = () => {
                         className="block"
                       >
                         <div 
-                          className="relative w-full rounded-lg border-2 border-gray-300 hover:border-green-500 overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md"
+                          className={`relative w-full rounded-lg border-2 ${
+                            isMarkedForDeletion 
+                              ? 'border-red-300 hover:border-red-500' 
+                              : 'border-gray-300 hover:border-green-500'
+                          } overflow-hidden transition-all duration-300 shadow-sm hover:shadow-md`}
                           style={{ 
                             height: '256px',
-                            backgroundColor: '#f9fafb'
+                            backgroundColor: isMarkedForDeletion ? '#fef2f2' : '#f9fafb',
+                            opacity: isMarkedForDeletion ? 0.6 : 1
                           }}
                         >
                           <img
@@ -612,23 +656,50 @@ export const StorageRoomEdit = () => {
                               }
                             }}
                           />
+                          {/* Badge de "Marcada para eliminar" */}
+                          {isMarkedForDeletion && (
+                            <div className="absolute top-2 left-2 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded flex items-center gap-1">
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                              Se eliminará
+                            </div>
+                          )}
                         </div>
                       </a>
-                      {/* Botón eliminar */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleFileDelete(imageUrl, false);
-                        }}
-                        className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-lg transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
-                        title="Eliminar imagen"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
+                      
+                      {/* Botón eliminar o restaurar */}
+                      {isMarkedForDeletion ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleRestoreFile(imageUrl);
+                          }}
+                          className="absolute top-2 right-2 bg-green-600 hover:bg-green-700 text-white rounded-full p-1.5 shadow-lg transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
+                          title="Restaurar imagen"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleFileDelete(imageUrl, false);
+                          }}
+                          className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full p-1.5 shadow-lg transition-all duration-200 opacity-0 group-hover:opacity-100 z-10"
+                          title="Marcar para eliminar"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   );
                   })}
@@ -698,9 +769,10 @@ export const StorageRoomEdit = () => {
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  // Limpiar previews y archivos pendientes
+                  // Limpiar previews, archivos pendientes y marcas de eliminación
                   setPreviewUrls([]);
                   setPendingFiles([]);
+                  setFilesToDelete([]);
                   navigate(`/storage-rooms/${id}`);
                 }}
                 disabled={isLoading || isUploadingImages}

@@ -48,6 +48,7 @@ export const StorageRoomDetail = () => {
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("");
   const [isAssigning, setIsAssigning] = useState(false);
+  const [validImages, setValidImages] = useState<string[]>([]); // Solo imágenes que se cargaron exitosamente
 
   useEffect(() => {
     if (id) {
