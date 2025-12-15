@@ -15,6 +15,7 @@ export const useRole = () => {
     const roleHierarchy: Record<UserRole, number> = {
       'role-guest': 0,
       'role-user': 1,
+      'role-customer': 1,
       'role-operator': 2,
       'role-admin': 3
     };
