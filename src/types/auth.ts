@@ -3,7 +3,8 @@ export const UserRole = {
   ADMIN: 'role-admin',
   OPERATOR: 'role-operator',
   USER: 'role-user',
-  GUEST: 'role-guest'
+  GUEST: 'role-guest',
+  CUSTOMER: 'role-customer'
 } as const;
 
 export type UserRole = typeof UserRole[keyof typeof UserRole];

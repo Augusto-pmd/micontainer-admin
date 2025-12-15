@@ -128,7 +128,13 @@ const columns: ColumnDef<BranchType>[] = [
             >
               Ver detalles
             </DropdownMenuItem>
-            <DropdownMenuItem>Editar sucursal</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                navigate(`/branch/${branch.id}/edit`);
+              }}
+            >
+              Editar sucursal
+            </DropdownMenuItem>
             <DropdownMenuItem className="text-red-600">
               Eliminar sucursal
             </DropdownMenuItem>

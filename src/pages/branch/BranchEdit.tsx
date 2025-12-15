@@ -16,7 +16,7 @@ export const BranchEdit = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { selectedBranch, isLoading, fetchBranchById } = useBranchStore();
-  
+
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -28,7 +28,6 @@ export const BranchEdit = () => {
     gps_location: "",
     description: "",
     isActive: true,
-    images: [] as string[],
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -51,26 +50,27 @@ export const BranchEdit = () => {
         gps_location: selectedBranch.gps_location,
         description: selectedBranch.description || "",
         isActive: selectedBranch.isActive,
-        images: selectedBranch.images || [],
       });
     }
   }, [selectedBranch]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   };
 
   const handleSwitchChange = (checked: boolean) => {
-    setFormData(prev => ({ ...prev, isActive: checked }));
+    setFormData((prev) => ({ ...prev, isActive: checked }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       showApiError(new Error("El nombre es requerido"));
       return;
@@ -87,7 +87,7 @@ export const BranchEdit = () => {
     }
 
     setIsSaving(true);
-    
+
     try {
       await updateBranchServices(Number(id), formData);
       await showSuccess("Sucursal actualizada correctamente");
@@ -131,9 +131,7 @@ export const BranchEdit = () => {
           Volver a detalles
         </Button>
 
-        <h1 className="text-3xl font-bold text-gray-900">
-          Editar Sucursal
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900">Editar Sucursal</h1>
         <p className="text-gray-500 mt-2">
           Actualiza la información de la sucursal
         </p>
@@ -204,9 +202,7 @@ export const BranchEdit = () => {
 
             {/* Código Postal */}
             <div className="space-y-2">
-              <Label htmlFor="zipCode">
-                Código Postal
-              </Label>
+              <Label htmlFor="zipCode">Código Postal</Label>
               <Input
                 id="zipCode"
                 name="zipCode"
@@ -249,9 +245,7 @@ export const BranchEdit = () => {
 
             {/* GPS Location */}
             <div className="space-y-2">
-              <Label htmlFor="gps_location">
-                Ubicación GPS
-              </Label>
+              <Label htmlFor="gps_location">Ubicación GPS</Label>
               <Input
                 id="gps_location"
                 name="gps_location"
@@ -264,9 +258,7 @@ export const BranchEdit = () => {
 
           {/* Descripción */}
           <div className="space-y-2">
-            <Label htmlFor="description">
-              Descripción
-            </Label>
+            <Label htmlFor="description">Descripción</Label>
             <Textarea
               id="description"
               name="description"
@@ -287,13 +279,6 @@ export const BranchEdit = () => {
             <Label htmlFor="isActive" className="cursor-pointer">
               Sucursal activa
             </Label>
-          </div>
-
-          {/* Nota sobre imágenes */}
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <p className="text-sm text-blue-800">
-              <strong>Nota:</strong> Las imágenes se mantienen sin cambios. Para modificar las imágenes, contacta al administrador del sistema.
-            </p>
           </div>
 
           {/* Botones de acción */}

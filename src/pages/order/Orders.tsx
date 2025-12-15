@@ -209,7 +209,13 @@ const getColumns = (
             </DropdownMenuItem>
             {order.status !== RESERVATION_ORDER_STATUS.CANCELED && (
               <>
-                <DropdownMenuItem>Editar orden</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    navigate(`/orders/${order.id}/edit`);
+                  }}
+                >
+                  Editar orden
+                </DropdownMenuItem>
                 <DropdownMenuItem 
                   className="text-red-600"
                   onClick={() => handleCancelOrder(order.id, `#${order.id}`)}

@@ -238,16 +238,23 @@ export const BuildingDetail = () => {
               <Button 
                 className="w-full" 
                 variant="outline"
+                onClick={() => navigate(`/building/${id}/map`)}
+              >
+                Ver mapa de espacios
+              </Button>
+              <Button 
+                className="w-full" 
+                variant="outline"
                 onClick={() => navigate(`/building/${id}/edit`)}
               >
                 Editar edificio
               </Button>
-              <Button 
+              {/* <Button 
                 className="w-full" 
                 variant={building.isActive ? "destructive" : "default"}
               >
                 {building.isActive ? "Desactivar edificio" : "Activar edificio"}
-              </Button>
+              </Button> */}
             </div>
           </div>
         </div>

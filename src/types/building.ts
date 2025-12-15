@@ -11,7 +11,6 @@ export interface Branch {
 	phone: string;
 	email: string;
 	gps_location: string;
-	images: string[];
 	isActive: boolean;
 	description: string;
 }

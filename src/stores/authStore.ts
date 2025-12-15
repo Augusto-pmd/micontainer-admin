@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AuthStore, User, BackendUser, LoginResponse } from '../types/auth';
 import { UserRole } from '../types/auth';
-import { loginService, logoutService } from '../services/auth.services';
+import { loginService } from '../services/auth.services';
 import { api } from '../services/api';
 
 // Función para mapear usuario del backend al formato del frontend
@@ -44,6 +44,18 @@ export const useAuthStore = create<AuthStore>()(
           const response: LoginResponse = await loginService({ email, password });
           const { user: backendUser, token } = response;
           
+          // Validar que el usuario no sea un customer
+          if (backendUser.role.code === UserRole.CUSTOMER) {
+            set({
+              user: null,
+              token: null,
+              isAuthenticated: false,
+              isLoading: false,
+              error: 'Los clientes no tienen acceso al panel de administración'
+            });
+            throw new Error('Los clientes no tienen acceso al panel de administración');
+          }
+          
           // Mapear el usuario del backend al formato del frontend
           const user = mapBackendUserToUser(backendUser);
           
@@ -71,26 +83,19 @@ export const useAuthStore = create<AuthStore>()(
 
       // Acción de logout
       logout: async () => {
-        try {
-          await logoutService();
-        } catch (error) {
-          // Incluso si el logout en el servidor falla, limpiamos el estado local
-          console.error('Error durante logout:', error);
-        } finally {
-          // Limpiar el token del header de axios
-          delete api.defaults.headers.common['Authorization'];
-          
-          set({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: null
-          });
-          
-          // Limpiar localStorage
-          localStorage.removeItem('auth-storage');
-        }
+        // Limpiar el token del header de axios
+        delete api.defaults.headers.common['Authorization'];
+        
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+          isLoading: false,
+          error: null
+        });
+        
+        // Limpiar localStorage
+        localStorage.removeItem('auth-storage');
       },
 
       // Establecer usuario directamente
