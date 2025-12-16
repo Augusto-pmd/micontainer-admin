@@ -2,8 +2,8 @@ import { createBrowserRouter } from "react-router-dom";
 import DashboardLayout from "../components/Layout";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { Login, UserProfile, ForgotPassword, ResetPassword } from "../pages/auth";
-import { Branch, BranchDetail, BranchEdit} from "../pages/branch";
-import { Building, BuildingDetail, BuildingEdit, BuildingMap } from "../pages/building";
+import { Branch, BranchDetail, BranchEdit, BranchCreate } from "../pages/branch";
+import { Building, BuildingDetail, BuildingEdit, BuildingMap, BuildingCreate } from "../pages/building";
 import { CustomerDetail, CustomerEdit, Customers, CustomerCreate } from "../pages/customer";
 import { Operators, OperatorDetail, OperatorCreate } from "../pages/operator";
 import { OrderDetail, OrderEdit, Orders, OrderCreate } from "../pages/order";
@@ -89,6 +89,14 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: "building/create",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <BuildingCreate />
+          </ProtectedRoute>
+        ),
+      },
+      {
         path: "building/:id",
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
@@ -117,6 +125,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <Branch />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "branch/create",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <BranchCreate />
           </ProtectedRoute>
         ),
       },
