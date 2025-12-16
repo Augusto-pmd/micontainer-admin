@@ -13,7 +13,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronDown, MoreHorizontal } from "lucide-react";
+import { ChevronDown, MoreHorizontal, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -146,6 +146,7 @@ const columns: ColumnDef<BranchType>[] = [
 ];
 
 export const Branch = () => {
+  const navigate = useNavigate();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -213,8 +214,24 @@ export const Branch = () => {
   }
 
   return (
-    <div className="w-full">
+    <div className="container mx-auto py-6">
       {error && <div className="p-4 text-red-500">{error}</div>}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Sucursales</h1>
+          <p className="text-gray-600 mt-1">
+            Total de sucursales: {total}
+          </p>
+        </div>
+        <Button
+          onClick={() => navigate("/branch/create")}
+          className="bg-green-600 hover:bg-green-700"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Crear Sucursal
+        </Button>
+      </div>
+
       <div className="flex items-center py-4">
         <Input
           placeholder="Buscar por nombre, ciudad, país..."
