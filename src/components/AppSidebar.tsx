@@ -10,6 +10,9 @@ import {
   UsersRound,
   ChevronUp,
   LogOut,
+  DollarSign,
+  TrendingUp,
+  Layers,
 } from "lucide-react";
 import { useAuth } from "../stores/authStore";
 import { UserRole } from "../types/auth";
@@ -40,44 +43,82 @@ interface MenuItem {
   roles?: UserRole[];
 }
 
-const menuItems: MenuItem[] = [
-  { name: "Dashboard", href: "/dashboard", icon: Home },
-  { name: "Mi Perfil", href: "/profile", icon: User },
+interface MenuGroup {
+  label: string;
+  items: MenuItem[];
+}
+
+const menuGroups: MenuGroup[] = [
   {
-    name: "Edificios",
-    href: "/building",
-    icon: Building2,
-    roles: [UserRole.ADMIN, UserRole.OPERATOR],
+    label: "Navegación",
+    items: [
+      { name: "Dashboard", href: "/dashboard", icon: Home },
+      { name: "Mi Perfil", href: "/profile", icon: User },
+    ],
   },
   {
-    name: "Sucursales",
-    href: "/branch",
-    icon: Store,
-    roles: [UserRole.ADMIN],
+    label: "Gestión",
+    items: [
+      {
+        name: "Sucursales",
+        href: "/branch",
+        icon: Store,
+        roles: [UserRole.ADMIN],
+      },
+      {
+        name: "Edificios",
+        href: "/building",
+        icon: Building2,
+        roles: [UserRole.ADMIN, UserRole.OPERATOR],
+      },
+      {
+        name: "Espacios",
+        href: "/storage-rooms",
+        icon: Package,
+        roles: [UserRole.ADMIN, UserRole.OPERATOR],
+      },
+      {
+        name: "Órdenes",
+        href: "/orders",
+        icon: ShoppingCart,
+        roles: [UserRole.ADMIN, UserRole.OPERATOR],
+      },
+      {
+        name: "Clientes",
+        href: "/customers",
+        icon: Users,
+        roles: [UserRole.ADMIN, UserRole.OPERATOR],
+      },
+      {
+        name: "Operadores",
+        href: "/operators",
+        icon: UsersRound,
+        roles: [UserRole.ADMIN],
+      },
+    ],
   },
   {
-    name: "Espacios",
-    href: "/storage-rooms",
-    icon: Package,
-    roles: [UserRole.ADMIN, UserRole.OPERATOR],
-  },
-  {
-    name: "Órdenes",
-    href: "/orders",
-    icon: ShoppingCart,
-    roles: [UserRole.ADMIN, UserRole.OPERATOR],
-  },
-  {
-    name: "Clientes",
-    href: "/customers",
-    icon: Users,
-    roles: [UserRole.ADMIN, UserRole.OPERATOR],
-  },
-  {
-    name: "Operadores",
-    href: "/operators",
-    icon: UsersRound,
-    roles: [UserRole.ADMIN],
+    label: "Precios",
+    items: [
+      {
+        name: "Pricing Engine",
+        href: "/pricing-engine",
+        icon: DollarSign,
+        // Temporalmente sin restricción de roles para debug
+      },
+      {
+        name: "Floor Multipliers",
+        href: "/floor-multiplier",
+        icon: TrendingUp,
+        // Temporalmente sin restricción de roles para debug
+      },
+      {
+        name: "Size Permissions",
+        href: "/size-perm",
+        icon: Layers,
+        // Temporalmente sin restricción de roles para debug
+      },
+    ],
   },
 ];
 
@@ -86,10 +127,15 @@ export function AppSidebar() {
   const location = useLocation();
   const { state } = useSidebar();
 
-  const filteredMenuItems = menuItems.filter((item) => {
-    if (!item.roles || item.roles.length === 0) return true;
-    return user?.role && item.roles.includes(user.role as UserRole);
-  });
+  console.log('🔧 User role:', user?.role);
+  console.log('🔧 Total menu groups:', menuGroups.length);
+
+  const filterMenuItems = (items: MenuItem[]) => {
+    return items.filter((item) => {
+      if (!item.roles || item.roles.length === 0) return true;
+      return user?.role && item.roles.includes(user.role as UserRole);
+    });
+  };
 
   return (
     <Sidebar collapsible="icon" className="border-r">
@@ -102,9 +148,9 @@ export function AppSidebar() {
                   <Package className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">Mi Container</span>
+                  <span className="font-semibold">Mi Container v2</span>
                   <span className="text-xs text-muted-foreground">
-                    Admin Panel
+                    Admin Panel - UPDATED
                   </span>
                 </div>
               </Link>
@@ -114,27 +160,34 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Navegación</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {filteredMenuItems.map((item) => {
-                const isActive = location.pathname === item.href || 
-                  location.pathname.startsWith(item.href + "/");
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive}>
-                      <Link to={item.href}>
-                        <item.icon className="size-4" />
-                        <span>{item.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {menuGroups.map((group) => {
+          const filteredItems = filterMenuItems(group.items);
+          if (filteredItems.length === 0) return null;
+
+          return (
+            <SidebarGroup key={group.label}>
+              <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {filteredItems.map((item) => {
+                    const isActive = location.pathname === item.href || 
+                      location.pathname.startsWith(item.href + "/");
+                    return (
+                      <SidebarMenuItem key={item.href}>
+                        <SidebarMenuButton asChild isActive={isActive}>
+                          <Link to={item.href}>
+                            <item.icon className="size-4" />
+                            <span>{item.name}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter>
