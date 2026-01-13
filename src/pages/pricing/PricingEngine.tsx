@@ -1,168 +1,102 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import type {
-  ColumnDef,
-  ColumnFiltersState,
-  SortingState,
-  VisibilityState,
-} from '@tanstack/react-table';
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table';
-import { ChevronDown, MoreHorizontal, Plus } from 'lucide-react';
+import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
-import type { PricingEngine } from '@/types/pricing';
+import { Card } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { usePricingEngineStore } from '@/stores/pricingEngineStore';
-import { showDeleteConfirm } from '@/utils/alerts';
-
-const columnLabels: Record<string, string> = {
-  id: 'ID',
-  branchId: 'Sucursal',
-  basePricePerM2: 'Precio Base/m²',
-  scarcityFactor: 'Factor de Escasez',
-  totalUnits: 'Unidades Totales',
-  occupiedUnits: 'Unidades Ocupadas',
-  expectedDurationMonths: 'Duración Esperada (meses)',
-};
-
-const columns: ColumnDef<PricingEngine>[] = [
-  {
-    accessorKey: 'id',
-    header: columnLabels.id,
-  },
-  {
-    accessorKey: 'branchId',
-    header: columnLabels.branchId,
-    cell: ({ row }) => row.original.branch?.name || row.original.branchId,
-  },
-  {
-    accessorKey: 'basePricePerM2',
-    header: columnLabels.basePricePerM2,
-    cell: ({ row }) => `$${row.getValue('basePricePerM2')}`,
-  },
-  {
-    accessorKey: 'scarcityFactor',
-    header: columnLabels.scarcityFactor,
-    cell: ({ row }) => `${(row.getValue('scarcityFactor') as number).toFixed(2)}x`,
-  },
-  {
-    accessorKey: 'totalUnits',
-    header: columnLabels.totalUnits,
-  },
-  {
-    accessorKey: 'occupiedUnits',
-    header: columnLabels.occupiedUnits,
-    cell: ({ row }) => {
-      const occupied = row.getValue('occupiedUnits') as number;
-      const total = row.original.totalUnits;
-      const percentage = ((occupied / total) * 100).toFixed(1);
-      return `${occupied} (${percentage}%)`;
-    },
-  },
-  {
-    accessorKey: 'expectedDurationMonths',
-    header: columnLabels.expectedDurationMonths,
-  },
-  {
-    id: 'actions',
-    enableHiding: false,
-    cell: ({ row }) => {
-      const pricingEngine = row.original;
-      const navigate = useNavigate();
-      const { deletePricingEngine } = usePricingEngineStore();
-
-      const handleDelete = async () => {
-        const confirmed = await showDeleteConfirm(
-          `¿Estás seguro de eliminar este pricing engine?`
-        );
-        if (confirmed) {
-          try {
-            await deletePricingEngine(pricingEngine.id);
-          } catch (error) {
-            console.error('Error deleting pricing engine:', error);
-          }
-        }
-      };
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Abrir menú</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => navigate(`/pricing-engine/${pricingEngine.id}`)}>
-              Ver detalles
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate(`/pricing-engine/edit/${pricingEngine.id}`)}>
-              Editar
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleDelete} className="text-red-600">
-              Eliminar
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
-  },
-];
+import { useBranchStore } from '@/stores/branchStore';
+import { showSuccess, showApiError } from '@/utils/alerts';
+import type { UpdatePricingEngineDto, CreatePricingEngineDto } from '@/types/pricing';
 
 export default function PricingEnginePage() {
   const navigate = useNavigate();
-  const { pricingEngines, loading, fetchPricingEngines } = usePricingEngineStore();
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = useState({});
+  const {
+    pricingEngines,
+    currentPricingEngine,
+    fetchPricingEngines,
+    updatePricingEngine,
+    createPricingEngine,
+    loading,
+  } = usePricingEngineStore();
+  const { branches, fetchBranches } = useBranchStore();
+
+  const [formData, setFormData] = useState<UpdatePricingEngineDto>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchPricingEngines();
-  }, [fetchPricingEngines]);
+    fetchBranches();
+  }, [fetchPricingEngines, fetchBranches]);
 
-  const table = useReactTable({
-    data: pricingEngines,
-    columns,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onColumnVisibilityChange: setColumnVisibility,
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-    },
-  });
+  useEffect(() => {
+    // Si hay pricing engines, usar el primero
+    if (pricingEngines.length > 0) {
+      const engine = pricingEngines[0];
+      setFormData({
+        totalUnits: engine.totalUnits,
+        occupiedUnits: engine.occupiedUnits,
+        scarcityFactor: engine.scarcityFactor,
+        basePricePerM2: engine.basePricePerM2,
+        expectedDurationMonths: engine.expectedDurationMonths,
+        branchId: engine.branchId,
+      });
+    }
+  }, [pricingEngines]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: parseFloat(value) || 0,
+    }));
+  };
+
+  const handleBranchChange = (value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      branchId: parseInt(value),
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    setIsSaving(true);
+
+    try {
+      if (pricingEngines.length > 0) {
+        // Actualizar el existente
+        await updatePricingEngine(pricingEngines[0].id, formData);
+        await showSuccess('Configuración de precios actualizada correctamente');
+      } else {
+        // Crear uno nuevo si no existe
+        const createData: CreatePricingEngineDto = {
+          totalUnits: formData.totalUnits || 0,
+          occupiedUnits: formData.occupiedUnits || 0,
+          scarcityFactor: formData.scarcityFactor || 1,
+          basePricePerM2: formData.basePricePerM2 || 0,
+          expectedDurationMonths: formData.expectedDurationMonths || 0,
+          branchId: formData.branchId || 0,
+        };
+        await createPricingEngine(createData);
+        await showSuccess('Configuración de precios creada correctamente');
+      }
+    } catch (error: any) {
+      showApiError(error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -172,87 +106,155 @@ export default function PricingEnginePage() {
     );
   }
 
+  const pricingEngine = pricingEngines[0];
+
   return (
     <div className="w-full p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Pricing Engines</h1>
-        <Button onClick={() => navigate('/pricing-engine/create')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Crear Pricing Engine
-        </Button>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">Configuración de Precios</h1>
+        <p className="text-gray-500 mt-2">Configura el precio base por metro cuadrado del sistema</p>
       </div>
 
-      <div className="flex items-center py-4">
-        <Input
-          placeholder="Buscar..."
-          value={(table.getColumn('id')?.getFilterValue() as string) ?? ''}
-          onChange={(event) => table.getColumn('id')?.setFilterValue(event.target.value)}
-          className="max-w-sm"
-        />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
-              Columnas <ChevronDown className="ml-2 h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {table
-              .getAllColumns()
-              .filter((column) => column.getCanHide())
-              .map((column) => {
-                return (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    className="capitalize"
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  >
-                    {columnLabels[column.id] || column.id}
-                  </DropdownMenuCheckboxItem>
-                );
-              })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
+      <Card className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Sucursal */}
+            <div className="space-y-2">
+              <Label htmlFor="branchId">Sucursal</Label>
+              <Select
+                value={formData.branchId?.toString()}
+                onValueChange={handleBranchChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una sucursal" />
+                </SelectTrigger>
+                <SelectContent>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch.id} value={branch.id.toString()}>
+                      {branch.name}
+                    </SelectItem>
                   ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No hay resultados.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Precio Base por m² */}
+            <div className="space-y-2">
+              <Label htmlFor="basePricePerM2">
+                Precio Base por m² <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="basePricePerM2"
+                name="basePricePerM2"
+                type="number"
+                step="0.01"
+                value={formData.basePricePerM2}
+                onChange={handleChange}
+                placeholder="5000"
+              />
+            </div>
+
+            {/* Total de Unidades */}
+            <div className="space-y-2">
+              <Label htmlFor="totalUnits">Total de Unidades</Label>
+              <Input
+                id="totalUnits"
+                name="totalUnits"
+                type="number"
+                value={formData.totalUnits}
+                onChange={handleChange}
+                placeholder="100"
+              />
+            </div>
+
+            {/* Unidades Ocupadas */}
+            <div className="space-y-2">
+              <Label htmlFor="occupiedUnits">Unidades Ocupadas</Label>
+              <Input
+                id="occupiedUnits"
+                name="occupiedUnits"
+                type="number"
+                value={formData.occupiedUnits}
+                onChange={handleChange}
+                placeholder="0"
+              />
+            </div>
+
+            {/* Factor de Escasez */}
+            <div className="space-y-2">
+              <Label htmlFor="scarcityFactor">Factor de Escasez</Label>
+              <Input
+                id="scarcityFactor"
+                name="scarcityFactor"
+                type="number"
+                step="0.01"
+                value={formData.scarcityFactor}
+                onChange={handleChange}
+                placeholder="1"
+              />
+              <p className="text-sm text-gray-500">
+                Se calcula automáticamente basado en la ocupación
+              </p>
+            </div>
+
+            {/* Duración Esperada */}
+            <div className="space-y-2">
+              <Label htmlFor="expectedDurationMonths">Duración Esperada (meses)</Label>
+              <Input
+                id="expectedDurationMonths"
+                name="expectedDurationMonths"
+                type="number"
+                value={formData.expectedDurationMonths}
+                onChange={handleChange}
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          {/* Estadísticas si existe */}
+          {pricingEngine && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-semibold mb-2">Estadísticas Actuales</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-600">Factor de Escasez</p>
+                  <p className="font-bold">{Number(pricingEngine.scarcityFactor).toFixed(2)}x</p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Ocupación</p>
+                  <p className="font-bold">
+                    {((Number(pricingEngine.occupiedUnits) / (Number(pricingEngine.totalUnits) || 1)) * 100).toFixed(1)}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-gray-600">ID</p>
+                  <p className="font-bold">#{pricingEngine.id}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600">Última Actualización</p>
+                  <p className="font-bold">{new Date(pricingEngine.updatedAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-4 pt-6 border-t">
+            <Button type="submit" disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Spinner className="h-4 w-4 mr-2" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Guardar Configuración
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 }

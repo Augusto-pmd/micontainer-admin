@@ -56,10 +56,12 @@ export default function PricingEngineDetail() {
     );
   }
 
-  const occupancyPercentage = (
-    (currentPricingEngine.occupiedUnits / currentPricingEngine.totalUnits) *
-    100
-  ).toFixed(1);
+  const occupancyPercentage = (() => {
+    const occupied = Number(currentPricingEngine.occupiedUnits) || 0;
+    const total = Number(currentPricingEngine.totalUnits) || 0;
+    if (total === 0) return '0.0';
+    return ((occupied / total) * 100).toFixed(1);
+  })();
 
   return (
     <div className="container mx-auto p-6">
@@ -115,7 +117,7 @@ export default function PricingEngineDetail() {
             </div>
             <div>
               <p className="text-sm text-gray-500">Factor de Escasez</p>
-              <p className="font-medium">{currentPricingEngine.scarcityFactor.toFixed(2)}x</p>
+              <p className="font-medium">{Number(currentPricingEngine.scarcityFactor).toFixed(2)}x</p>
             </div>
           </div>
         </Card>
@@ -191,11 +193,11 @@ export default function PricingEngineDetail() {
             sizeMultiplier × areaM2
           </p>
           <p className="text-gray-600">
-            <strong>Ejemplo:</strong> ${currentPricingEngine.basePricePerM2} ×{' '}
-            {currentPricingEngine.scarcityFactor.toFixed(2)} × 1.2 × 1.15 × 15m² = $
-            {(
-              currentPricingEngine.basePricePerM2 *
-              currentPricingEngine.scarcityFactor *
+            <strong>Ejemplo:</strong> ${Number(currentPricingEngine.basePricePerM2).toFixed(0)} ×{' '}
+            {Number(currentPricingEngine.scarcityFactor).toFixed(2)} × 1.2 × 1.15 × 15m² = $
+            {
+              (Number(currentPricingEngine.basePricePerM2) *
+              Number(currentPricingEngine.scarcityFactor) *
               1.2 *
               1.15 *
               15

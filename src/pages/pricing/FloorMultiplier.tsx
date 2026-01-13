@@ -24,7 +24,10 @@ const columns: ColumnDef<FloorMultiplier>[] = [
   {
     accessorKey: 'multiplier',
     header: 'Multiplicador',
-    cell: ({ row }) => `${(row.getValue('multiplier') as number).toFixed(2)}x`,
+    cell: ({ row }) => {
+      const value = Number(row.getValue('multiplier')) || 0;
+      return `${value.toFixed(2)}x`;
+    },
   },
   {
     accessorKey: 'pricingEngineId',
@@ -94,7 +97,7 @@ export default function FloorMultiplierPage() {
   return (
     <div className="w-full p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Floor Multipliers</h1>
+        <h1 className="text-3xl font-bold">Multiplicadores de Piso</h1>
         <Button onClick={() => navigate('/floor-multiplier/create')}>
           <Plus className="mr-2 h-4 w-4" />
           Crear Multiplicador

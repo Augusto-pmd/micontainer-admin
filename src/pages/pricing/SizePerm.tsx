@@ -26,7 +26,10 @@ const columns: ColumnDef<SizePerm>[] = [
   {
     accessorKey: 'multiplier',
     header: 'Multiplicador',
-    cell: ({ row }) => `${(row.getValue('multiplier') as number).toFixed(2)}x`,
+    cell: ({ row }) => {
+      const value = Number(row.getValue('multiplier')) || 0;
+      return `${value.toFixed(2)}x`;
+    },
   },
   {
     accessorKey: 'branchId',
@@ -96,10 +99,10 @@ export default function SizePermPage() {
   return (
     <div className="w-full p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Size Permissions</h1>
+        <h1 className="text-3xl font-bold">Rangos de Tamaño</h1>
         <Button onClick={() => navigate('/size-perm/create')}>
           <Plus className="mr-2 h-4 w-4" />
-          Crear Size Permission
+          Crear Rango de Tamaño
         </Button>
       </div>
 
