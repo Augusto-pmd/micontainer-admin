@@ -37,6 +37,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { getAllBuildings } from "@/services/building.services";
 import type { Building as BuildingType } from "@/types/building";
 import { useBuildingStore } from "@/stores/buildingStore";
+import { showDeleteConfirm, showApiError } from "@/utils/alerts";
 
 interface PaginatedBuildings {
   data: BuildingType[];
@@ -95,7 +96,21 @@ const columns: ColumnDef<BuildingType>[] = [
     cell: ({ row }) => {
       const building = row.original;
       const navigate = useNavigate();
-      const { setSelectedBuilding } = useBuildingStore();
+      const { setSelectedBuilding, deleteBuilding, fetchBuildings } = useBuildingStore();
+
+      const handleDelete = async () => {
+        const confirmed = await showDeleteConfirm(
+          `¿Estás seguro de eliminar el edificio "${building.name}"?`
+        );
+        if (confirmed) {
+          try {
+            await deleteBuilding(building.id);
+            await fetchBuildings();
+          } catch (error) {
+            showApiError(error);
+          }
+        }
+      };
 
       return (
         <DropdownMenu>
@@ -137,7 +152,7 @@ const columns: ColumnDef<BuildingType>[] = [
             >
               Editar edificio
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
+            <DropdownMenuItem onClick={handleDelete} className="text-red-600">
               Eliminar edificio
             </DropdownMenuItem>
           </DropdownMenuContent>

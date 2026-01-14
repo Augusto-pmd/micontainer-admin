@@ -83,3 +83,26 @@ export interface UpdateSizePermDto {
   maxRange?: number;
   branchId?: number;
 }
+
+// Respuesta unificada por sucursal
+export interface BranchPricingConfig {
+  pricingEngine: PricingEngine | null;
+  floorMultipliers: FloorMultiplier[];
+  sizePerms: SizePerm[];
+}
+
+// Body para actualizar toda la configuración
+export interface UpdateBranchPricingDto {
+  pricingEngine?: Partial<Omit<PricingEngine, 'id' | 'branchId' | 'createdAt' | 'updatedAt' | 'branch'>>;
+  floorMultipliers?: Array<{
+    id?: number;
+    floor: number;
+    multiplier: number;
+  }>;
+  sizePerms?: Array<{
+    id?: number;
+    minRange: number;
+    maxRange: number;
+    multiplier: number;
+  }>;
+}

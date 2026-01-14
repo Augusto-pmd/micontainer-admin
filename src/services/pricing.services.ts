@@ -9,7 +9,24 @@ import type {
   SizePerm,
   CreateSizePermDto,
   UpdateSizePermDto,
+  BranchPricingConfig,
+  UpdateBranchPricingDto,
 } from '../types/pricing';
+
+// ==================== Branch Pricing Config (Unified) ====================
+
+export const getPricingConfigByBranch = async (branchId: number): Promise<BranchPricingConfig> => {
+  const response = await api.get(`/pricing-engine/branch/${branchId}`);
+  return response.data;
+};
+
+export const updatePricingConfigByBranch = async (
+  branchId: number,
+  data: UpdateBranchPricingDto
+): Promise<BranchPricingConfig> => {
+  const response = await api.put(`/pricing-engine/branch/${branchId}`, data);
+  return response.data;
+};
 
 // ==================== Pricing Engine ====================
 

@@ -9,18 +9,7 @@ import { Operators, OperatorDetail, OperatorCreate } from "../pages/operator";
 import { OrderDetail, OrderEdit, Orders, OrderCreate } from "../pages/order";
 import { StorageRooms, StorageRoomDetail, StorageRoomCreate, StorageRoomEdit } from "../pages/storageRoom";
 import { Dashboard, GlobalMap } from "../pages/dashboard";
-import { 
-  PricingEngine, 
-  PricingEngineCreate, 
-  PricingEngineEdit, 
-  PricingEngineDetail,
-  FloorMultiplier,
-  FloorMultiplierCreate,
-  FloorMultiplierEdit,
-  SizePerm,
-  SizePermCreate,
-  SizePermEdit
-} from "../pages/pricing";
+import { PricingEngine } from "../pages/pricing";
 import { UserRole } from "../types/auth";
 
 export const router = createBrowserRouter([
@@ -291,82 +280,6 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
             <PricingEngine />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "pricing-engine/create",
-        element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
-            <PricingEngineCreate />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "pricing-engine/:id",
-        element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
-            <PricingEngineDetail />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "pricing-engine/edit/:id",
-        element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
-            <PricingEngineEdit />
-          </ProtectedRoute>
-        ),
-      },
-
-      // Floor Multiplier Routes
-      {
-        path: "floor-multiplier",
-        element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
-            <FloorMultiplier />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "floor-multiplier/create",
-        element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
-            <FloorMultiplierCreate />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "floor-multiplier/edit/:id",
-        element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
-            <FloorMultiplierEdit />
-          </ProtectedRoute>
-        ),
-      },
-
-      // Size Permission Routes
-      {
-        path: "size-perm",
-        element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
-            <SizePerm />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "size-perm/create",
-        element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
-            <SizePermCreate />
-          </ProtectedRoute>
-        ),
-      },
-      {
-        path: "size-perm/edit/:id",
-        element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
-            <SizePermEdit />
           </ProtectedRoute>
         ),
       },

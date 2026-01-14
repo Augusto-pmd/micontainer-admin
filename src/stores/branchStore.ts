@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Branch, PaginatedBranches } from '../types/branch';
-import { getAllBranchesServices, getBranchByIdServices } from '../services/branch.services';
+import { getAllBranchesServices, getBranchByIdServices, deleteBranchServices } from '../services/branch.services';
+import { showSuccess } from '../utils/alerts';
 
 interface BranchStore {
   // Estado
@@ -16,6 +17,7 @@ interface BranchStore {
   // Acciones
   fetchBranches: (params?: { page?: number; limit?: number }) => Promise<void>;
   fetchBranchById: (id: number) => Promise<void>;
+  deleteBranch: (id: number) => Promise<void>;
   setSelectedBranch: (branch: Branch | null) => void;
   clearSelectedBranch: () => void;
   setPage: (page: number) => void;
@@ -85,6 +87,32 @@ export const useBranchStore = create<BranchStore>((set, get) => ({
   // Establecer sucursal seleccionada directamente
   setSelectedBranch: (branch) => {
     set({ selectedBranch: branch });
+  },
+
+  // Eliminar una sucursal
+  deleteBranch: async (id: number) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      await deleteBranchServices(id);
+      
+      // Refrescar la lista después de eliminar
+      await get().fetchBranches();
+      
+      // Mostrar mensaje de éxito
+      await showSuccess('Sucursal eliminada correctamente');
+      
+      set({
+        isLoading: false,
+        error: null
+      });
+    } catch (error: any) {
+      set({
+        isLoading: false,
+        error: error?.response?.data?.message || error?.message || 'Error al eliminar la sucursal'
+      });
+      throw error;
+    }
   },
 
   // Limpiar sucursal seleccionada

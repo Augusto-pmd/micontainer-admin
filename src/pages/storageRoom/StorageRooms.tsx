@@ -97,8 +97,8 @@ export const StorageRooms = () => {
     if (confirmed) {
       try {
         await deleteStorageRoomServices(id);
-        showSuccess("Espacio eliminado exitosamente");
-        loadStorageRooms();
+        await showSuccess("Espacio eliminado exitosamente");
+        await loadStorageRooms();
       } catch (error: any) {
         console.error("Error deleting storage room:", error);
         showError(error.response?.data?.message || "Error al eliminar el espacio");

@@ -37,6 +37,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { getAllBranchesServices } from "@/services/branch.services";
 import type { Branch as BranchType, PaginatedBranches } from "@/types/branch";
 import { useBranchStore } from "@/stores/branchStore";
+import { showDeleteConfirm, showApiError } from "@/utils/alerts";
 
 const columnLabels: Record<string, string> = {
   id: "ID",
@@ -100,7 +101,21 @@ const columns: ColumnDef<BranchType>[] = [
     cell: ({ row }) => {
       const branch = row.original;
       const navigate = useNavigate();
-      const { setSelectedBranch } = useBranchStore();
+      const { setSelectedBranch, deleteBranch, fetchBranches } = useBranchStore();
+
+      const handleDelete = async () => {
+        const confirmed = await showDeleteConfirm(
+          `¿Estás seguro de eliminar la sucursal "${branch.name}"?`
+        );
+        if (confirmed) {
+          try {
+            await deleteBranch(branch.id);
+            await fetchBranches();
+          } catch (error) {
+            showApiError(error);
+          }
+        }
+      };
 
       return (
         <DropdownMenu>
@@ -135,7 +150,7 @@ const columns: ColumnDef<BranchType>[] = [
             >
               Editar sucursal
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600">
+            <DropdownMenuItem onClick={handleDelete} className="text-red-600">
               Eliminar sucursal
             </DropdownMenuItem>
           </DropdownMenuContent>

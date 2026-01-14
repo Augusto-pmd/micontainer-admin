@@ -66,18 +66,6 @@ const links: LinkItem[] = [
     icon: "pricing",
     roles: [UserRole.ADMIN],
   },
-  {
-    name: "Multiplicadores de Piso",
-    href: "/floor-multiplier",
-    icon: "floor",
-    roles: [UserRole.ADMIN],
-  },
-  {
-    name: "Rangos de Tamaño",
-    href: "/size-perm",
-    icon: "sizeperm",
-    roles: [UserRole.ADMIN],
-  },
 ];
 
 // Componente para renderizar items del menú con soporte para submenús
