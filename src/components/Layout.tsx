@@ -6,6 +6,8 @@ import { FaClipboardList, FaUserTie } from "react-icons/fa6";
 import { MdDashboard, MdWarehouse } from "react-icons/md";
 import { HiOfficeBuilding, HiUsers, HiUserCircle } from "react-icons/hi";
 import { BsBuilding } from "react-icons/bs";
+import { FaChartLine, FaLayerGroup } from "react-icons/fa";
+import { IoMdSettings } from "react-icons/io";
 import MiContainerLogo from "../assets/img/MiContainerLogo.png";
 
 interface LinkItem {
@@ -59,6 +61,12 @@ const links: LinkItem[] = [
     icon: "operators",
     roles: [UserRole.ADMIN],
   },
+  {
+    name: "Precios",
+    href: "/pricing-engine",
+    icon: "pricing",
+    roles: [UserRole.ADMIN],
+  },
 ];
 
 // Componente para renderizar items del menú con soporte para submenús
@@ -104,6 +112,12 @@ function MenuItem({
         return <HiUsers className="text-xl text-green-600" />;
       case "operators":
         return <FaUserTie className="text-xl text-green-600" />;
+      case "pricing":
+        return <IoMdSettings className="text-xl text-green-600" />;
+      case "floor":
+        return <FaChartLine className="text-xl text-green-600" />;
+      case "sizeperm":
+        return <FaLayerGroup className="text-xl text-green-600" />;
       default:
         return <span>{icon}</span>;
     }

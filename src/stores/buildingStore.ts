@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Building } from '../types/building';
-import { getAllBuildings, getBuildingById } from '../services/building.services';
+import { getAllBuildings, getBuildingById, deleteBuilding as deleteBuildingService } from '../services/building.services';
+import { showSuccess } from '../utils/alerts';
 
 interface PaginatedBuildings {
   data: Building[];
@@ -24,6 +25,7 @@ interface BuildingStore {
   // Acciones
   fetchBuildings: (params?: { page?: number; limit?: number }) => Promise<void>;
   fetchBuildingById: (id: number) => Promise<void>;
+  deleteBuilding: (id: number) => Promise<void>;
   setSelectedBuilding: (building: Building | null) => void;
   clearSelectedBuilding: () => void;
   setPage: (page: number) => void;
@@ -93,6 +95,32 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
   // Establecer edificio seleccionado directamente
   setSelectedBuilding: (building) => {
     set({ selectedBuilding: building });
+  },
+
+  // Eliminar un edificio
+  deleteBuilding: async (id: number) => {
+    set({ isLoading: true, error: null });
+    
+    try {
+      await deleteBuildingService(id);
+      
+      // Refrescar la lista después de eliminar
+      await get().fetchBuildings();
+      
+      // Mostrar mensaje de éxito
+      await showSuccess('Edificio eliminado correctamente');
+      
+      set({
+        isLoading: false,
+        error: null
+      });
+    } catch (error: any) {
+      set({
+        isLoading: false,
+        error: error?.response?.data?.message || error?.message || 'Error al eliminar el edificio'
+      });
+      throw error;
+    }
   },
 
   // Limpiar edificio seleccionado
