@@ -6,7 +6,7 @@ import { FaClipboardList, FaUserTie } from "react-icons/fa6";
 import { MdDashboard, MdWarehouse } from "react-icons/md";
 import { HiOfficeBuilding, HiUsers, HiUserCircle } from "react-icons/hi";
 import { BsBuilding } from "react-icons/bs";
-import { FaDollarSign, FaChartLine, FaLayerGroup } from "react-icons/fa";
+import { FaChartLine, FaLayerGroup } from "react-icons/fa";
 import { IoMdSettings } from "react-icons/io";
 import MiContainerLogo from "../assets/img/MiContainerLogo.png";
 
