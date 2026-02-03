@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { getBuildingById } from "@/services/building.services";
 import { getAllStorageRoomsServices } from "@/services/storageRoom.services";
+import { formatFloor } from "@/utils/formatters";
 import type { Building } from "@/types/building";
 import type { StorageRoom } from "@/types/storageRoom";
 
@@ -204,7 +205,7 @@ export const BuildingMap = () => {
                 onClick={() => setSelectedFloor(floor)}
                 className={selectedFloor === floor ? "bg-green-600 hover:bg-green-700" : ""}
               >
-                {floor}
+                {formatFloor(floor)}
               </Button>
             ))}
           </div>
@@ -216,7 +217,7 @@ export const BuildingMap = () => {
         <CardHeader>
           <CardTitle>
             Mapa de Espacios
-            {selectedFloor !== "all" && ` - ${selectedFloor}`}
+            {selectedFloor !== "all" && ` - ${formatFloor(selectedFloor)}`}
           </CardTitle>
         </CardHeader>
         <CardContent>
