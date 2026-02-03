@@ -60,7 +60,7 @@ export interface PaginatedStorageRooms {
 export interface CreateStorageRoomDto {
   space: string;
   buildingId: number;
-  floor: string;
+  floor: number;
   width: number;
   length: number;
   height: number;
@@ -76,7 +76,7 @@ export interface CreateStorageRoomDto {
 export interface UpdateStorageRoomDto {
   space?: string;
   buildingId?: number;
-  floor?: string;
+  floor?: number;
   width?: number;
   length?: number;
   height?: number;

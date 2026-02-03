@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { getAllStorageRoomsServices, deleteStorageRoomServices } from "@/services/storageRoom.services";
 import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
+import { formatFloor } from "@/utils/formatters";
 import type { StorageRoom, StorageRoomStatus } from "@/types/storageRoom";
 
 const columnLabels: Record<string, string> = {
@@ -151,7 +152,7 @@ export const StorageRooms = () => {
     {
       accessorKey: "floor",
       header: "Piso",
-      cell: ({ row }) => row.original.floor,
+      cell: ({ row }) => formatFloor(row.original.floor),
     },
     {
       accessorKey: "areaM2",

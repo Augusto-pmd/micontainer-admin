@@ -34,6 +34,7 @@ import { useStorageRoomStore } from "@/stores/storageRoomStore";
 import { RESERVATION_ORDER_STATUS } from "@/types/order";
 import type { StorageRoomStatus } from "@/types/storageRoom";
 import { showDeleteConfirm, showError, showSuccess } from "@/utils/alerts";
+import { formatFloor } from "@/utils/formatters";
 import { ArrowLeft, Building2, Calendar, DollarSign, Edit, Eye, MapPin, Ruler, Trash2, UserPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -281,7 +282,7 @@ export const StorageRoomDetail = () => {
             </div>
             <div>
               <p className="text-sm text-gray-500">Piso</p>
-              <p className="font-medium">{selectedStorageRoom.floor}</p>
+              <p className="font-medium">{formatFloor(selectedStorageRoom.floor)}</p>
             </div>
           </CardContent>
         </Card>

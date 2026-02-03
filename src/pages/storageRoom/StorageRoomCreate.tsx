@@ -22,7 +22,7 @@ import {
   deleteStorageRoomFile, 
   downloadStorageRoomFile 
 } from "@/services/storageRoom.services";
-import { getAllBuildings } from "@/services/building.services";
+import { getAllBuildings, getBuildingById } from "@/services/building.services";
 import { showError, showSuccess } from "@/utils/alerts";
 import { STORAGE_ROOM_STATUS, type StorageRoomStatus, type CreateStorageRoomDto } from "@/types/storageRoom";
 import type { Building } from "@/types/building";
@@ -32,11 +32,12 @@ export const StorageRoomCreate = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [buildings, setBuildings] = useState<ComboboxOption[]>([]);
+  const [floorOptions, setFloorOptions] = useState<ComboboxOption[]>([]);
 
   const [formData, setFormData] = useState<Omit<CreateStorageRoomDto, 'buildingId' | 'status'> & { buildingId: string; status: string }>({
     space: "",
     buildingId: "",
-    floor: "",
+    floor: 0,
     width: 0,
     length: 0,
     height: 0,
@@ -74,10 +75,33 @@ export const StorageRoomCreate = () => {
     loadBuildings();
   }, []);
 
-  const handleChange = (field: keyof typeof formData, value: string | number) => {
+  const handleChange = async (field: keyof typeof formData, value: string | number) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field as keyof CreateStorageRoomDto]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+
+    // Cargar info del edificio cuando se selecciona
+    if (field === "buildingId" && value) {
+      try {
+        const building = await getBuildingById(parseInt(value as string));
+        
+        // Generar opciones de pisos
+        const floors: ComboboxOption[] = [];
+        for (let i = 0; i < building.floors; i++) {
+          floors.push({
+            value: i.toString(),
+            label: i === 0 ? "PB" : `Piso ${i}`,
+          });
+        }
+        setFloorOptions(floors);
+        
+        // Resetear el piso seleccionado
+        setFormData((prev) => ({ ...prev, floor: 0 }));
+      } catch (error) {
+        console.error("Error loading building:", error);
+        showError("Error al cargar información del edificio");
+      }
     }
 
     // Auto-calcular área si cambian width o length
@@ -111,7 +135,7 @@ export const StorageRoomCreate = () => {
       newErrors.buildingId = "Debe seleccionar un edificio";
     }
 
-    if (!formData.floor.trim()) {
+    if (formData.floor === undefined || formData.floor === null) {
       newErrors.floor = "El piso es requerido";
     }
 
@@ -271,11 +295,15 @@ export const StorageRoomCreate = () => {
                   <Label htmlFor="floor">
                     Piso <span className="text-red-500">*</span>
                   </Label>
-                  <Input
-                    id="floor"
-                    placeholder="Floor 1"
-                    value={formData.floor}
-                    onChange={(e) => handleChange("floor", e.target.value)}
+                  <Combobox
+                    options={floorOptions}
+                    value={formData.floor.toString()}
+                    onChange={(value) => handleChange("floor", Number(value))}
+                    placeholder="Seleccione un piso"
+                    searchPlaceholder="Buscar piso..."
+                    emptyMessage={formData.buildingId ? "No hay pisos disponibles" : "Primero seleccione un edificio"}
+                    width="w-full"
+                    disabled={!formData.buildingId}
                     className={errors.floor ? "border-red-500" : ""}
                   />
                   {errors.floor && (
