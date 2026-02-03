@@ -1,10 +1,5 @@
-import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Edit, Trash2, Building2, MapPin, Ruler, DollarSign, Calendar, Eye, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -20,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import {
   Table,
   TableBody,
@@ -28,15 +25,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useStorageRoomStore } from "@/stores/storageRoomStore";
-import { 
-  deleteStorageRoomServices, 
-  assignCustomerToStorageRoomServices
-} from "@/services/storageRoom.services";
 import { getAllCustomersServices } from "@/services/customer.services";
-import { showDeleteConfirm, showSuccess, showError } from "@/utils/alerts";
-import type { StorageRoomStatus } from "@/types/storageRoom";
+import {
+  adminAssignCustomerToStorageRoomServices,
+  deleteStorageRoomServices
+} from "@/services/storageRoom.services";
+import { useStorageRoomStore } from "@/stores/storageRoomStore";
 import { RESERVATION_ORDER_STATUS } from "@/types/order";
+import type { StorageRoomStatus } from "@/types/storageRoom";
+import { showDeleteConfirm, showError, showSuccess } from "@/utils/alerts";
+import { ArrowLeft, Building2, Calendar, DollarSign, Edit, Eye, MapPin, Ruler, Trash2, UserPlus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 export const StorageRoomDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -97,7 +97,7 @@ export const StorageRoomDetail = () => {
 
     setIsAssigning(true);
     try {
-      await assignCustomerToStorageRoomServices(
+      await adminAssignCustomerToStorageRoomServices(
         selectedStorageRoom.id,
         parseInt(selectedCustomerId)
       );
