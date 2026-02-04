@@ -67,7 +67,7 @@ export interface CreateStorageRoomDto {
   depth?: number;
   areaM2: number;
   volumeM3?: number;
-  price: number;
+  price?: number;
   images: string[];
   status: StorageRoomStatus;
   description?: string;

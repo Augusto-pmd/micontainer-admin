@@ -34,7 +34,7 @@ export const StorageRoomCreate = () => {
   const [buildings, setBuildings] = useState<ComboboxOption[]>([]);
   const [floorOptions, setFloorOptions] = useState<ComboboxOption[]>([]);
 
-  const [formData, setFormData] = useState<Omit<CreateStorageRoomDto, 'buildingId' | 'status'> & { buildingId: string; status: string }>({
+  const [formData, setFormData] = useState<Omit<CreateStorageRoomDto, 'buildingId' | 'status' | 'price'> & { buildingId: string; status: string }>({
     space: "",
     buildingId: "",
     floor: 0,
@@ -44,7 +44,6 @@ export const StorageRoomCreate = () => {
     depth: 0,
     areaM2: 0,
     volumeM3: 0,
-    price: 0,
     images: [],
     status: STORAGE_ROOM_STATUS.BLOCKED,
     description: "",
@@ -155,10 +154,6 @@ export const StorageRoomCreate = () => {
       newErrors.areaM2 = "El área debe ser mayor a 0";
     }
 
-    if (formData.price <= 0) {
-      newErrors.price = "El precio debe ser mayor a 0";
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -173,7 +168,7 @@ export const StorageRoomCreate = () => {
 
     setIsLoading(true);
     try {
-      const dataToSend: CreateStorageRoomDto = {
+      const dataToSend: Omit<CreateStorageRoomDto, 'price'> = {
         ...formData,
         buildingId: parseInt(formData.buildingId),
         status: formData.status as StorageRoomStatus,
@@ -445,31 +440,6 @@ export const StorageRoomCreate = () => {
                     Se calcula automáticamente: {(formData.width * formData.length * formData.height).toFixed(2)} m³
                   </p>
                 </div>
-              </div>
-            </div>
-
-            {/* Precio */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b pb-2">
-                Precio
-              </h3>
-
-              <div className="space-y-2">
-                <Label htmlFor="price">
-                  Precio Mensual (ARS) <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  placeholder="200.50"
-                  value={formData.price || ""}
-                  onChange={(e) => handleChange("price", parseFloat(e.target.value) || 0)}
-                  className={errors.price ? "border-red-500" : ""}
-                />
-                {errors.price && (
-                  <p className="text-sm text-red-500">{errors.price}</p>
-                )}
               </div>
             </div>
 
