@@ -32,7 +32,6 @@ export const StorageRoomEdit = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [buildings, setBuildings] = useState<ComboboxOption[]>([]);
-  const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null);
   const [floorOptions, setFloorOptions] = useState<ComboboxOption[]>([]);
 
   const [formData, setFormData] = useState<Omit<UpdateStorageRoomDto, 'buildingId' | 'status'> & { buildingId: string; status: string }>({
@@ -93,7 +92,6 @@ export const StorageRoomEdit = () => {
         // Cargar info del edificio para obtener pisos
         if (storageRoomData.building?.id) {
           const building = await getBuildingById(storageRoomData.building.id);
-          setSelectedBuilding(building);
           
           // Generar opciones de pisos
           const floors: ComboboxOption[] = [];
@@ -131,7 +129,6 @@ export const StorageRoomEdit = () => {
     if (field === "buildingId" && value) {
       try {
         const building = await getBuildingById(parseInt(value as string));
-        setSelectedBuilding(building);
         
         // Generar opciones de pisos
         const floors: ComboboxOption[] = [];
