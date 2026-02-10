@@ -58,6 +58,13 @@ export const assignCustomerToStorageRoomServices = async (storageRoomId: number,
   return response.data;
 };
 
+export const adminAssignCustomerToStorageRoomServices = async (storageRoomId: number, customerId: number): Promise<StorageRoom> => {
+  const response = await api.patch(`/storage-room/${storageRoomId}/admin-assign-customer`, {
+    customerId
+  });
+  return response.data;
+};
+
 export const uploadStorageRoomFiles = async (storageRoomId: number, files: File[]) => {
   const formData = new FormData();
   

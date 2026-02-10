@@ -24,9 +24,26 @@ export default function PricingEngineForm({ peData, onChange }: PricingEngineFor
           <Label>Precio Base por m²</Label>
           <Input
             type="number"
-            step="0.01"
-            value={peData.basePricePerM2}
-            onChange={(e) => onChange({ basePricePerM2: parseFloat(e.target.value) || 0 })}
+            min="0"
+            step="1"
+            value={peData.basePricePerM2 || ''}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === '') {
+                onChange({ basePricePerM2: 0 });
+              } else {
+                const numValue = parseInt(value);
+                if (!isNaN(numValue) && numValue >= 0) {
+                  onChange({ basePricePerM2: numValue });
+                }
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.' || e.key === ',') {
+                e.preventDefault();
+              }
+            }}
+            placeholder="0"
           />
         </div>
         <div className="space-y-2">

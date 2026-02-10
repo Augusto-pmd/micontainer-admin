@@ -63,19 +63,53 @@ export default function SizePermTable({
                 <TableCell>
                   <Input
                     type="number"
-                    step="0.01"
-                    value={sp.minRange}
-                    onChange={(e) => onUpdate(index, 'minRange', parseFloat(e.target.value) || 0)}
+                    min="0"
+                    step="1"
+                    value={sp.minRange || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        onUpdate(index, 'minRange', 0);
+                      } else {
+                        const numValue = parseInt(value);
+                        if (!isNaN(numValue) && numValue >= 0) {
+                          onUpdate(index, 'minRange', numValue);
+                        }
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.' || e.key === ',') {
+                        e.preventDefault();
+                      }
+                    }}
                     className="w-32"
+                    placeholder="0"
                   />
                 </TableCell>
                 <TableCell>
                   <Input
                     type="number"
-                    step="0.01"
-                    value={sp.maxRange}
-                    onChange={(e) => onUpdate(index, 'maxRange', parseFloat(e.target.value) || 0)}
+                    min="0"
+                    step="1"
+                    value={sp.maxRange || ''}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '') {
+                        onUpdate(index, 'maxRange', 0);
+                      } else {
+                        const numValue = parseInt(value);
+                        if (!isNaN(numValue) && numValue >= 0) {
+                          onUpdate(index, 'maxRange', numValue);
+                        }
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.' || e.key === ',') {
+                        e.preventDefault();
+                      }
+                    }}
                     className="w-32"
+                    placeholder="0"
                   />
                 </TableCell>
                 <TableCell>
