@@ -4,6 +4,21 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /* ── Tipografía ─────────────────────────────────────────── */
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+
+  /* ── Verde Mi Container #5ECA00 ≈ oklch(0.747 0.224 137) ── */
+  --color-green-50:  oklch(0.97 0.03 137);
+  --color-green-100: oklch(0.93 0.07 137);
+  --color-green-200: oklch(0.87 0.12 137);
+  --color-green-300: oklch(0.82 0.17 137);
+  --color-green-400: oklch(0.79 0.20 137);
+  --color-green-500: oklch(0.747 0.224 137);
+  --color-green-600: oklch(0.67 0.20 137);
+  --color-green-700: oklch(0.57 0.17 137);
+  --color-green-800: oklch(0.47 0.14 137);
+  --color-green-900: oklch(0.37 0.10 137);
+
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -111,6 +126,20 @@
 }
 
 @layer base {
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+  }
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  /* Números alineados en tablas y métricas */
+  table, [data-tabular], .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
   * {
     @apply border-border outline-ring/50;
   }

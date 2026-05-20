@@ -9,6 +9,7 @@ import { Operators, OperatorDetail, OperatorCreate } from "../pages/operator";
 import { OrderDetail, OrderEdit, Orders, OrderCreate } from "../pages/order";
 import { StorageRooms, StorageRoomDetail, StorageRoomCreate, StorageRoomEdit } from "../pages/storageRoom";
 import { Dashboard, GlobalMap } from "../pages/dashboard";
+import Inventory from "../pages/inventory";
 import { PricingEngine } from "../pages/pricing";
 import { UserRole } from "../types/auth";
 
@@ -270,6 +271,15 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <StorageRoomEdit />
+          </ProtectedRoute>
+        ),
+      },
+
+      {
+        path: "inventory",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <Inventory />
           </ProtectedRoute>
         ),
       },

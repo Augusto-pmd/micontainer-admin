@@ -1,11 +1,11 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../stores/authStore";
 import { UserRole } from "../types/auth";
 import { useState } from "react";
 import { FaClipboardList, FaUserTie } from "react-icons/fa6";
 import { MdDashboard, MdWarehouse } from "react-icons/md";
 import { HiOfficeBuilding, HiUsers, HiUserCircle } from "react-icons/hi";
-import { BsBuilding } from "react-icons/bs";
+import { BsBuilding, BsGrid } from "react-icons/bs";
 import { FaChartLine, FaLayerGroup } from "react-icons/fa";
 import { IoMdSettings } from "react-icons/io";
 import MiContainerLogo from "../assets/img/MiContainerLogo.png";
@@ -42,6 +42,12 @@ const links: LinkItem[] = [
         ],
       },
     ],
+  },
+  {
+    name: "Inventario",
+    href: "/inventory",
+    icon: "inventory",
+    roles: [UserRole.ADMIN, UserRole.OPERATOR],
   },
   {
     name: "Órdenes",
@@ -104,6 +110,8 @@ function MenuItem({
         return <HiOfficeBuilding className="text-xl text-green-600" />;
       case "building":
         return <BsBuilding className="text-xl text-green-600" />;
+      case "inventory":
+        return <BsGrid className="text-xl text-green-600" />;
       case "storage":
         return <MdWarehouse className="text-xl text-green-600" />;
       case "orders":
@@ -128,15 +136,21 @@ function MenuItem({
       <li>
         <div className="flex items-center">
           {link.href ? (
-            <Link
+            <NavLink
               to={link.href}
               onClick={onLinkClick}
-              className="flex-1 text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-green-50 group"
+              className={({ isActive }) =>
+                `flex-1 text-sm capitalize font-normal rounded-lg flex items-center p-2 transition-colors duration-150 group ${
+                  isActive
+                    ? 'bg-green-100 text-green-800 font-semibold'
+                    : 'text-gray-600 hover:bg-green-50 hover:text-gray-900'
+                }`
+              }
               style={{ paddingLeft }}
             >
               <span className="mr-3">{renderIcon(link.icon)}</span>
               <span>{link.name}</span>
-            </Link>
+            </NavLink>
           ) : (
             <div
               className="flex-1 text-base capitalize text-gray-900 font-normal flex items-center p-2"
@@ -184,17 +198,28 @@ function MenuItem({
     );
   }
 
+  // ID para el tour de onboarding
+  const tourId = link.href === '/inventory' ? 'tour-nav-inventory'
+    : link.href === '/orders' ? 'tour-nav-orders'
+    : undefined;
+
   return (
-    <li>
-      <Link
+    <li id={tourId}>
+      <NavLink
         to={link.href!}
         onClick={onLinkClick}
-        className="text-base capitalize text-gray-900 font-normal rounded-lg flex items-center p-2 hover:bg-green-50 group"
+        className={({ isActive }) =>
+          `text-sm capitalize font-normal rounded-lg flex items-center p-2 transition-colors duration-150 group ${
+            isActive
+              ? 'bg-green-100 text-green-800 font-semibold'
+              : 'text-gray-600 hover:bg-green-50 hover:text-gray-900'
+          }`
+        }
         style={{ paddingLeft }}
       >
         <span className="mr-3">{renderIcon(link.icon)}</span>
         <span>{link.name}</span>
-      </Link>
+      </NavLink>
     </li>
   );
 }

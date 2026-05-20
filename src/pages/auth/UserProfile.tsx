@@ -2,14 +2,17 @@ import { Button, Modal } from "@/components";
 import { useAuth } from "@/stores/authStore";
 import { UserRole } from "@/types/auth";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showSuccess } from "@/utils/alerts";
 import { updateUserSilent, getUserById } from "@/services/user.services";
 import { Spinner } from "@/components/ui/spinner";
+import { resetTour } from "@/hooks/useTour";
 
 const UserProfile = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [userData, setUserData] = useState<any>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -340,6 +343,20 @@ const UserProfile = () => {
           </h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h4 className="font-medium text-gray-900 mb-2">Tour guiado</h4>
+              <p className="text-sm text-gray-500 mb-3">
+                Revisá el recorrido de bienvenida para conocer todas las secciones del panel.
+              </p>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => { resetTour(); navigate('/dashboard'); }}
+              >
+                Ver tour de nuevo
+              </Button>
+            </div>
+
             <div className="border border-gray-200 rounded-lg p-4">
               <h4 className="font-medium text-gray-900 mb-2">Seguridad</h4>
               <p className="text-sm text-gray-500 mb-3">
