@@ -88,7 +88,7 @@ export default function Dashboard() {
 
   const occupancyPct = stats.total > 0 ? ((stats.occupied / stats.total) * 100).toFixed(1) : "—";
   const availablePct = stats.total > 0 ? (100 - parseFloat(occupancyPct === "—" ? "0" : occupancyPct)).toFixed(1) : "—";
-  const visibleLinks = QUICK_LINKS.filter(l => l.roles.includes(user?.role as UserRole));
+  const visibleLinks = QUICK_LINKS.filter(l => l.roles.includes(user?.role as any));
 
   return (
     <div id="tour-dashboard" className="p-6 max-w-5xl">
