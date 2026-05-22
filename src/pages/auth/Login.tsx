@@ -5,13 +5,14 @@ import { Navigate, Link } from 'react-router-dom';
 import MiContainerLogo from '@/assets/img/MiContainerLogo.png';
 import { signInWithGoogle } from '@/lib/firebase';
 import { UserRole } from '@/types/auth';
+import { api } from '@/services/api';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const { login, isAuthenticated, error, clearError, setUser } = useAuth();
+  const { login, isAuthenticated, error, clearError, setUser, setToken } = useAuth();
   const [googleError, setGoogleError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -25,6 +26,10 @@ const Login = () => {
     setGoogleError('');
     try {
       const fbUser = await signInWithGoogle();
+      // Store Firebase ID token for API calls
+      const idToken = await fbUser.getIdToken();
+      setToken(idToken);
+      api.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
       // Construye un usuario de sesión a partir del perfil de Google
       setUser({
         id: fbUser.uid,

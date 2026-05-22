@@ -8,12 +8,14 @@ import { IoMdSettings } from "react-icons/io";
 import { useAuth } from "@/stores/authStore";
 import { UserRole } from "@/types/auth";
 import { getAllStorageRoomsServices } from "@/services/storageRoom.services";
+import { getAllOrdersServices } from "@/services/order.services";
 import { useTour } from "@/hooks/useTour";
 
 interface Stats {
   total: number;
   available: number;
   occupied: number;
+  billing: number | null;
   loading: boolean;
 }
 
@@ -70,16 +72,22 @@ const QUICK_LINKS = [
 export default function Dashboard() {
   const { user } = useAuth();
   useTour(true);
-  const [stats, setStats] = useState<Stats>({ total: 0, available: 0, occupied: 0, loading: true });
+  const [stats, setStats] = useState<Stats>({ total: 0, available: 0, occupied: 0, billing: null, loading: true });
 
   useEffect(() => {
     (async () => {
       try {
-        const [allRes, occRes] = await Promise.all([
+        const [allRes, occRes, ordersRes] = await Promise.all([
           getAllStorageRoomsServices({ limit: 1 }),
           getAllStorageRoomsServices({ limit: 1, status: "occupied" }),
+          getAllOrdersServices({ limit: 1000 }).catch(() => null),
         ]);
-        setStats({ total: allRes.total, occupied: occRes.total, available: allRes.total - occRes.total, loading: false });
+        // Sumar precios de órdenes activas para facturación real
+        let billing: number | null = null;
+        if (ordersRes && ordersRes.data?.length > 0) {
+          billing = ordersRes.data.reduce((sum: number, o: any) => sum + (parseFloat(o.price) || 0), 0);
+        }
+        setStats({ total: allRes.total, occupied: occRes.total, available: allRes.total - occRes.total, billing, loading: false });
       } catch {
         setStats(s => ({ ...s, loading: false }));
       }
@@ -105,7 +113,7 @@ export default function Dashboard() {
         <KpiCard label="Bauleras" value={stats.loading ? "…" : stats.total}   sub="Nordelta · Sector A"                  color="brand" />
         <KpiCard label="Disponibles" value={stats.loading ? "…" : stats.available} sub={`${availablePct}% libre`}        color="green" />
         <KpiCard label="Ocupadas"    value={stats.loading ? "…" : stats.occupied}  sub={`${occupancyPct}% ocupación`}    color={stats.occupied > 0 ? "red" : "gray"} />
-        <KpiCard label="Facturación" value="$8.5M"  sub="Proyectada mensual"                                              color="gray" />
+        <KpiCard label="Facturación" value={stats.loading ? "…" : stats.billing !== null ? `$${stats.billing.toLocaleString("es-AR")}` : "—"} sub={stats.billing !== null ? "Órdenes activas" : "Sin datos aún"} color="gray" />
       </div>
 
       {/* Acceso rápido */}

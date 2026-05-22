@@ -200,6 +200,7 @@ export const useAuth = () => {
     checkAuth: store.checkAuth,
     clearError: store.clearError,
     setUser: store.setUser,
+    setToken: store.setToken,
   };
 };
 
