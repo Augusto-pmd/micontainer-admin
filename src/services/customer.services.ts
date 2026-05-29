@@ -17,7 +17,7 @@ export const getAllCustomersServices = async (params?: GetAllCustomersParams): P
   return response.data;
 };
 
-export const getCustomerByIdServices = async (id: number) => {
+export const getCustomerByIdServices = async (id: string | number) => {
   const response = await api.get(`/customer/${id}`);
   return response.data;
 };
@@ -32,7 +32,7 @@ export const updateCustomerServices = async (id: number, customerData: any) => {
   return response.data;
 };
 
-export const deleteCustomerServices = async (id: number) => {
+export const deleteCustomerServices = async (id: string | number) => {
   const response = await api.delete(`/customer/${id}`);
   return response.data;
 };
@@ -105,7 +105,7 @@ export const downloadCustomerFile = async (fileUrl: string, fileName: string) =>
   }
 };
 
-export const approveCustomerServices = async (id: number) => {
+export const approveCustomerServices = async (id: string | number) => {
   const response = await api.patch(`/customer/${id}/approve`);
   return response.data;
 };

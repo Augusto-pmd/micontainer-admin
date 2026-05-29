@@ -6,7 +6,7 @@ interface StorageRoomState {
   selectedStorageRoom: StorageRoom | null;
   isLoading: boolean;
   error: string | null;
-  fetchStorageRoomById: (id: number) => Promise<void>;
+  fetchStorageRoomById: (id: string | number) => Promise<void>;
   clearSelectedStorageRoom: () => void;
 }
 
@@ -15,7 +15,7 @@ export const useStorageRoomStore = create<StorageRoomState>((set) => ({
   isLoading: false,
   error: null,
 
-  fetchStorageRoomById: async (id: number) => {
+  fetchStorageRoomById: async (id: string | number) => {
     set({ isLoading: true, error: null });
     try {
       const storageRoom = await getStorageRoomByIdServices(id);

@@ -16,8 +16,8 @@ interface BranchStore {
 
   // Acciones
   fetchBranches: (params?: { page?: number; limit?: number }) => Promise<void>;
-  fetchBranchById: (id: number) => Promise<void>;
-  deleteBranch: (id: number) => Promise<void>;
+  fetchBranchById: (id: string | number) => Promise<void>;
+  deleteBranch: (id: string | number) => Promise<void>;
   setSelectedBranch: (branch: Branch | null) => void;
   clearSelectedBranch: () => void;
   setPage: (page: number) => void;
@@ -64,7 +64,7 @@ export const useBranchStore = create<BranchStore>((set, get) => ({
   },
 
   // Obtener una sucursal específica por ID
-  fetchBranchById: async (id: number) => {
+  fetchBranchById: async (id: string | number) => {
     set({ isLoading: true, error: null });
     
     try {
@@ -90,7 +90,7 @@ export const useBranchStore = create<BranchStore>((set, get) => ({
   },
 
   // Eliminar una sucursal
-  deleteBranch: async (id: number) => {
+  deleteBranch: async (id: string | number) => {
     set({ isLoading: true, error: null });
     
     try {

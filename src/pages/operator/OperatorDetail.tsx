@@ -15,7 +15,7 @@ export const OperatorDetail = () => {
 
   useEffect(() => {
     if (id) {
-      fetchOperatorById(Number(id));
+      fetchOperatorById(id);
     }
     
     return () => {

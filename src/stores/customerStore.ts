@@ -15,7 +15,7 @@ interface CustomerStore {
 
   // Acciones
   fetchCustomers: (params?: { page?: number; limit?: number }) => Promise<void>;
-  fetchCustomerById: (id: number) => Promise<void>;
+  fetchCustomerById: (id: string | number) => Promise<void>;
   setSelectedCustomer: (customer: Customer | null) => void;
   clearSelectedCustomer: () => void;
   setPage: (page: number) => void;
@@ -62,7 +62,7 @@ export const useCustomerStore = create<CustomerStore>((set, get) => ({
   },
 
   // Obtener un cliente específico por ID
-  fetchCustomerById: async (id: number) => {
+  fetchCustomerById: async (id: string | number) => {
     set({ isLoading: true, error: null });
     
     try {

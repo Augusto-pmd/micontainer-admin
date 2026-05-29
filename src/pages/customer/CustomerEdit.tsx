@@ -43,7 +43,7 @@ export const CustomerEdit = () => {
 
   useEffect(() => {
     if (id) {
-      fetchCustomerById(Number(id));
+      fetchCustomerById(id);
     }
   }, [id, fetchCustomerById]);
 
@@ -141,7 +141,7 @@ export const CustomerEdit = () => {
     setDeletingFileUrl(fileUrl);
     
     try {
-      await deleteCustomerFile(Number(id), fileUrl);
+      await deleteCustomerFile(id as any, fileUrl);
       
       // Actualizar lista de documentos existentes
       setExistingDocuments((prev) => prev.filter((url) => url !== fileUrl));
@@ -150,7 +150,7 @@ export const CustomerEdit = () => {
       
       // Refrescar datos del cliente
       if (id) {
-        fetchCustomerById(Number(id));
+        fetchCustomerById(id);
       }
     } catch (error: any) {
       console.error("Error al eliminar archivo:", error);
@@ -213,7 +213,7 @@ export const CustomerEdit = () => {
         dni: formData.dni,
         phone: formData.phone,
       };
-      await updateCustomerServices(Number(id), userData);
+      await updateCustomerServices(id as any, userData);
       await showSuccess("Cliente actualizado correctamente");
       
       // Si hay archivos seleccionados, subirlos
@@ -221,7 +221,7 @@ export const CustomerEdit = () => {
         console.log("Iniciando subida de archivos para customer ID:", id, selectedFiles);
         setIsUploadingFiles(true);
         try {
-          const uploadResponse = await uploadCustomerFiles(Number(id), selectedFiles);
+          const uploadResponse = await uploadCustomerFiles(id as any, selectedFiles);
           console.log("Respuesta de subida:", uploadResponse);
           const { successCount, failedCount } = uploadResponse.data;
           

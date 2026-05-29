@@ -33,7 +33,7 @@ export const BranchEdit = () => {
 
   useEffect(() => {
     if (id) {
-      fetchBranchById(Number(id));
+      fetchBranchById(id);
     }
   }, [id, fetchBranchById]);
 
@@ -89,7 +89,7 @@ export const BranchEdit = () => {
     setIsSaving(true);
 
     try {
-      await updateBranchServices(Number(id), formData);
+      await updateBranchServices(id as any, formData);
       await showSuccess("Sucursal actualizada correctamente");
       navigate(`/branch/${id}`);
     } catch (error: any) {

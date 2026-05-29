@@ -10,7 +10,7 @@ export const getAllBuildings = async (params?: { page?: number; limit?: number; 
   return response.data;
 };
 
-export const getBuildingById = async (id: number) => {
+export const getBuildingById = async (id: string | number) => {
   const response = await api.get(`/building/${id}`);
   return response.data;
 };
@@ -25,7 +25,7 @@ export const updateBuilding = async (id: number, buildingData: any) => {
   return response.data;
 };
 
-export const deleteBuilding = async (id: number) => {
+export const deleteBuilding = async (id: string | number) => {
   const response = await api.delete(`/building/${id}`);
   return response.data;
 };

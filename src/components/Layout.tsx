@@ -50,6 +50,12 @@ const links: LinkItem[] = [
     roles: [UserRole.ADMIN, UserRole.OPERATOR],
   },
   {
+    name: "Reservas MP",
+    href: "/reservations",
+    icon: "reservations",
+    roles: [UserRole.ADMIN, UserRole.OPERATOR],
+  },
+  {
     name: "Órdenes",
     href: "/orders",
     icon: "orders",
@@ -114,6 +120,8 @@ function MenuItem({
         return <BsGrid className="text-xl text-green-600" />;
       case "storage":
         return <MdWarehouse className="text-xl text-green-600" />;
+      case "reservations":
+        return <span className="text-lg">💳</span>;
       case "orders":
         return <FaClipboardList className="text-xl text-green-600" />;
       case "customers":

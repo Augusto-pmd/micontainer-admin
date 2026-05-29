@@ -15,7 +15,7 @@ interface OrderStore {
 
   // Acciones
   fetchOrders: (params?: { page?: number; limit?: number }) => Promise<void>;
-  fetchOrderById: (id: number) => Promise<void>;
+  fetchOrderById: (id: string | number) => Promise<void>;
   setSelectedOrder: (order: ReservationOrder | null) => void;
   clearSelectedOrder: () => void;
   setPage: (page: number) => void;
@@ -62,7 +62,7 @@ export const useOrderStore = create<OrderStore>((set, get) => ({
   },
 
   // Obtener una orden específica por ID
-  fetchOrderById: async (id: number) => {
+  fetchOrderById: async (id: string | number) => {
     set({ isLoading: true, error: null });
     
     try {

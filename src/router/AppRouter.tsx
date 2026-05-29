@@ -11,6 +11,7 @@ import { StorageRooms, StorageRoomDetail, StorageRoomCreate, StorageRoomEdit } f
 import { Dashboard, GlobalMap } from "../pages/dashboard";
 import Inventory from "../pages/inventory";
 import { PricingEngine } from "../pages/pricing";
+import Reservations from "../pages/reservations/Reservations";
 import { UserRole } from "../types/auth";
 
 export const router = createBrowserRouter([
@@ -280,6 +281,16 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <Inventory />
+          </ProtectedRoute>
+        ),
+      },
+
+      // Reservas online (Mercado Pago)
+      {
+        path: "reservations",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <Reservations />
           </ProtectedRoute>
         ),
       },

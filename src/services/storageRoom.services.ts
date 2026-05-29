@@ -31,7 +31,7 @@ export const getAvailableStorageRoomsServices = async (limit: number = 1000): Pr
   return response.data;
 };
 
-export const getStorageRoomByIdServices = async (id: number): Promise<StorageRoom> => {
+export const getStorageRoomByIdServices = async (id: string | number): Promise<StorageRoom> => {
   const response = await api.get(`/storage-room/${id}`);
   return response.data;
 };
@@ -46,7 +46,7 @@ export const updateStorageRoomServices = async (id: number, data: UpdateStorageR
   return response.data;
 };
 
-export const deleteStorageRoomServices = async (id: number) => {
+export const deleteStorageRoomServices = async (id: string | number) => {
   const response = await api.delete(`/storage-room/${id}`);
   return response.data;
 };

@@ -9,10 +9,10 @@ interface SizePermState {
   error: string | null;
   
   fetchSizePerms: () => Promise<void>;
-  fetchSizePermById: (id: number) => Promise<void>;
+  fetchSizePermById: (id: string | number) => Promise<void>;
   createSizePerm: (data: CreateSizePermDto) => Promise<SizePerm>;
   updateSizePerm: (id: number, data: UpdateSizePermDto) => Promise<void>;
-  deleteSizePerm: (id: number) => Promise<void>;
+  deleteSizePerm: (id: string | number) => Promise<void>;
   clearCurrentSizePerm: () => void;
 }
 
@@ -35,7 +35,7 @@ export const useSizePermStore = create<SizePermState>((set) => ({
     }
   },
 
-  fetchSizePermById: async (id: number) => {
+  fetchSizePermById: async (id: string | number) => {
     set({ loading: true, error: null });
     try {
       const sizePerm = await pricingService.getSizePermById(id);
@@ -86,7 +86,7 @@ export const useSizePermStore = create<SizePermState>((set) => ({
     }
   },
 
-  deleteSizePerm: async (id: number) => {
+  deleteSizePerm: async (id: string | number) => {
     set({ loading: true, error: null });
     try {
       await pricingService.deleteSizePerm(id);

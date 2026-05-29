@@ -26,18 +26,29 @@ const Login = () => {
     setGoogleError('');
     try {
       const fbUser = await signInWithGoogle();
-      // Store Firebase ID token for API calls
       const idToken = await fbUser.getIdToken();
       setToken(idToken);
       api.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
-      // Construye un usuario de sesión a partir del perfil de Google
+
+      // Buscar el operador registrado para obtener su rol real
+      let role: UserRole = UserRole.ADMIN; // fallback
+      try {
+        const opRes = await api.get('/operator?limit=200');
+        const ops = opRes.data?.data ?? [];
+        const match = ops.find((o: any) => o.email?.toLowerCase() === (fbUser.email ?? '').toLowerCase());
+        if (match?.role) {
+          // Mapear role-admin / role-operator al enum
+          role = match.role === 'role-operator' ? UserRole.OPERATOR : UserRole.ADMIN;
+        }
+      } catch { /* si falla la búsqueda, se queda con ADMIN */ }
+
       setUser({
         id: fbUser.uid,
         name: fbUser.displayName ?? fbUser.email ?? '',
         firstName: fbUser.displayName?.split(' ')[0] ?? '',
         lastName: fbUser.displayName?.split(' ').slice(1).join(' ') ?? '',
         email: fbUser.email ?? '',
-        role: UserRole.ADMIN,
+        role: role as any,
         isActive: true,
         avatar: fbUser.displayName?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0,2) ?? 'MC',
       } as any);

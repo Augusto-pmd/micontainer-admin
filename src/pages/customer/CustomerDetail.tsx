@@ -50,8 +50,8 @@ export const CustomerDetail = () => {
 
   useEffect(() => {
     if (id) {
-      fetchCustomerById(Number(id));
-      loadCustomerOrders(Number(id));
+      fetchCustomerById(id);
+      loadCustomerOrders(id as any);
     }
 
     return () => {

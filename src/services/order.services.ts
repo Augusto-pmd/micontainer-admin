@@ -17,7 +17,7 @@ export const getAllOrdersServices = async (params?: GetAllOrdersParams): Promise
   return response.data;
 };
 
-export const getOrderByIdServices = async (id: number) => {
+export const getOrderByIdServices = async (id: string | number) => {
   const response = await api.get(`/reservation-order/${id}`);
   return response.data;
 };
@@ -37,12 +37,12 @@ export const updateOrderServices = async (id: number, orderData: any) => {
   return response.data;
 };
 
-export const deleteOrderServices = async (id: number) => {
+export const deleteOrderServices = async (id: string | number) => {
   const response = await api.delete(`/reservation-order/${id}`);
   return response.data;
 };
 
-export const cancelOrderServices = async (id: number) => {
+export const cancelOrderServices = async (id: string | number) => {
   const response = await api.post(`/reservation-order/${id}/cancel`);
   return response.data;
 };

@@ -7,7 +7,7 @@ interface OperatorState {
   isLoading: boolean;
   error: string | null;
   setSelectedOperator: (operator: Operator | null) => void;
-  fetchOperatorById: (id: number) => Promise<void>;
+  fetchOperatorById: (id: string | number) => Promise<void>;
   clearSelectedOperator: () => void;
 }
 
@@ -18,7 +18,7 @@ export const useOperatorStore = create<OperatorState>((set) => ({
 
   setSelectedOperator: (operator) => set({ selectedOperator: operator }),
 
-  fetchOperatorById: async (id: number) => {
+  fetchOperatorById: async (id: string | number) => {
     set({ isLoading: true, error: null });
     try {
       const operator = await getOperatorByIdServices(id);

@@ -17,7 +17,7 @@ export const getAllBranchesServices = async (params?: GetAllBranchesParams): Pro
   return response.data;
 };
 
-export const getBranchByIdServices = async (id: number) => {
+export const getBranchByIdServices = async (id: string | number) => {
   const response = await api.get(`/branch/${id}`);
   return response.data;
 };
@@ -32,7 +32,7 @@ export const updateBranchServices = async (id: number, branchData: any) => {
   return response.data;
 };
 
-export const deleteBranchServices = async (id: number) => {
+export const deleteBranchServices = async (id: string | number) => {
   const response = await api.delete(`/branch/${id}`);
   return response.data;
 };

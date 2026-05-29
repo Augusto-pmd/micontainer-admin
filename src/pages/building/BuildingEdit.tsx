@@ -27,7 +27,7 @@ export const BuildingEdit = () => {
 
   useEffect(() => {
     if (id) {
-      fetchBuildingById(Number(id));
+      fetchBuildingById(id);
     }
   }, [id, fetchBuildingById]);
 
@@ -70,7 +70,7 @@ export const BuildingEdit = () => {
     setIsSaving(true);
     
     try {
-      await updateBuilding(Number(id), formData);
+      await updateBuilding(id as any, formData);
       await showSuccess("Edificio actualizado correctamente");
       navigate(`/building/${id}`);
     } catch (error: any) {

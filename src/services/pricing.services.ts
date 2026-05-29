@@ -35,7 +35,7 @@ export const getPricingEngines = async (): Promise<PricingEngine[]> => {
   return response.data;
 };
 
-export const getPricingEngineById = async (id: number): Promise<PricingEngine> => {
+export const getPricingEngineById = async (id: string | number): Promise<PricingEngine> => {
   const response = await api.get(`/pricing-engine/${id}`);
   return response.data;
 };
@@ -53,7 +53,7 @@ export const updatePricingEngine = async (
   return response.data;
 };
 
-export const deletePricingEngine = async (id: number): Promise<void> => {
+export const deletePricingEngine = async (id: string | number): Promise<void> => {
   await api.delete(`/pricing-engine/${id}`);
 };
 
@@ -64,7 +64,7 @@ export const getFloorMultipliers = async (): Promise<FloorMultiplier[]> => {
   return response.data;
 };
 
-export const getFloorMultiplierById = async (id: number): Promise<FloorMultiplier> => {
+export const getFloorMultiplierById = async (id: string | number): Promise<FloorMultiplier> => {
   const response = await api.get(`/floor-multiplier/${id}`);
   return response.data;
 };
@@ -84,7 +84,7 @@ export const updateFloorMultiplier = async (
   return response.data;
 };
 
-export const deleteFloorMultiplier = async (id: number): Promise<void> => {
+export const deleteFloorMultiplier = async (id: string | number): Promise<void> => {
   await api.delete(`/floor-multiplier/${id}`);
 };
 
@@ -95,7 +95,7 @@ export const getSizePerms = async (): Promise<SizePerm[]> => {
   return response.data;
 };
 
-export const getSizePermById = async (id: number): Promise<SizePerm> => {
+export const getSizePermById = async (id: string | number): Promise<SizePerm> => {
   const response = await api.get(`/size-perm/${id}`);
   return response.data;
 };
@@ -110,6 +110,6 @@ export const updateSizePerm = async (id: number, data: UpdateSizePermDto): Promi
   return response.data;
 };
 
-export const deleteSizePerm = async (id: number): Promise<void> => {
+export const deleteSizePerm = async (id: string | number): Promise<void> => {
   await api.delete(`/size-perm/${id}`);
 };

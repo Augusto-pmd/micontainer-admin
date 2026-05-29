@@ -12,7 +12,7 @@ export const BuildingDetail = () => {
 
   useEffect(() => {
     if (id) {
-      fetchBuildingById(Number(id));
+      fetchBuildingById(id);
     }
     
     return () => {

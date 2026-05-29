@@ -12,7 +12,7 @@ export const BranchDetail = () => {
 
   useEffect(() => {
     if (id) {
-      fetchBranchById(Number(id));
+      fetchBranchById(id);
     }
     
     return () => {

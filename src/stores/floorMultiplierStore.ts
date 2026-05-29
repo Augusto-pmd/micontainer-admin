@@ -9,10 +9,10 @@ interface FloorMultiplierState {
   error: string | null;
   
   fetchFloorMultipliers: () => Promise<void>;
-  fetchFloorMultiplierById: (id: number) => Promise<void>;
+  fetchFloorMultiplierById: (id: string | number) => Promise<void>;
   createFloorMultiplier: (data: CreateFloorMultiplierDto) => Promise<FloorMultiplier>;
   updateFloorMultiplier: (id: number, data: UpdateFloorMultiplierDto) => Promise<void>;
-  deleteFloorMultiplier: (id: number) => Promise<void>;
+  deleteFloorMultiplier: (id: string | number) => Promise<void>;
   clearCurrentFloorMultiplier: () => void;
 }
 
@@ -35,7 +35,7 @@ export const useFloorMultiplierStore = create<FloorMultiplierState>((set) => ({
     }
   },
 
-  fetchFloorMultiplierById: async (id: number) => {
+  fetchFloorMultiplierById: async (id: string | number) => {
     set({ loading: true, error: null });
     try {
       const floorMultiplier = await pricingService.getFloorMultiplierById(id);
@@ -86,7 +86,7 @@ export const useFloorMultiplierStore = create<FloorMultiplierState>((set) => ({
     }
   },
 
-  deleteFloorMultiplier: async (id: number) => {
+  deleteFloorMultiplier: async (id: string | number) => {
     set({ loading: true, error: null });
     try {
       await pricingService.deleteFloorMultiplier(id);

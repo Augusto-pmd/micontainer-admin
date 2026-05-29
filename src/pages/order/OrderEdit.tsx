@@ -37,7 +37,7 @@ export const OrderEdit = () => {
 
   useEffect(() => {
     if (id) {
-      fetchOrderById(Number(id));
+      fetchOrderById(id);
     }
   }, [id, fetchOrderById]);
 
@@ -111,7 +111,7 @@ export const OrderEdit = () => {
     setIsSaving(true);
     
     try {
-      await updateOrderServices(Number(id), formData);
+      await updateOrderServices(id as any, formData);
       await showSuccess("Orden actualizada correctamente");
       navigate(`/orders/${id}`);
     } catch (error: any) {

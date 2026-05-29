@@ -17,7 +17,7 @@ export const getAllOperatorsServices = async (params?: GetAllOperatorsParams): P
   return response.data;
 };
 
-export const getOperatorByIdServices = async (id: number) => {
+export const getOperatorByIdServices = async (id: string | number) => {
   const response = await api.get(`/operator/${id}`);
   return response.data;
 };
@@ -32,7 +32,7 @@ export const createOperatorServices = async (operatorData: CreateOperatorDto) =>
   return response.data;
 };
 
-export const deleteOperatorServices = async (id: number) => {
+export const deleteOperatorServices = async (id: string | number) => {
   const response = await api.delete(`/operator/${id}`);
   return response.data;
 };

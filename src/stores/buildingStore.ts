@@ -24,8 +24,8 @@ interface BuildingStore {
 
   // Acciones
   fetchBuildings: (params?: { page?: number; limit?: number }) => Promise<void>;
-  fetchBuildingById: (id: number) => Promise<void>;
-  deleteBuilding: (id: number) => Promise<void>;
+  fetchBuildingById: (id: string | number) => Promise<void>;
+  deleteBuilding: (id: string | number) => Promise<void>;
   setSelectedBuilding: (building: Building | null) => void;
   clearSelectedBuilding: () => void;
   setPage: (page: number) => void;
@@ -72,7 +72,7 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
   },
 
   // Obtener un edificio específico por ID
-  fetchBuildingById: async (id: number) => {
+  fetchBuildingById: async (id: string | number) => {
     set({ isLoading: true, error: null });
     
     try {
@@ -98,7 +98,7 @@ export const useBuildingStore = create<BuildingStore>((set, get) => ({
   },
 
   // Eliminar un edificio
-  deleteBuilding: async (id: number) => {
+  deleteBuilding: async (id: string | number) => {
     set({ isLoading: true, error: null });
     
     try {

@@ -1,31 +1,47 @@
 import axios from "axios";
 import { showApiError } from "../utils/alerts";
+import { auth } from "@/lib/firebase";
 
 export const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
 
-// Interceptor para peticiones - agregar token automáticamente
+// Interceptor de requests — siempre usa un token fresco de Firebase (auto-refresh)
 api.interceptors.request.use(
-  (config) => {
-    // Obtener el token del localStorage si existe
-    const authStorage = localStorage.getItem('auth-storage');
-    if (authStorage) {
-      try {
-        const { state } = JSON.parse(authStorage);
-        const token = state?.token;
-        if (token && !config.headers.Authorization) {
-          config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    try {
+      const user = auth.currentUser;
+      if (user) {
+        // getIdToken(false) devuelve el token cacheado si sigue válido,
+        // o lo refresca automáticamente si expiró (>1 hora)
+        const token = await user.getIdToken(false);
+        config.headers.Authorization = `Bearer ${token}`;
+        // Sincronizar con el store también
+        const { useAuthStore } = await import('@/stores/authStore');
+        useAuthStore.getState().setToken?.(token);
+      } else {
+        // Fallback al token guardado en localStorage
+        const authStorage = localStorage.getItem('auth-storage');
+        if (authStorage) {
+          const { state } = JSON.parse(authStorage);
+          if (state?.token && !config.headers.Authorization) {
+            config.headers.Authorization = `Bearer ${state.token}`;
+          }
         }
-      } catch (error) {
-        console.error('Error al parsear auth-storage:', error);
+      }
+    } catch (e) {
+      // Si falla el refresh usamos el token guardado
+      const authStorage = localStorage.getItem('auth-storage');
+      if (authStorage) {
+        try {
+          const { state } = JSON.parse(authStorage);
+          if (state?.token) config.headers.Authorization = `Bearer ${state.token}`;
+        } catch {}
       }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 // Interceptor para respuestas - manejar errores de autenticación

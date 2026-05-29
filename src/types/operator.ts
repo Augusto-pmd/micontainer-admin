@@ -32,7 +32,7 @@ export interface PaginatedOperators {
 }
 
 export interface CreateOperatorDto {
-  branchId: number;
+  branchId: string | number;
   email: string;
   password: string;
   firstName: string;

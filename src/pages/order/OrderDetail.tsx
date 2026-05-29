@@ -16,7 +16,7 @@ export const OrderDetail = () => {
 
   useEffect(() => {
     if (id) {
-      fetchOrderById(Number(id));
+      fetchOrderById(id);
     }
     
     return () => {

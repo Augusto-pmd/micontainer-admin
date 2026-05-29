@@ -9,10 +9,10 @@ interface PricingEngineState {
   error: string | null;
   
   fetchPricingEngines: () => Promise<void>;
-  fetchPricingEngineById: (id: number) => Promise<void>;
+  fetchPricingEngineById: (id: string | number) => Promise<void>;
   createPricingEngine: (data: CreatePricingEngineDto) => Promise<PricingEngine>;
   updatePricingEngine: (id: number, data: UpdatePricingEngineDto) => Promise<void>;
-  deletePricingEngine: (id: number) => Promise<void>;
+  deletePricingEngine: (id: string | number) => Promise<void>;
   clearCurrentPricingEngine: () => void;
 }
 
@@ -35,7 +35,7 @@ export const usePricingEngineStore = create<PricingEngineState>((set) => ({
     }
   },
 
-  fetchPricingEngineById: async (id: number) => {
+  fetchPricingEngineById: async (id: string | number) => {
     set({ loading: true, error: null });
     try {
       const pricingEngine = await pricingService.getPricingEngineById(id);
@@ -86,7 +86,7 @@ export const usePricingEngineStore = create<PricingEngineState>((set) => ({
     }
   },
 
-  deletePricingEngine: async (id: number) => {
+  deletePricingEngine: async (id: string | number) => {
     set({ loading: true, error: null });
     try {
       await pricingService.deletePricingEngine(id);
