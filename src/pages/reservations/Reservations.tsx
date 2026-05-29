@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { getAdminReservations, type AdminReservation } from "@/services/reservation.admin.services";
 import { showError } from "@/utils/alerts";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
