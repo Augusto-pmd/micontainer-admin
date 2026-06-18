@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getAllStorageRoomsServices } from '../../services/storageRoom.services';
+import { getAllStorageRoomsServices, getStorageRoomByIdServices } from '../../services/storageRoom.services';
 import { getAllBranchesServices } from '../../services/branch.services';
+import { getOrdersByCustomerIdServices } from '../../services/order.services';
+import { updateCustomerServices } from '../../services/customer.services';
 import type { StorageRoom, StorageRoomStatus } from '../../types/storageRoom';
 import type { Branch } from '../../types/branch';
 
@@ -11,12 +13,37 @@ const STATUS_CONFIG: Record<StorageRoomStatus, { label: string; cellBg: string; 
   blocked:   { label: 'Bloqueada', cellBg: 'bg-gray-100 border-gray-400 hover:bg-gray-200',  cellText: 'text-gray-600',  dot: 'bg-gray-400',  statBg: 'bg-gray-50 border-gray-200 text-gray-600' },
 };
 
+// Estado del contrato -> al día / debe (lo que rige la credencial de acceso)
+function contractBadge(status?: string): { label: string; cls: string } {
+  const s = (status || '').toLowerCase();
+  if (s === 'active' || s === 'confirmed' || s === 'activa') return { label: 'Al día', cls: 'bg-green-100 text-green-800' };
+  if (s === 'pending' || s === 'pending_payment') return { label: 'Debe (pago pendiente)', cls: 'bg-yellow-100 text-yellow-800' };
+  if (s === 'payment_failed') return { label: 'Debe (pago fallido)', cls: 'bg-red-100 text-red-800' };
+  if (s === 'cancelled' || s === 'canceled') return { label: 'Cancelada', cls: 'bg-gray-100 text-gray-700' };
+  return { label: status || 'Sin estado', cls: 'bg-gray-100 text-gray-700' };
+}
+
+function fmtDate(d?: string) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('es-AR');
+}
+function monthsSince(d?: string) {
+  if (!d) return null;
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return null;
+  const months = Math.max(0, Math.round((Date.now() - dt.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+  return months;
+}
+
 export default function Inventory() {
   const [rooms, setRooms] = useState<StorageRoom[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [detail, setDetail] = useState<any | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -35,6 +62,27 @@ export default function Inventory() {
       }
     })();
   }, []);
+
+  const openDetail = async (room: StorageRoom) => {
+    setDetail({ room, tenant: null, order: null });
+    setDetailLoading(true);
+    try {
+      const full: any = await getStorageRoomByIdServices(room.id);
+      let order: any = null;
+      const tenant = full?.tenant || null;
+      if (tenant?.id) {
+        try {
+          const orders: any[] = await getOrdersByCustomerIdServices(tenant.id as any);
+          order = orders.find((o) => o.storageRoomId === room.id || o.contractNumber === full.contractNumber) || orders[0] || null;
+        } catch { /* sin órdenes */ }
+      }
+      setDetail({ room: full, tenant, order });
+    } catch {
+      setDetail({ room, tenant: null, order: null, error: true });
+    } finally {
+      setDetailLoading(false);
+    }
+  };
 
   const filtered = useMemo(
     () => selectedBranchId !== null
@@ -91,7 +139,7 @@ export default function Inventory() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Inventario de Bauleras</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Estado en tiempo real por sucursal y edificio</p>
+          <p className="text-sm text-gray-500 mt-0.5">Estado en tiempo real · tocá una baulera para ver el detalle</p>
         </div>
         <select
           value={selectedBranchId ?? ''}
@@ -145,7 +193,7 @@ export default function Inventory() {
                       {floor === 'PB' ? 'Planta Baja' : `Piso ${floor}`} — {floorRooms.length} espacios
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {floorRooms.map(room => <UnitCell key={room.id} room={room} />)}
+                      {floorRooms.map(room => <UnitCell key={room.id} room={room} onClick={() => openDetail(room)} />)}
                     </div>
                   </div>
                 ))}
@@ -153,6 +201,10 @@ export default function Inventory() {
             </div>
           ))}
         </div>
+      )}
+
+      {detail && (
+        <RoomDetailModal detail={detail} loading={detailLoading} onClose={() => setDetail(null)} />
       )}
     </div>
   );
@@ -167,17 +219,113 @@ function StatCard({ label, value, cls }: { label: string; value: number; cls: st
   );
 }
 
-function UnitCell({ room }: { room: StorageRoom }) {
+function UnitCell({ room, onClick }: { room: StorageRoom; onClick: () => void }) {
   const cfg = STATUS_CONFIG[room.status] ?? STATUS_CONFIG.available;
   return (
-    <div
-      title={`${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''}`}
-      className={`w-14 h-14 rounded-lg border-2 flex flex-col items-center justify-center cursor-default select-none transition-colors ${cfg.cellBg}`}
+    <button
+      onClick={onClick}
+      title={`${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''} — tocá para ver detalle`}
+      className={`w-14 h-14 rounded-lg border-2 flex flex-col items-center justify-center cursor-pointer select-none transition-colors ${cfg.cellBg}`}
     >
       <span className={`text-[11px] font-bold leading-tight ${cfg.cellText}`}>{room.space}</span>
       {room.areaM2 && (
         <span className={`text-[9px] leading-tight ${cfg.cellText} opacity-60`}>{room.areaM2}m²</span>
       )}
+    </button>
+  );
+}
+
+function Row({ label, value }: { label: string; value: any }) {
+  return (
+    <div className="flex justify-between gap-4 py-1.5 border-b border-gray-100 last:border-0">
+      <span className="text-sm text-gray-500">{label}</span>
+      <span className="text-sm font-medium text-gray-900 text-right">{value ?? '—'}</span>
+    </div>
+  );
+}
+
+function RoomDetailModal({ detail, loading, onClose }: { detail: any; loading: boolean; onClose: () => void }) {
+  const room = detail.room || {};
+  const tenant = detail.tenant || room.tenant || null;
+  const order = detail.order || null;
+  const cfg = STATUS_CONFIG[(room.status as StorageRoomStatus)] ?? STATUS_CONFIG.available;
+  const occupied = room.status === 'occupied';
+  const start = order?.entryDate || order?.startDate || room.assignedAt;
+  const months = monthsSince(start);
+  const badge = contractBadge(order?.status);
+  const [debt, setDebt] = useState<boolean>(!!(tenant && tenant.manualDebt));
+  const [debtNote, setDebtNote] = useState<string>((tenant && tenant.debtNote) || '');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const saveDebt = async () => {
+    if (!tenant || !tenant.id) return;
+    setSaving(true); setSaved(false);
+    try { await updateCustomerServices(tenant.id as any, { manualDebt: debt, debtNote, debtUpdatedAt: new Date().toISOString() } as any); setSaved(true); } catch (e) { /* */ } finally { setSaving(false); }
+  };
+  const tenantName = tenant ? (tenant.fullName || `${tenant.user?.firstName || tenant.firstName || ''} ${tenant.user?.lastName || tenant.lastName || ''}`.trim()) : (room.currentTenant || null);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <span className={`w-3 h-3 rounded-sm ${cfg.dot}`} />
+            <h2 className="text-lg font-bold text-gray-900">Baulera {room.space || room.name}</h2>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl leading-none">×</button>
+        </div>
+
+        <div className="px-5 py-4">
+          {loading ? (
+            <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" /></div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.statBg}`}>{cfg.label}</span>
+              </div>
+
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Baulera</h3>
+              <Row label="Código" value={room.space || room.name} />
+              <Row label="Área" value={room.areaM2 ? `${room.areaM2} m²` : '—'} />
+              <Row label="Piso" value={room.floor || '—'} />
+              <Row label="Precio" value={room.price ? `$${Number(room.price).toLocaleString('es-AR')}/mes` : '—'} />
+              <Row label="Edificio" value={room.building?.name} />
+
+              {occupied || tenant ? (
+                <>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1 mt-5">Inquilino</h3>
+                  <Row label="Nombre" value={tenantName} />
+                  <Row label="DNI" value={tenant?.dni} />
+                  <Row label="Teléfono" value={tenant?.phone} />
+                  <Row label="Email" value={tenant?.user?.email || tenant?.email} />
+
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1 mt-5">Contrato</h3>
+                  <Row label="N° de contrato" value={room.contractNumber || order?.contractNumber} />
+                  <Row label="Desde" value={fmtDate(start)} />
+                  <Row label="Antigüedad" value={months != null ? `${months} mes(es)` : '—'} />
+                  <div className="flex justify-between items-center gap-4 py-1.5">
+                    <span className="text-sm text-gray-500">Estado (credencial)</span>
+                    <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${badge.cls}`}>{badge.label}</span>
+                  </div>
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                      <input type="checkbox" checked={debt} onChange={(e) => setDebt(e.target.checked)} />
+                      Marcar manualmente como que debe
+                    </label>
+                    <input value={debtNote} onChange={(e) => setDebtNote(e.target.value)} placeholder="Nota (opcional): ej. debe mayo" className="w-full mt-2 border border-gray-300 rounded px-2 py-1.5 text-sm" />
+                    <div className="mt-2 flex items-center gap-2">
+                      <button onClick={saveDebt} disabled={saving} className="px-3 py-1.5 bg-violet-700 text-white rounded text-sm font-semibold disabled:opacity-50">{saving ? 'Guardando...' : 'Guardar'}</button>
+                      {saved && <span className="text-sm text-green-700">Guardado</span>}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-500 mt-5">Esta baulera está {cfg.label.toLowerCase()} — sin inquilino asignado.</p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
