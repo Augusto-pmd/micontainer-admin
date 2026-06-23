@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAdminReservations, type AdminReservation } from "@/services/reservation.admin.services";
+import { getAdminReservations, deleteAdminReservation, type AdminReservation } from "@/services/reservation.admin.services";
 import { showError } from "@/utils/alerts";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,6 +39,12 @@ export default function Reservations() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const remove = async (id: string) => {
+    if (!window.confirm('¿Eliminar esta reserva? Esta acción no se puede deshacer.')) return;
+    try { await deleteAdminReservation(id); setReservations((x) => x.filter((rv) => rv.id !== id)); }
+    catch { showError('No se pudo eliminar la reserva.'); }
+  };
 
   useEffect(() => {
     let list = reservations;
@@ -142,6 +148,7 @@ export default function Reservations() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Estado</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">MP</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Creada</th>
+                <th className="px-4 py-3 font-semibold text-gray-600 text-right">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -178,6 +185,9 @@ export default function Reservations() {
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{fmtDate(r.createdAt)}</td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button onClick={() => remove(r.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Eliminar</button>
+                    </td>
                   </tr>
                 );
               })}

@@ -48,3 +48,8 @@ export const updateAdminReservation = async (id: string, patch: Partial<{
   const res = await api.patch(`/admin/reservations/${id}`, patch);
   return res.data;
 };
+
+export const deleteAdminReservation = async (id: string) => {
+  const res = await api.delete(`/admin/reservations/${id}`);
+  return res.data;
+};
