@@ -12,6 +12,8 @@ import { Dashboard, GlobalMap } from "../pages/dashboard";
 import Inventory from "../pages/inventory";
 import { PricingEngine } from "../pages/pricing";
 import Reservations from "../pages/reservations/Reservations";
+import Waitlist from "../pages/waitlist";
+import Avisos from "../pages/avisos";
 import { UserRole } from "../types/auth";
 
 export const router = createBrowserRouter([
@@ -301,6 +303,23 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
             <PricingEngine />
+          </ProtectedRoute>
+        ),
+      },
+
+      {
+        path: "waitlist",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <Waitlist />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "avisos",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <Avisos />
           </ProtectedRoute>
         ),
       },

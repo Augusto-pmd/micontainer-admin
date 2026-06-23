@@ -62,6 +62,12 @@ const links: LinkItem[] = [
     roles: [UserRole.ADMIN, UserRole.OPERATOR],
   },
   {
+    name: "Lista de espera",
+    href: "/waitlist",
+    icon: "waitlist",
+    roles: [UserRole.ADMIN, UserRole.OPERATOR],
+  },
+  {
     name: "Clientes",
     href: "/customers",
     icon: "customers",
@@ -78,6 +84,12 @@ const links: LinkItem[] = [
     href: "/pricing-engine",
     icon: "pricing",
     roles: [UserRole.ADMIN],
+  },
+  {
+    name: "Mailing / WSP avisos",
+    href: "/avisos",
+    icon: "avisos",
+    roles: [UserRole.ADMIN, UserRole.OPERATOR],
   },
 ];
 
@@ -130,6 +142,10 @@ function MenuItem({
         return <FaUserTie className="text-xl text-green-600" />;
       case "pricing":
         return <IoMdSettings className="text-xl text-green-600" />;
+      case "waitlist":
+        return <span className="text-lg">⏳</span>;
+      case "avisos":
+        return <span className="text-lg">📣</span>;
       case "floor":
         return <FaChartLine className="text-xl text-green-600" />;
       case "sizeperm":
