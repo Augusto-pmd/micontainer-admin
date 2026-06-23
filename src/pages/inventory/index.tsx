@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getAllStorageRoomsServices, getStorageRoomByIdServices } from '../../services/storageRoom.services';
+import { getAllStorageRoomsServices, getStorageRoomByIdServices, updateStorageRoomServices } from '../../services/storageRoom.services';
 import { getAllBranchesServices } from '../../services/branch.services';
 import { getOrdersByCustomerIdServices } from '../../services/order.services';
 import { updateCustomerServices } from '../../services/customer.services';
@@ -62,6 +62,10 @@ export default function Inventory() {
       }
     })();
   }, []);
+
+  const reload = async () => {
+    try { const r = await getAllStorageRoomsServices({ limit: 1000 }); setRooms(r.data); } catch (e) { /* */ }
+  };
 
   const openDetail = async (room: StorageRoom) => {
     setDetail({ room, tenant: null, order: null });
@@ -204,7 +208,7 @@ export default function Inventory() {
       )}
 
       {detail && (
-        <RoomDetailModal detail={detail} loading={detailLoading} onClose={() => setDetail(null)} />
+        <RoomDetailModal detail={detail} loading={detailLoading} onClose={() => setDetail(null)} onChanged={() => { setDetail(null); reload(); }} />
       )}
     </div>
   );
@@ -244,7 +248,7 @@ function Row({ label, value }: { label: string; value: any }) {
   );
 }
 
-function RoomDetailModal({ detail, loading, onClose }: { detail: any; loading: boolean; onClose: () => void }) {
+function RoomDetailModal({ detail, loading, onClose, onChanged }: { detail: any; loading: boolean; onClose: () => void; onChanged?: () => void }) {
   const room = detail.room || {};
   const tenant = detail.tenant || room.tenant || null;
   const order = detail.order || null;
@@ -257,6 +261,15 @@ function RoomDetailModal({ detail, loading, onClose }: { detail: any; loading: b
   const [debtNote, setDebtNote] = useState<string>((tenant && tenant.debtNote) || '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [blockOpen, setBlockOpen] = useState(false);
+  const [blockMode, setBlockMode] = useState('indef');
+  const [blockDate, setBlockDate] = useState('');
+  const [savingBlock, setSavingBlock] = useState(false);
+  const cambiarBloqueo = async (st: string, until: string | null) => {
+    setSavingBlock(true);
+    try { await updateStorageRoomServices(room.id as any, { status: st, blockedUntil: until, blockReason: st === 'blocked' ? 'Bloqueo manual' : null } as any); if (onChanged) onChanged(); }
+    catch (e) { /* */ } finally { setSavingBlock(false); }
+  };
   const saveDebt = async () => {
     if (!tenant || !tenant.id) return;
     setSaving(true); setSaved(false);
@@ -321,6 +334,29 @@ function RoomDetailModal({ detail, loading, onClose }: { detail: any; loading: b
                 </>
               ) : (
                 <p className="text-sm text-gray-500 mt-5">Esta baulera está {cfg.label.toLowerCase()} — sin inquilino asignado.</p>
+              )}
+              {room.status !== "occupied" && (
+                <div className="mt-5 p-3 bg-gray-50 rounded-lg">
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Bloqueo</h3>
+                  {room.status === "blocked" ? (
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-gray-700">Bloqueada{room.blockedUntil ? " hasta " + fmtDate(room.blockedUntil) : " (indefinida)"}</span>
+                      <button onClick={() => cambiarBloqueo("available", null)} disabled={savingBlock} className="px-3 py-1.5 bg-green-600 text-white rounded text-sm font-semibold disabled:opacity-50">{savingBlock ? "..." : "Desbloquear"}</button>
+                    </div>
+                  ) : !blockOpen ? (
+                    <button onClick={() => setBlockOpen(true)} className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm font-semibold">Bloquear baulera</button>
+                  ) : (
+                    <div>
+                      <label className="flex items-center gap-2 text-sm mb-1"><input type="radio" name="bk" checked={blockMode === "indef"} onChange={() => setBlockMode("indef")} /> Indefinida</label>
+                      <label className="flex items-center gap-2 text-sm mb-2"><input type="radio" name="bk" checked={blockMode === "fecha"} onChange={() => setBlockMode("fecha")} /> Hasta una fecha</label>
+                      {blockMode === "fecha" && <input type="date" value={blockDate} onChange={(e) => setBlockDate(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-sm mb-2 block" />}
+                      <div className="flex gap-2">
+                        <button onClick={() => cambiarBloqueo("blocked", blockMode === "fecha" ? blockDate : null)} disabled={savingBlock || (blockMode === "fecha" && !blockDate)} className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm font-semibold disabled:opacity-50">{savingBlock ? "Guardando..." : "Confirmar bloqueo"}</button>
+                        <button onClick={() => setBlockOpen(false)} className="px-3 py-1.5 text-gray-600 text-sm">Cancelar</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
             </>
           )}
