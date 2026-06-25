@@ -109,6 +109,9 @@ export default function Dashboard() {
           {user?.firstName ? greeting(user.firstName) : "Panel de administración"}
         </h1>
         <p className="text-sm text-gray-400 mt-0.5 capitalize">{formatDate()}</p>
+        <Link to="/vender" className="inline-flex items-center gap-2 mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+          <span className="text-lg">🧾</span> Vender / Generar link de pago
+        </Link>
       </div>
 
       {/* KPIs */}

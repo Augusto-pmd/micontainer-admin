@@ -16,6 +16,7 @@ import Waitlist from "../pages/waitlist";
 import Avisos from "../pages/avisos";
 import Tarifas from "../pages/tarifas";
 import PromoWeb from "../pages/promo";
+import Vender from "../pages/vender";
 import { UserRole } from "../types/auth";
 
 export const router = createBrowserRouter([
@@ -338,6 +339,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
             <PromoWeb />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "vender",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <Vender />
           </ProtectedRoute>
         ),
       },

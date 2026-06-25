@@ -1,9 +1,9 @@
 import { Button } from '@/components';
 import { useAuth } from '@/stores/authStore';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import MiContainerLogo from '@/assets/img/MiContainerLogo.png';
-import { signInWithGoogle } from '@/lib/firebase';
+import { signInWithGoogle, completeGoogleRedirect } from '@/lib/firebase';
 import { UserRole } from '@/types/auth';
 import { api } from '@/services/api';
 
@@ -11,49 +11,64 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const { login, isAuthenticated, error, clearError, setUser, setToken } = useAuth();
   const [googleError, setGoogleError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Si ya está autenticado, redirigir al dashboard
+  // Si ya esta autenticado, redirigir al dashboard
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
+
+  // Aplica el usuario de Firebase al store (token + rol real + datos)
+  const applyUser = async (fbUser: any) => {
+    const idToken = await fbUser.getIdToken();
+    setToken(idToken);
+    api.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
+
+    // Buscar el operador registrado para obtener su rol real
+    let role: UserRole = UserRole.ADMIN; // fallback
+    try {
+      const opRes = await api.get('/operator?limit=200');
+      const ops = opRes.data?.data ?? [];
+      const match = ops.find((o: any) => o.email?.toLowerCase() === (fbUser.email ?? '').toLowerCase());
+      if (match?.role) {
+        role = match.role === 'role-operator' ? UserRole.OPERATOR : UserRole.ADMIN;
+      }
+    } catch { /* si falla la busqueda, se queda con ADMIN */ }
+
+    setUser({
+      id: fbUser.uid,
+      name: fbUser.displayName ?? fbUser.email ?? '',
+      firstName: fbUser.displayName?.split(' ')[0] ?? '',
+      lastName: fbUser.displayName?.split(' ').slice(1).join(' ') ?? '',
+      email: fbUser.email ?? '',
+      role: role as any,
+      isActive: true,
+      avatar: fbUser.displayName?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) ?? 'MC',
+    } as any);
+  };
+
+  // Al volver del login por redirect (mobile), procesar el resultado
+  useEffect(() => {
+    setGoogleLoading(true);
+    completeGoogleRedirect()
+      .then((u) => { if (u) return applyUser(u); })
+      .catch((err: any) => setGoogleError(err.message ?? 'Error al iniciar sesion con Google'))
+      .finally(() => setGoogleLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
     setGoogleError('');
     try {
       const fbUser = await signInWithGoogle();
-      const idToken = await fbUser.getIdToken();
-      setToken(idToken);
-      api.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
-
-      // Buscar el operador registrado para obtener su rol real
-      let role: UserRole = UserRole.ADMIN; // fallback
-      try {
-        const opRes = await api.get('/operator?limit=200');
-        const ops = opRes.data?.data ?? [];
-        const match = ops.find((o: any) => o.email?.toLowerCase() === (fbUser.email ?? '').toLowerCase());
-        if (match?.role) {
-          // Mapear role-admin / role-operator al enum
-          role = match.role === 'role-operator' ? UserRole.OPERATOR : UserRole.ADMIN;
-        }
-      } catch { /* si falla la búsqueda, se queda con ADMIN */ }
-
-      setUser({
-        id: fbUser.uid,
-        name: fbUser.displayName ?? fbUser.email ?? '',
-        firstName: fbUser.displayName?.split(' ')[0] ?? '',
-        lastName: fbUser.displayName?.split(' ').slice(1).join(' ') ?? '',
-        email: fbUser.email ?? '',
-        role: role as any,
-        isActive: true,
-        avatar: fbUser.displayName?.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0,2) ?? 'MC',
-      } as any);
+      // En mobile redirige y vuelve por el useEffect (fbUser === null)
+      if (fbUser) await applyUser(fbUser);
     } catch (err: any) {
-      setGoogleError(err.message ?? 'Error al iniciar sesión con Google');
+      setGoogleError(err.message ?? 'Error al iniciar sesion con Google');
     } finally {
       setGoogleLoading(false);
     }
@@ -63,38 +78,35 @@ const Login = () => {
     e.preventDefault();
     setIsSubmitting(true);
     clearError();
-    
+
     try {
       await login(email, password);
     } catch (error) {
-      // El error ya se maneja en el store
       console.error('Error de login:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="mx-auto h-24 w-auto flex items-center justify-center">
-            <img 
-              src={MiContainerLogo} 
-              alt="MiContainer Logo" 
+            <img
+              src={MiContainerLogo}
+              alt="MiContainer Logo"
               className="h-40 w-auto"
             />
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Iniciar Sesión
+            Iniciar Sesion
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Mi Container - Sistema de Gestión
+            Mi Container - Sistema de Gestion
           </p>
         </div>
-        
+
         {/* Google login */}
         <div className="mt-6">
           {googleError && (
@@ -113,7 +125,7 @@ const Login = () => {
           </button>
           <div className="mt-4 flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-xs text-gray-400">o con usuario y contraseña</span>
+            <span className="text-xs text-gray-400">o con usuario y contrasena</span>
             <div className="flex-1 h-px bg-gray-200" />
           </div>
         </div>
@@ -133,7 +145,7 @@ const Login = () => {
               </div>
             </div>
           )}
-          
+
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="email" className="sr-only">
@@ -153,7 +165,7 @@ const Login = () => {
             </div>
             <div>
               <label htmlFor="password" className="sr-only">
-                Contraseña
+                Contrasena
               </label>
               <input
                 id="password"
@@ -162,7 +174,7 @@ const Login = () => {
                 autoComplete="current-password"
                 required
                 className="relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-green-500 focus:border-green-500 focus:z-10 sm:text-sm"
-                placeholder="Contraseña"
+                placeholder="Contrasena"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -171,28 +183,26 @@ const Login = () => {
 
           <div className="flex items-center justify-end">
             <div className="text-sm">
-              <Link 
-                to="/forgot-password" 
+              <Link
+                to="/forgot-password"
                 className="font-medium text-green-600 hover:text-green-500"
               >
-                ¿Olvidaste tu contraseña?
+                Olvidaste tu contrasena?
               </Link>
             </div>
           </div>
 
           <div>
-                        <Button
+            <Button
               type="submit"
               disabled={isSubmitting}
               loading={isSubmitting}
               variant="primary"
               fullWidth
             >
-              Iniciar Sesión
+              Iniciar Sesion
             </Button>
           </div>
-          
-
         </form>
       </div>
     </div>

@@ -1,5 +1,13 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+  type User,
+} from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDvlEk1cRr61Mls989BGuvNlogRHX30qAU",
@@ -17,14 +25,43 @@ export const googleProvider = new GoogleAuthProvider();
 /** Solo permite acceso a cuentas @micontainer.com */
 export const ALLOWED_DOMAIN = 'micontainer.com';
 
-export async function signInWithGoogle() {
-  const result = await signInWithPopup(auth, googleProvider);
-  const email = result.user.email ?? '';
+/** Detecta celulares/tablets: el popup de Google no funciona ahi, hay que usar redirect. */
+export function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
+    navigator.userAgent
+  );
+}
+
+function assertAllowedDomain(user: User): User {
+  const email = user.email ?? '';
   if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
-    await signOut(auth);
+    void signOut(auth);
     throw new Error(`Acceso restringido a cuentas @${ALLOWED_DOMAIN}`);
   }
-  return result.user;
+  return user;
+}
+
+/**
+ * Inicia sesion con Google.
+ * - Desktop: popup (mas rapido).
+ * - Mobile: redirect (el popup esta bloqueado/roto en celulares). Devuelve null porque
+ *   la pagina redirige; el resultado se procesa al volver con completeGoogleRedirect().
+ */
+export async function signInWithGoogle(): Promise<User | null> {
+  if (isMobileDevice()) {
+    await signInWithRedirect(auth, googleProvider);
+    return null;
+  }
+  const result = await signInWithPopup(auth, googleProvider);
+  return assertAllowedDomain(result.user);
+}
+
+/** Procesa el resultado del login por redirect (mobile). Devuelve el usuario o null. */
+export async function completeGoogleRedirect(): Promise<User | null> {
+  const result = await getRedirectResult(auth);
+  if (!result?.user) return null;
+  return assertAllowedDomain(result.user);
 }
 
 export { signOut };
