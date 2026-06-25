@@ -56,15 +56,15 @@ const links: LinkItem[] = [
     roles: [UserRole.ADMIN, UserRole.OPERATOR],
   },
   {
-    name: "Órdenes",
-    href: "/orders",
-    icon: "orders",
+    name: "Reservas a futuro / diferidas",
+    href: "/waitlist",
+    icon: "waitlist",
     roles: [UserRole.ADMIN, UserRole.OPERATOR],
   },
   {
-    name: "Lista de espera",
-    href: "/waitlist",
-    icon: "waitlist",
+    name: "Órdenes",
+    href: "/orders",
+    icon: "orders",
     roles: [UserRole.ADMIN, UserRole.OPERATOR],
   },
   {
@@ -90,6 +90,18 @@ const links: LinkItem[] = [
     href: "/avisos",
     icon: "avisos",
     roles: [UserRole.ADMIN, UserRole.OPERATOR],
+  },
+  {
+    name: "Tarifas",
+    href: "/tarifas",
+    icon: "tarifas",
+    roles: [UserRole.ADMIN],
+  },
+  {
+    name: "Promoción web",
+    href: "/promocion",
+    icon: "promo",
+    roles: [UserRole.ADMIN],
   },
 ];
 
@@ -146,6 +158,10 @@ function MenuItem({
         return <span className="text-lg">⏳</span>;
       case "avisos":
         return <span className="text-lg">📣</span>;
+      case "tarifas":
+        return <span className="text-lg">💲</span>;
+      case "promo":
+        return <span className="text-lg">🎉</span>;
       case "floor":
         return <FaChartLine className="text-xl text-green-600" />;
       case "sizeperm":

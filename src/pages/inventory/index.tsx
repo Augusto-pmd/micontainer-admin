@@ -90,7 +90,7 @@ export default function Inventory() {
 
   const filtered = useMemo(
     () => selectedBranchId !== null
-      ? rooms.filter(r => r.building?.branch?.id === selectedBranchId)
+      ? rooms.filter(r => (((r as unknown) as { branchId?: string }).branchId ?? r.building?.branch?.id) === selectedBranchId)
       : rooms,
     [rooms, selectedBranchId],
   );

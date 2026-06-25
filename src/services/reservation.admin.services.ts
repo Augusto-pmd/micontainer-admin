@@ -20,6 +20,7 @@ export interface AdminReservation {
   addons: string[];
   createdAt: string | null;
   cancelledAt: string | null;
+  storageRoomId?: string | null;
 }
 
 export interface AdminReservationsResponse {
@@ -51,5 +52,26 @@ export const updateAdminReservation = async (id: string, patch: Partial<{
 
 export const deleteAdminReservation = async (id: string) => {
   const res = await api.delete(`/admin/reservations/${id}`);
+  return res.data;
+};
+
+export interface FreeRoom {
+  id: string;
+  space?: string;
+  name?: string;
+  areaM2?: string;
+}
+
+// Bauleras libres de una medida (para reasignar)
+export const getFreeRoomsByM2 = async (m2: number): Promise<FreeRoom[]> => {
+  const res = await api.get(`/storage-room?status=available&page=1&limit=2000`);
+  const d = res.data;
+  const list: FreeRoom[] = d?.data ?? d?.items ?? (Array.isArray(d) ? d : []);
+  return list.filter((r) => Number(r.areaM2) === Number(m2));
+};
+
+// Reasignar (o asignar) baulera a una reserva. storageRoomId opcional = elegir puntual; sin el = automatica.
+export const reassignReservationRoom = async (id: string, storageRoomId?: string) => {
+  const res = await api.post(`/admin/reservations/${id}/assign-room`, storageRoomId ? { storageRoomId } : {});
   return res.data;
 };

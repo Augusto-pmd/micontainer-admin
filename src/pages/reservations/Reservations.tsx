@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAdminReservations, deleteAdminReservation, type AdminReservation } from "@/services/reservation.admin.services";
+import { getAdminReservations, deleteAdminReservation, getFreeRoomsByM2, reassignReservationRoom, type AdminReservation, type FreeRoom } from "@/services/reservation.admin.services";
 import { showError } from "@/utils/alerts";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,11 @@ export default function Reservations() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [reassignFor, setReassignFor] = useState<AdminReservation | null>(null);
+  const [freeRooms, setFreeRooms] = useState<FreeRoom[]>([]);
+  const [selectedRoom, setSelectedRoom] = useState("");
+  const [reassigning, setReassigning] = useState(false);
+  const [loadingFree, setLoadingFree] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -44,6 +49,26 @@ export default function Reservations() {
     if (!window.confirm('¿Eliminar esta reserva? Esta acción no se puede deshacer.')) return;
     try { await deleteAdminReservation(id); setReservations((x) => x.filter((rv) => rv.id !== id)); }
     catch { showError('No se pudo eliminar la reserva.'); }
+  };
+
+  const openReassign = async (r: AdminReservation) => {
+    setReassignFor(r);
+    setSelectedRoom("");
+    setLoadingFree(true);
+    try { setFreeRooms(await getFreeRoomsByM2(r.m2)); }
+    catch { setFreeRooms([]); }
+    finally { setLoadingFree(false); }
+  };
+  const closeReassign = () => { setReassignFor(null); setFreeRooms([]); setSelectedRoom(""); };
+  const doReassign = async () => {
+    if (!reassignFor) return;
+    setReassigning(true);
+    try {
+      const res = await reassignReservationRoom(reassignFor.id, selectedRoom || undefined);
+      setReservations((x) => x.map((rv) => rv.id === reassignFor.id ? { ...rv, storageRoomId: res.storageRoomId } : rv));
+      closeReassign();
+    } catch { showError("No se pudo reasignar. ¿Hay una baulera libre de esa medida?"); }
+    finally { setReassigning(false); }
   };
 
   useEffect(() => {
@@ -142,6 +167,7 @@ export default function Reservations() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">ID</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Cliente</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Espacio</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Baulera</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 whitespace-nowrap">Precio/mes</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Duración</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Inicio</th>
@@ -168,6 +194,11 @@ export default function Reservations() {
                       <div className="font-medium text-gray-900">{r.category}</div>
                       <div className="text-xs text-gray-500">{r.m2} m² · {r.sucursalId}</div>
                     </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {r.storageRoomId
+                        ? <span className="font-mono text-xs text-gray-700">{r.storageRoomId}</span>
+                        : <span className="text-xs text-gray-400 italic">Sin asignar</span>}
+                    </td>
                     <td className="px-4 py-3 font-semibold text-gray-900 whitespace-nowrap">
                       {fmt(r.monthly)}
                       <div className="text-xs text-gray-400 font-normal">1er: {fmt(r.firstMonth)}</div>
@@ -186,6 +217,7 @@ export default function Reservations() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{fmtDate(r.createdAt)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <button onClick={() => openReassign(r)} className="text-green-700 hover:text-green-900 text-xs font-semibold mr-3">Reasignar</button>
                       <button onClick={() => remove(r.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Eliminar</button>
                     </td>
                   </tr>
@@ -196,6 +228,39 @@ export default function Reservations() {
           <div className="px-4 py-3 border-t text-xs text-gray-500 bg-gray-50">
             {filtered.length} reserva{filtered.length !== 1 ? "s" : ""}
             {statusFilter !== "all" || search ? ` (filtradas de ${reservations.length})` : ""}
+          </div>
+        </div>
+      )}
+
+      {reassignFor && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeReassign}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-gray-900 mb-1">Reasignar baulera</h3>
+            <p className="text-xs text-gray-500 mb-4">
+              Reserva {reassignFor.id} · {reassignFor.m2} m²
+              {reassignFor.storageRoomId ? ` · actual: ${reassignFor.storageRoomId}` : " · sin asignar"}
+            </p>
+            <label className="block text-sm text-gray-600 mb-1">Baulera</label>
+            <select
+              value={selectedRoom}
+              onChange={(e) => setSelectedRoom(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-3"
+            >
+              <option value="">Automática (primera libre de {reassignFor.m2} m²)</option>
+              {freeRooms.map((fr) => (
+                <option key={fr.id} value={fr.id}>{fr.space || fr.name || fr.id}</option>
+              ))}
+            </select>
+            {loadingFree && <p className="text-xs text-gray-400 mb-2">Cargando libres…</p>}
+            {!loadingFree && freeRooms.length === 0 && (
+              <p className="text-xs text-amber-600 mb-2">No hay bauleras libres de {reassignFor.m2} m².</p>
+            )}
+            <div className="flex justify-end gap-2 mt-2">
+              <button onClick={closeReassign} className="px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancelar</button>
+              <button onClick={doReassign} disabled={reassigning} className="px-4 py-2 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-60">
+                {reassigning ? "Asignando…" : "Reasignar"}
+              </button>
+            </div>
           </div>
         </div>
       )}

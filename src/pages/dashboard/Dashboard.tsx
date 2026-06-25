@@ -15,6 +15,7 @@ interface Stats {
   total: number;
   available: number;
   occupied: number;
+  blocked: number;
   billing: number | null;
   loading: boolean;
 }
@@ -72,14 +73,15 @@ const QUICK_LINKS = [
 export default function Dashboard() {
   const { user } = useAuth();
   useTour(true);
-  const [stats, setStats] = useState<Stats>({ total: 0, available: 0, occupied: 0, billing: null, loading: true });
+  const [stats, setStats] = useState<Stats>({ total: 0, available: 0, occupied: 0, blocked: 0, billing: null, loading: true });
 
   useEffect(() => {
     (async () => {
       try {
-        const [allRes, occRes, ordersRes] = await Promise.all([
+        const [allRes, occRes, blkRes, ordersRes] = await Promise.all([
           getAllStorageRoomsServices({ limit: 1 }),
           getAllStorageRoomsServices({ limit: 1, status: "occupied" }),
+          getAllStorageRoomsServices({ limit: 1, status: "blocked" }),
           getAllOrdersServices({ limit: 1000 }).catch(() => null),
         ]);
         // Sumar precios de órdenes activas para facturación real
@@ -87,7 +89,8 @@ export default function Dashboard() {
         if (ordersRes && ordersRes.data?.length > 0) {
           billing = ordersRes.data.reduce((sum: number, o: any) => sum + (parseFloat(o.price) || 0), 0);
         }
-        setStats({ total: allRes.total, occupied: occRes.total, available: allRes.total - occRes.total, billing, loading: false });
+        const blocked = blkRes.total;
+        setStats({ total: allRes.total, occupied: occRes.total, blocked, available: allRes.total - occRes.total - blocked, billing, loading: false });
       } catch {
         setStats(s => ({ ...s, loading: false }));
       }
@@ -109,10 +112,11 @@ export default function Dashboard() {
       </div>
 
       {/* KPIs */}
-      <div id="tour-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-10">
+      <div id="tour-kpis" className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-10">
         <KpiCard label="Bauleras" value={stats.loading ? "…" : stats.total}   sub="Nordelta · Sector A"                  color="brand" />
         <KpiCard label="Disponibles" value={stats.loading ? "…" : stats.available} sub={`${availablePct}% libre`}        color="green" />
         <KpiCard label="Ocupadas"    value={stats.loading ? "…" : stats.occupied}  sub={`${occupancyPct}% ocupación`}    color={stats.occupied > 0 ? "red" : "gray"} />
+        <KpiCard label="Bloqueadas"  value={stats.loading ? "…" : stats.blocked}   sub={stats.blocked > 0 ? "fuera de servicio" : "ninguna"} color="gray" />
         <KpiCard label="Facturación" value={stats.loading ? "…" : stats.billing !== null ? `$${stats.billing.toLocaleString("es-AR")}` : "—"} sub={stats.billing !== null ? "Órdenes activas" : "Sin datos aún"} color="gray" />
       </div>
 
