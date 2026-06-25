@@ -16,11 +16,6 @@ const Login = () => {
   const [googleError, setGoogleError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Si ya esta autenticado, redirigir al dashboard
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-
   // Aplica el usuario de Firebase al store (token + rol real + datos)
   const applyUser = async (fbUser: any) => {
     const idToken = await fbUser.getIdToken();
@@ -50,7 +45,8 @@ const Login = () => {
     } as any);
   };
 
-  // Al volver del login por redirect (mobile), procesar el resultado
+  // Al volver del login por redirect (mobile), procesar el resultado.
+  // IMPORTANTE: este hook va ANTES de cualquier return temprano (reglas de hooks).
   useEffect(() => {
     setGoogleLoading(true);
     completeGoogleRedirect()
@@ -59,6 +55,11 @@ const Login = () => {
       .finally(() => setGoogleLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Si ya esta autenticado, redirigir al dashboard (despues de declarar todos los hooks)
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
