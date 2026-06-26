@@ -106,6 +106,7 @@ const links: LinkItem[] = [
     roles: [UserRole.ADMIN],
   },
   { name: "Auditoría", href: "/auditoria", icon: "auditoria", roles: [UserRole.ADMIN] },
+  { name: "Mantenimiento", href: "/mantenimiento", icon: "mantenimiento", roles: [UserRole.ADMIN] },
 ];
 
 // Componente para renderizar items del menú con soporte para submenús
@@ -169,6 +170,8 @@ function MenuItem({
         return <span className="text-lg">🎉</span>;
       case "auditoria":
         return <span className="text-lg">📋</span>;
+      case "mantenimiento":
+        return <span className="text-lg">🛠️</span>;
       case "floor":
         return <FaChartLine className="text-xl text-green-600" />;
       case "sizeperm":
