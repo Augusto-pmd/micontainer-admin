@@ -9,6 +9,7 @@ import { BsBuilding, BsGrid } from "react-icons/bs";
 import { FaChartLine, FaLayerGroup } from "react-icons/fa";
 import { IoMdSettings } from "react-icons/io";
 import MiContainerLogo from "../assets/img/MiContainerLogo.png";
+import CancellationAlerts from "./CancellationAlerts";
 
 interface LinkItem {
   name: string;
@@ -288,6 +289,7 @@ export default function DashboardLayout() {
 
   return (
     <>
+      <CancellationAlerts />
       <nav className="bg-white border-b border-gray-200 fixed z-30 w-full">
         <div className="px-3 py-3 lg:px-5 lg:pl-3">
           <div className="flex items-center justify-between">

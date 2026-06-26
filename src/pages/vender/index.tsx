@@ -123,11 +123,10 @@ export default function Vender() {
         </section>
 
         <section className="bg-white rounded-xl border border-gray-200 p-4">
-          <h2 className="font-semibold text-gray-800 mb-3">Contrato y precio</h2>
+          <h2 className="font-semibold text-gray-800 mb-3">Suscripción y precio</h2>
+          <p className="text-xs text-gray-400 mb-3">Es una suscripción mensual: corre hasta que el cliente la dé de baja.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className={label}>Desde</label><input className={input} type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} /></div>
-            <div><label className={label}>Hasta</label><input className={input} type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)} /></div>
-            <div><label className={label}>Duracion (meses)</label><input className={input} type="number" value={form.durationMonths} onChange={(e) => set("durationMonths", e.target.value)} placeholder="o usa las fechas" /></div>
             <div><label className={label}>Meses de promo gratis</label><input className={input} type="number" value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
             <div><label className={label}>Descuento (%)</label><input className={input} type="number" value={form.discountPct} onChange={(e) => set("discountPct", e.target.value)} /></div>
             <div><label className={label}>Precio manual (opcional)</label><input className={input} type="number" value={form.priceOverride} onChange={(e) => set("priceOverride", e.target.value)} placeholder="usa tarifa si vacio" /></div>
@@ -145,7 +144,7 @@ export default function Vender() {
 
         {result && (
           <section className="bg-green-50 border border-green-200 rounded-xl p-4">
-            <p className="text-sm text-gray-700 mb-1">Link generado &middot; ${result.monthly.toLocaleString("es-AR")}/mes &middot; {result.duration} meses</p>
+            <p className="text-sm text-gray-700 mb-1">Link generado &middot; ${result.monthly.toLocaleString("es-AR")}/mes &middot; suscripción mensual</p>
             <div className="bg-white border border-gray-200 rounded-lg p-2 text-xs break-all text-gray-600 mb-3">{result.initPoint}</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button onClick={copiar} className="bg-gray-800 text-white py-2.5 rounded-lg text-sm font-medium">{copied ? "Copiado!" : "Copiar link"}</button>
