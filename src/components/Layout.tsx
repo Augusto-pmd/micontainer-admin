@@ -22,6 +22,7 @@ interface LinkItem {
 const links: LinkItem[] = [
   { name: "Dashboard", href: "/dashboard", icon: "dashboard" },
   { name: "Vender", href: "/vender", icon: "vender", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
+  { name: "Ventas en curso", href: "/ventas", icon: "ventas", roles: [UserRole.ADMIN, UserRole.OPERATOR] },
   { name: "Mi Perfil", href: "/profile", icon: "profile" },
   {
     name: "Sucursales",
@@ -140,6 +141,8 @@ function MenuItem({
         return <MdDashboard className="text-xl text-green-600" />;
       case "vender":
         return <span className="text-lg">🧾</span>;
+      case "ventas":
+        return <span className="text-lg">⏱️</span>;
       case "profile":
         return <HiUserCircle className="text-xl text-green-600" />;
       case "branch":

@@ -17,6 +17,7 @@ import Avisos from "../pages/avisos";
 import Tarifas from "../pages/tarifas";
 import PromoWeb from "../pages/promo";
 import Vender from "../pages/vender";
+import Ventas from "../pages/ventas";
 import Auditoria from "../pages/auditoria";
 import Mantenimiento from "../pages/mantenimiento";
 import { UserRole } from "../types/auth";
@@ -349,6 +350,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
             <Vender />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "ventas",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
+            <Ventas />
           </ProtectedRoute>
         ),
       },

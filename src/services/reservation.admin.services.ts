@@ -21,6 +21,9 @@ export interface AdminReservation {
   createdAt: string | null;
   cancelledAt: string | null;
   storageRoomId?: string | null;
+  bauleraCodigo?: string | null;
+  heldUntil?: string | null;
+  source?: string;
 }
 
 export interface AdminReservationsResponse {
