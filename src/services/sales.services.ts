@@ -16,6 +16,7 @@ export interface ManualSalePayload {
   promoMonths?: number;
   discountPct?: number;
   priceOverride?: number;
+  paymentMode?: 'subscription' | 'onetime';
 }
 
 export interface ManualSaleResult {
@@ -24,6 +25,8 @@ export interface ManualSaleResult {
   preapprovalId: string;
   monthly: number;
   duration: number;
+  paymentMode?: string;
+  total?: number;
 }
 
 // Venta manual desde el admin: crea la reserva + suscripcion MP y devuelve el link de pago.

@@ -8,12 +8,13 @@ export default function Vender() {
     m2: "", storageRoomId: "", bauleraCodigo: "",
     startDate: "", endDate: "", durationMonths: "",
     promoMonths: "0", discountPct: "0", priceOverride: "",
+    paymentMode: "subscription",
   });
   const [freeRooms, setFreeRooms] = useState<FreeRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{ initPoint: string; monthly: number; duration: number } | null>(null);
+  const [result, setResult] = useState<{ initPoint: string; monthly: number; duration: number; paymentMode?: string; total?: number } | null>(null);
   const [copied, setCopied] = useState(false);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -37,6 +38,7 @@ export default function Vender() {
     setResult(null);
     if (!form.email) { setError("Carga el email del cliente"); return; }
     if (!form.m2) { setError("Carga la medida (m2)"); return; }
+    if (form.paymentMode === "onetime" && !form.durationMonths) { setError("Carga la cantidad de meses para el pago único"); return; }
     setSubmitting(true);
     try {
       const r = await createManualSale({
@@ -50,8 +52,9 @@ export default function Vender() {
         promoMonths: Number(form.promoMonths) || 0,
         discountPct: Number(form.discountPct) || 0,
         priceOverride: form.priceOverride ? Number(form.priceOverride) : undefined,
+        paymentMode: form.paymentMode as "subscription" | "onetime",
       });
-      setResult({ initPoint: r.initPoint, monthly: r.monthly, duration: r.duration });
+      setResult({ initPoint: r.initPoint, monthly: r.monthly, duration: r.duration, paymentMode: r.paymentMode, total: r.total });
     } catch (e: any) {
       setError(e?.response?.data?.error || e?.message || "No se pudo generar el link");
     } finally {
@@ -123,13 +126,31 @@ export default function Vender() {
         </section>
 
         <section className="bg-white rounded-xl border border-gray-200 p-4">
-          <h2 className="font-semibold text-gray-800 mb-3">Suscripción y precio</h2>
-          <p className="text-xs text-gray-400 mb-3">Es una suscripción mensual: corre hasta que el cliente la dé de baja.</p>
+          <h2 className="font-semibold text-gray-800 mb-3">Forma de pago y precio</h2>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button type="button" onClick={() => set("paymentMode", "subscription")}
+              className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "subscription" ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-700 border-gray-300"}`}>
+              Suscripción mensual
+            </button>
+            <button type="button" onClick={() => set("paymentMode", "onetime")}
+              className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "onetime" ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-700 border-gray-300"}`}>
+              Pago único (transferencia)
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">
+            {form.paymentMode === "onetime"
+              ? "El cliente paga N meses juntos (por transferencia o tarjeta). Cobro una sola vez."
+              : "Cobro mensual automático por Mercado Pago. Corre hasta que el cliente la dé de baja."}
+          </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className={label}>Desde</label><input className={input} type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} /></div>
-            <div><label className={label}>Meses de promo gratis</label><input className={input} type="number" value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
+            {form.paymentMode === "onetime" ? (
+              <div><label className={label}>Cantidad de meses *</label><input className={input} type="number" value={form.durationMonths} onChange={(e) => set("durationMonths", e.target.value)} placeholder="ej. 6" /></div>
+            ) : (
+              <div><label className={label}>Meses de promo gratis</label><input className={input} type="number" value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
+            )}
             <div><label className={label}>Descuento (%)</label><input className={input} type="number" value={form.discountPct} onChange={(e) => set("discountPct", e.target.value)} /></div>
-            <div><label className={label}>Precio manual (opcional)</label><input className={input} type="number" value={form.priceOverride} onChange={(e) => set("priceOverride", e.target.value)} placeholder="usa tarifa si vacio" /></div>
+            <div><label className={label}>Precio manual mensual (opcional)</label><input className={input} type="number" value={form.priceOverride} onChange={(e) => set("priceOverride", e.target.value)} placeholder="usa tarifa si vacio" /></div>
           </div>
         </section>
 
@@ -144,7 +165,7 @@ export default function Vender() {
 
         {result && (
           <section className="bg-green-50 border border-green-200 rounded-xl p-4">
-            <p className="text-sm text-gray-700 mb-1">Link generado &middot; ${result.monthly.toLocaleString("es-AR")}/mes &middot; suscripción mensual</p>
+            <p className="text-sm text-gray-700 mb-1">{result.paymentMode === "onetime" ? `Link generado · Pago único $${(result.total || 0).toLocaleString("es-AR")} (${result.duration} ${result.duration === 1 ? "mes" : "meses"})` : `Link generado · $${result.monthly.toLocaleString("es-AR")}/mes · suscripción mensual`}</p>
             <div className="bg-white border border-gray-200 rounded-lg p-2 text-xs break-all text-gray-600 mb-3">{result.initPoint}</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button onClick={copiar} className="bg-gray-800 text-white py-2.5 rounded-lg text-sm font-medium">{copied ? "Copiado!" : "Copiar link"}</button>
