@@ -6,7 +6,7 @@ export default function Vender() {
   const [form, setForm] = useState({
     name: "", email: "", phone: "", dni: "",
     m2: "", storageRoomId: "", bauleraCodigo: "",
-    startDate: "", endDate: "", durationMonths: "",
+    startDate: "", endDate: "", durationMonths: "1",
     promoMonths: "0", discountPct: "0", priceOverride: "",
     paymentMode: "onetime",
   });
@@ -145,11 +145,7 @@ export default function Vender() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className={label}>Desde</label><input className={input} type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} /></div>
-            {form.paymentMode === "onetime" ? (
-              <div><label className={label}>Cantidad de meses *</label><input className={input} type="number" value={form.durationMonths} onChange={(e) => set("durationMonths", e.target.value)} placeholder="ej. 6" /></div>
-            ) : (
-              <div><label className={label}>Meses de promo gratis</label><input className={input} type="number" value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
-            )}
+            <div><label className={label}>Meses de promo gratis</label><input className={input} type="number" value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
             <div><label className={label}>Descuento (%)</label><input className={input} type="number" value={form.discountPct} onChange={(e) => set("discountPct", e.target.value)} /></div>
             <div><label className={label}>Precio manual mensual (opcional)</label><input className={input} type="number" value={form.priceOverride} onChange={(e) => set("priceOverride", e.target.value)} placeholder="usa tarifa si vacio" /></div>
           </div>
