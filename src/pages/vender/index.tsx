@@ -128,14 +128,14 @@ export default function Vender() {
         <section className="bg-white rounded-xl border border-gray-200 p-4">
           <h2 className="font-semibold text-gray-800 mb-3">Forma de pago y precio</h2>
           <div className="grid grid-cols-2 gap-2 mb-3">
-            <button type="button" disabled
-              title="Falta cargar el token de suscripción de Mercado Pago"
-              className="py-2.5 rounded-lg text-sm font-semibold border bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed">
-              Suscripción mensual (próximamente)
-            </button>
             <button type="button" onClick={() => set("paymentMode", "onetime")}
               className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "onetime" ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-700 border-gray-300"}`}>
-              Pago único / transferencia
+              Suscripción mensual
+            </button>
+            <button type="button" disabled
+              title="Falta cargar el token de Mercado Pago"
+              className="py-2.5 rounded-lg text-sm font-semibold border bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed">
+              Pago único / transferencia (próximamente)
             </button>
           </div>
           <p className="text-xs text-gray-400 mb-3">
