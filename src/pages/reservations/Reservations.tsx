@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAdminReservations, deleteAdminReservation, getFreeRoomsByM2, reassignReservationRoom, type AdminReservation, type FreeRoom } from "@/services/reservation.admin.services";
+import { getAdminReservations, deleteAdminReservation, getFreeRoomsByM2, reassignReservationRoom, updateAdminReservation, type AdminReservation, type FreeRoom } from "@/services/reservation.admin.services";
 import { showError } from "@/utils/alerts";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -69,6 +69,19 @@ export default function Reservations() {
       closeReassign();
     } catch { showError("No se pudo reasignar. ¿Hay una baulera libre de esa medida?"); }
     finally { setReassigning(false); }
+  };
+
+  // Alta manual: para cuando el cliente pagó pero no llegó el webhook. Asigna la baulera
+  // (ocupa + crea el contrato, idempotente) y marca la reserva como activa/pagada.
+  const activate = async (r: AdminReservation) => {
+    if (!window.confirm(`¿Dar de alta y marcar como PAGADA la reserva de ${r.customerName || r.customerEmail || "este cliente"}?\n\nSe le asigna una baulera de ${r.m2}m² y se crea el contrato. Hacelo solo si confirmaste el pago.`)) return;
+    try {
+      const res = await reassignReservationRoom(r.id, r.storageRoomId || undefined);
+      await updateAdminReservation(r.id, { status: "active", mpSubscriptionStatus: "authorized" });
+      setReservations((x) => x.map((rv) => rv.id === r.id
+        ? { ...rv, status: "active", mpSubscriptionStatus: "authorized", storageRoomId: res.storageRoomId }
+        : rv));
+    } catch { showError("No se pudo activar. ¿Hay una baulera libre de esa medida?"); }
   };
 
   useEffect(() => {
@@ -217,6 +230,7 @@ export default function Reservations() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{fmtDate(r.createdAt)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {r.status !== "active" && <button onClick={() => activate(r)} className="text-blue-700 hover:text-blue-900 text-xs font-semibold mr-3">Activar</button>}
                       <button onClick={() => openReassign(r)} className="text-green-700 hover:text-green-900 text-xs font-semibold mr-3">Reasignar</button>
                       <button onClick={() => remove(r.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Eliminar</button>
                     </td>

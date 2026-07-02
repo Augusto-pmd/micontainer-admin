@@ -46,6 +46,7 @@ export const getAdminReservations = async (params?: {
 
 export const updateAdminReservation = async (id: string, patch: Partial<{
   status: string;
+  mpSubscriptionStatus: string;
   storageRoomId: string;
   notes: string;
 }>) => {
