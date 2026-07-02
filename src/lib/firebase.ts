@@ -43,18 +43,24 @@ function assertAllowedDomain(user: User): User {
 }
 
 /**
- * Inicia sesion con Google.
- * - Desktop: popup (mas rapido).
- * - Mobile: redirect (el popup esta bloqueado/roto en celulares). Devuelve null porque
- *   la pagina redirige; el resultado se procesa al volver con completeGoogleRedirect().
+ * Inicia sesion con Google. Popup para TODOS los dispositivos (desktop y mobile:
+ * Android/Chrome, iPhone/Safari, etc.), porque el redirect esta roto en muchos
+ * navegadores moviles por el bloqueo de cookies de terceros. Si el popup esta
+ * bloqueado o no soportado, cae automaticamente a redirect (procesado por
+ * completeGoogleRedirect al volver).
  */
 export async function signInWithGoogle(): Promise<User | null> {
-  if (isMobileDevice()) {
-    await signInWithRedirect(auth, googleProvider);
-    return null;
+  try {
+    const result = await signInWithPopup(auth, googleProvider);
+    return assertAllowedDomain(result.user);
+  } catch (err: unknown) {
+    const code = (err as { code?: string })?.code || '';
+    if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported-in-this-environment') {
+      await signInWithRedirect(auth, googleProvider);
+      return null;
+    }
+    throw err;
   }
-  const result = await signInWithPopup(auth, googleProvider);
-  return assertAllowedDomain(result.user);
 }
 
 /** Procesa el resultado del login por redirect (mobile). Devuelve el usuario o null. */
