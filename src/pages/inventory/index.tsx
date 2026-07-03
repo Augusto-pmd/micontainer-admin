@@ -264,10 +264,11 @@ function RoomDetailModal({ detail, loading, onClose, onChanged }: { detail: any;
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockMode, setBlockMode] = useState('indef');
   const [blockDate, setBlockDate] = useState('');
+  const [blockNote, setBlockNote] = useState('');
   const [savingBlock, setSavingBlock] = useState(false);
   const cambiarBloqueo = async (st: string, until: string | null) => {
     setSavingBlock(true);
-    try { await updateStorageRoomServices(room.id as any, { status: st, blockedUntil: until, blockReason: st === 'blocked' ? 'Bloqueo manual' : null } as any); if (onChanged) onChanged(); }
+    try { await updateStorageRoomServices(room.id as any, { status: st, blockedUntil: until, blockReason: st === 'blocked' ? (blockNote.trim() || 'Bloqueo manual') : null } as any); if (onChanged) onChanged(); }
     catch (e) { /* */ } finally { setSavingBlock(false); }
   };
   const saveDebt = async () => {
@@ -340,7 +341,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged }: { detail: any;
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Bloqueo</h3>
                   {room.status === "blocked" ? (
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm text-gray-700">Bloqueada{room.blockedUntil ? " hasta " + fmtDate(room.blockedUntil) : " (indefinida)"}</span>
+                      <span className="text-sm text-gray-700">Bloqueada{room.blockedUntil ? " hasta " + fmtDate(room.blockedUntil) : " (indefinida)"}{(room as any).blockReason && (room as any).blockReason !== 'Bloqueo manual' ? " · " + (room as any).blockReason : ""}</span>
                       <button onClick={() => cambiarBloqueo("available", null)} disabled={savingBlock} className="px-3 py-1.5 bg-green-600 text-white rounded text-sm font-semibold disabled:opacity-50">{savingBlock ? "..." : "Desbloquear"}</button>
                     </div>
                   ) : !blockOpen ? (
@@ -350,6 +351,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged }: { detail: any;
                       <label className="flex items-center gap-2 text-sm mb-1"><input type="radio" name="bk" checked={blockMode === "indef"} onChange={() => setBlockMode("indef")} /> Indefinida</label>
                       <label className="flex items-center gap-2 text-sm mb-2"><input type="radio" name="bk" checked={blockMode === "fecha"} onChange={() => setBlockMode("fecha")} /> Hasta una fecha</label>
                       {blockMode === "fecha" && <input type="date" value={blockDate} onChange={(e) => setBlockDate(e.target.value)} className="border border-gray-300 rounded px-2 py-1 text-sm mb-2 block" />}
+                      <input value={blockNote} onChange={(e) => setBlockNote(e.target.value)} placeholder="Motivo del bloqueo (ej. mantenimiento, reservada)" className="border border-gray-300 rounded px-2 py-1.5 text-sm mb-2 block w-full" />
                       <div className="flex gap-2">
                         <button onClick={() => cambiarBloqueo("blocked", blockMode === "fecha" ? blockDate : null)} disabled={savingBlock || (blockMode === "fecha" && !blockDate)} className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm font-semibold disabled:opacity-50">{savingBlock ? "Guardando..." : "Confirmar bloqueo"}</button>
                         <button onClick={() => setBlockOpen(false)} className="px-3 py-1.5 text-gray-600 text-sm">Cancelar</button>
