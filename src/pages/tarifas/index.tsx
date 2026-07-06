@@ -16,6 +16,8 @@ const fmt = (n: number) => (Number(n) || 0).toLocaleString('es-AR');
 const normM2 = (m2: string | number) => String(Number(m2));
 // Etiqueta de medida: 22.1 es la variante planta baja (mas cara).
 const sizeLabel = (k: string) => (k === '22.1' ? '22 m\u00b2 PB' : `${k} m\u00b2`);
+// 5.1 y 8.1 se unificaron: siempre se muestran como 5 y 8.
+const canonKey = (k: string) => (k === '5.1' ? '5' : k === '8.1' ? '8' : k);
 
 export default function Tarifas() {
   const [branches, setBranches] = useState<BranchLite[]>([]);
@@ -81,8 +83,13 @@ export default function Tarifas() {
           if (best) merged[k] = Number(best[0]);
         }
       });
-      setByM2(merged);
-      setSavedByM2(merged);
+      // Unificar 5.1->5 y 8.1->8 en la vista (por si quedan datos viejos en la base).
+      const canon: PricingByM2 = {};
+      Object.entries(merged).forEach(([k, v]) => { if (k !== '5.1' && k !== '8.1') canon[k] = v; });
+      if (merged['5.1'] !== undefined && canon['5'] === undefined) canon['5'] = merged['5.1'];
+      if (merged['8.1'] !== undefined && canon['8'] === undefined) canon['8'] = merged['8.1'];
+      setByM2(canon);
+      setSavedByM2(canon);
       setRooms(roomsArr);
     } catch {
       setMsg('No se pudieron cargar los datos de esta sucursal.');
@@ -450,7 +457,7 @@ export default function Tarifas() {
                 </thead>
                 <tbody>
                   {filtered.slice(0, 1000).map((r) => {
-                    const groupPrice = byM2[normM2(r.areaM2 || 0)] || 0;
+                    const groupPrice = byM2[canonKey(normM2(r.areaM2 || 0))] || 0;
                     const occ = r.status === 'occupied';
                     return (
                       <tr key={r.id} className="border-b last:border-0">
