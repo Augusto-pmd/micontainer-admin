@@ -44,6 +44,7 @@ export default function Tarifas() {
   const [allMsg, setAllMsg] = useState('');
   const [repriceNoMatch, setRepriceNoMatch] = useState<any[]>([]);
   const [allNoMatch, setAllNoMatch] = useState<any[]>([]);
+  const [repriceDebug, setRepriceDebug] = useState<any>(null);
 
   // Cargar sucursales
   useEffect(() => {
@@ -135,6 +136,7 @@ export default function Tarifas() {
       const res: any = await repriceSubscriptions(branchId, Number(k), current, amount, true);
       setRepricePreview(res.afectados || []);
       setRepriceNoMatch(res.noMatch || []);
+      setRepriceDebug(res.debug || null);
     } catch { setRepriceMsg('No se pudo cargar la vista previa.'); setRepricePreview([]); }
     finally { setRepriceLoading(false); }
   };
@@ -345,6 +347,14 @@ export default function Tarifas() {
                       )}
                     </>
                   ) : null}
+                  {repriceDebug && (
+                    <div className="mt-3 text-[11px] text-gray-500 bg-gray-50 border rounded p-2 space-y-0.5">
+                      <div>Inventario: {repriceDebug.ocupadasTotal} ocupadas · {repriceDebug.unidadesMedida} de esta medida · {repriceDebug.conEmail} con email</div>
+                      <div>MP: {repriceDebug.subsMp} suscripcion(es) en la cuenta</div>
+                      {repriceDebug.emailsMedida?.length > 0 && <div className="break-all">Emails medida: {repriceDebug.emailsMedida.join(', ')}</div>}
+                      {repriceDebug.subsMpEmails?.length > 0 && <div className="break-all">Emails MP: {repriceDebug.subsMpEmails.join(', ')}</div>}
+                    </div>
+                  )}
                   {repriceMsg && <p className="text-sm mt-3 text-gray-800">{repriceMsg}</p>}
                 </div>
               </div>
