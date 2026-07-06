@@ -44,3 +44,10 @@ export const saveRoomOverride = async (
 ): Promise<void> => {
   await api.put(`/pricing-engine/room/${encodeURIComponent(id)}`, body);
 };
+
+export const repriceSubscriptions = async (
+  branchId: string, m2: number, newAmount: number, dryRun: boolean, notify = false
+): Promise<any> => {
+  const r = await api.post(`/pricing-engine/reprice/${encodeURIComponent(branchId)}`, { m2, newAmount, dryRun, notify });
+  return r.data;
+};

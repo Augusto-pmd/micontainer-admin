@@ -5,6 +5,7 @@ import {
   savePricingTable,
   getAllRooms,
   saveRoomOverride,
+  repriceSubscriptions,
   type PricingByM2,
   type RoomLite,
   type BranchLite,
@@ -25,6 +26,12 @@ export default function Tarifas() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'todas' | 'available' | 'occupied'>('todas');
   const [effectiveDate, setEffectiveDate] = useState('');
+  const [repriceM2, setRepriceM2] = useState<string | null>(null);
+  const [repriceAmount, setRepriceAmount] = useState(0);
+  const [repricePreview, setRepricePreview] = useState<any[] | null>(null);
+  const [repriceLoading, setRepriceLoading] = useState(false);
+  const [repriceNotify, setRepriceNotify] = useState(true);
+  const [repriceMsg, setRepriceMsg] = useState('');
 
   // Cargar sucursales
   useEffect(() => {
@@ -99,6 +106,28 @@ export default function Tarifas() {
     } finally {
       setSavingPrices(false);
     }
+  };
+
+  const openReprice = async (k: string) => {
+    const amount = Number(byM2[k]) || 0;
+    if (!(amount > 0)) { setMsg('Pone primero el precio nuevo de esa medida.'); return; }
+    setRepriceM2(k); setRepriceAmount(amount); setRepricePreview(null); setRepriceMsg(''); setRepriceLoading(true);
+    try {
+      const res: any = await repriceSubscriptions(branchId, Number(k), amount, true);
+      setRepricePreview(res.afectados || []);
+    } catch { setRepriceMsg('No se pudo cargar la vista previa.'); setRepricePreview([]); }
+    finally { setRepriceLoading(false); }
+  };
+  const closeReprice = () => { setRepriceM2(null); setRepricePreview(null); setRepriceMsg(''); };
+  const doReprice = async () => {
+    if (repriceM2 == null) return;
+    setRepriceLoading(true); setRepriceMsg('');
+    try {
+      const res: any = await repriceSubscriptions(branchId, Number(repriceM2), repriceAmount, false, repriceNotify);
+      setRepriceMsg('Listo: ' + res.actualizados + ' suscripcion(es) actualizada(s)' + (res.errores && res.errores.length ? (', ' + res.errores.length + ' con error') : '') + '.');
+      setRepricePreview(null);
+    } catch { setRepriceMsg('Error al aplicar el cambio.'); }
+    finally { setRepriceLoading(false); }
   };
 
   const filtered = useMemo(() => {
@@ -182,6 +211,7 @@ export default function Tarifas() {
                       className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
                     />
                   </div>
+                  <button type="button" onClick={() => openReprice(k)} title="Cambiar el valor a los clientes que ya alquilan esta medida" className="text-blue-700 hover:text-blue-900 text-xs font-semibold whitespace-nowrap">susc.</button>
                 </div>
               ))}
             </div>
@@ -203,6 +233,58 @@ export default function Tarifas() {
               </span>
             </div>
           </section>
+
+          {repriceM2 != null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeReprice}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b flex items-center justify-between">
+                  <h3 className="font-bold text-gray-900">Actualizar suscripciones - {repriceM2} m2</h3>
+                  <button onClick={closeReprice} className="text-gray-400 text-xl leading-none">x</button>
+                </div>
+                <div className="px-5 py-4">
+                  {repriceLoading && !repricePreview ? (
+                    <p className="text-sm text-gray-500">Cargando vista previa...</p>
+                  ) : repricePreview ? (
+                    <>
+                      <p className="text-sm text-gray-700 mb-2">
+                        Se cambia el valor a <b>${repriceAmount.toLocaleString('es-AR')}</b>/mes en <b>{repricePreview.length}</b> cliente(s) con suscripcion activa de {repriceM2} m2:
+                      </p>
+                      {repricePreview.length === 0 ? (
+                        <p className="text-sm text-gray-500">No hay suscripciones activas de esta medida.</p>
+                      ) : (
+                        <div className="border rounded-lg divide-y max-h-64 overflow-y-auto mb-3">
+                          {repricePreview.map((t: any) => (
+                            <div key={t.id} className="flex justify-between items-center px-3 py-2 text-sm">
+                              <span className="text-gray-800">{t.cliente || t.email || t.id}</span>
+                              <span className="text-gray-600">${Number(t.actual).toLocaleString('es-AR')} &rarr; <b className="text-gray-900">${Number(t.nuevo).toLocaleString('es-AR')}</b></span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {repricePreview.length > 0 && (
+                        <>
+                          <label className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                            <input type="checkbox" checked={repriceNotify} onChange={(e) => setRepriceNotify(e.target.checked)} />
+                            Avisar por mail a cada cliente del nuevo valor
+                          </label>
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800 mb-3">
+                            Esto le cobra el nuevo valor a estos clientes desde su proximo debito en Mercado Pago. Revisa la lista antes de confirmar.
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={doReprice} disabled={repriceLoading} className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60">
+                              {repriceLoading ? 'Aplicando...' : ('Confirmar y aplicar a ' + repricePreview.length)}
+                            </button>
+                            <button onClick={closeReprice} className="text-gray-600 text-sm px-3">Cancelar</button>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : null}
+                  {repriceMsg && <p className="text-sm mt-3 text-gray-800">{repriceMsg}</p>}
+                </div>
+              </div>
+            </div>
+          )}
 
           <section className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
