@@ -6,6 +6,7 @@ import {
   getAllRooms,
   saveRoomOverride,
   repriceSubscriptions,
+  repriceAll,
   type PricingByM2,
   type RoomLite,
   type BranchLite,
@@ -18,6 +19,7 @@ export default function Tarifas() {
   const [branches, setBranches] = useState<BranchLite[]>([]);
   const [branchId, setBranchId] = useState<string>('');
   const [byM2, setByM2] = useState<PricingByM2>({});
+  const [savedByM2, setSavedByM2] = useState<PricingByM2>({});
   const [rooms, setRooms] = useState<RoomLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingPrices, setSavingPrices] = useState(false);
@@ -32,6 +34,10 @@ export default function Tarifas() {
   const [repriceLoading, setRepriceLoading] = useState(false);
   const [repriceNotify, setRepriceNotify] = useState(true);
   const [repriceMsg, setRepriceMsg] = useState('');
+  const [allOpen, setAllOpen] = useState(false);
+  const [allPreview, setAllPreview] = useState<any[] | null>(null);
+  const [allLoading, setAllLoading] = useState(false);
+  const [allMsg, setAllMsg] = useState('');
 
   // Cargar sucursales
   useEffect(() => {
@@ -72,6 +78,7 @@ export default function Tarifas() {
         }
       });
       setByM2(merged);
+      setSavedByM2(merged);
       setRooms(roomsArr);
     } catch {
       setMsg('No se pudieron cargar los datos de esta sucursal.');
@@ -111,9 +118,10 @@ export default function Tarifas() {
   const openReprice = async (k: string) => {
     const amount = Number(byM2[k]) || 0;
     if (!(amount > 0)) { setMsg('Pone primero el precio nuevo de esa medida.'); return; }
+    const current = Number(savedByM2[k]) || amount;
     setRepriceM2(k); setRepriceAmount(amount); setRepricePreview(null); setRepriceMsg(''); setRepriceLoading(true);
     try {
-      const res: any = await repriceSubscriptions(branchId, Number(k), amount, true);
+      const res: any = await repriceSubscriptions(branchId, Number(k), current, amount, true);
       setRepricePreview(res.afectados || []);
     } catch { setRepriceMsg('No se pudo cargar la vista previa.'); setRepricePreview([]); }
     finally { setRepriceLoading(false); }
@@ -123,11 +131,35 @@ export default function Tarifas() {
     if (repriceM2 == null) return;
     setRepriceLoading(true); setRepriceMsg('');
     try {
-      const res: any = await repriceSubscriptions(branchId, Number(repriceM2), repriceAmount, false, repriceNotify);
+      const current = Number(savedByM2[repriceM2]) || repriceAmount;
+      const res: any = await repriceSubscriptions(branchId, Number(repriceM2), current, repriceAmount, false, repriceNotify);
       setRepriceMsg('Listo: ' + res.actualizados + ' suscripcion(es) actualizada(s)' + (res.errores && res.errores.length ? (', ' + res.errores.length + ' con error') : '') + '.');
       setRepricePreview(null);
     } catch { setRepriceMsg('Error al aplicar el cambio.'); }
     finally { setRepriceLoading(false); }
+  };
+
+  const buildAllItems = () =>
+    sizes
+      .map((k) => ({ m2: Number(k), currentAmount: Number(savedByM2[k]) || 0, newAmount: Number(byM2[k]) || 0 }))
+      .filter((it) => it.m2 > 0 && it.newAmount > 0);
+  const openRepriceAll = async () => {
+    setAllOpen(true); setAllPreview(null); setAllMsg(''); setAllLoading(true);
+    try {
+      const res: any = await repriceAll(branchId, buildAllItems(), true);
+      setAllPreview(res.afectados || []);
+    } catch { setAllMsg('No se pudo cargar la vista previa.'); setAllPreview([]); }
+    finally { setAllLoading(false); }
+  };
+  const closeRepriceAll = () => { setAllOpen(false); setAllPreview(null); setAllMsg(''); };
+  const doRepriceAll = async () => {
+    setAllLoading(true); setAllMsg('');
+    try {
+      const res: any = await repriceAll(branchId, buildAllItems(), false, repriceNotify);
+      setAllMsg('Listo: ' + res.actualizados + ' suscripcion(es) actualizada(s)' + (res.errores && res.errores.length ? (', ' + res.errores.length + ' con error') : '') + '.');
+      setAllPreview(null);
+    } catch { setAllMsg('Error al aplicar el cambio.'); }
+    finally { setAllLoading(false); }
   };
 
   const filtered = useMemo(() => {
@@ -228,6 +260,13 @@ export default function Tarifas() {
               >
                 {savingPrices ? 'Guardando…' : 'Guardar precios'}
               </button>
+              <button
+                onClick={openRepriceAll}
+                className="border border-blue-700 text-blue-700 hover:bg-blue-50 text-sm font-semibold px-4 py-2 rounded-lg"
+                title="Aplicar los precios nuevos a TODAS las suscripciones activas ya alquiladas"
+              >
+                Aplicar a suscripciones
+              </button>
               <span className="text-xs text-gray-400">
                 Vacío = aplica ya. Con fecha futura, el cambio queda <b>programado</b> y entra solo ese día. Las medidas salen del inventario real.
               </span>
@@ -281,6 +320,58 @@ export default function Tarifas() {
                     </>
                   ) : null}
                   {repriceMsg && <p className="text-sm mt-3 text-gray-800">{repriceMsg}</p>}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {allOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeRepriceAll}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b flex items-center justify-between">
+                  <h3 className="font-bold text-gray-900">Aplicar precios a todas las suscripciones</h3>
+                  <button onClick={closeRepriceAll} className="text-gray-400 text-xl leading-none">x</button>
+                </div>
+                <div className="px-5 py-4">
+                  {allLoading && !allPreview ? (
+                    <p className="text-sm text-gray-500">Cargando vista previa...</p>
+                  ) : allPreview ? (
+                    <>
+                      <p className="text-sm text-gray-700 mb-2">
+                        Se cambia el valor a <b>{allPreview.length}</b> suscripcion(es) activa(s) segun los precios nuevos:
+                      </p>
+                      {allPreview.length === 0 ? (
+                        <p className="text-sm text-gray-500">No hay suscripciones con cambios para aplicar.</p>
+                      ) : (
+                        <div className="border rounded-lg divide-y max-h-64 overflow-y-auto mb-3">
+                          {allPreview.map((t: any) => (
+                            <div key={t.id} className="flex justify-between items-center px-3 py-2 text-sm">
+                              <span className="text-gray-800">{t.m2} m2 &middot; {t.cliente || t.email || t.id}</span>
+                              <span className="text-gray-600">${Number(t.actual).toLocaleString('es-AR')} &rarr; <b className="text-gray-900">${Number(t.nuevo).toLocaleString('es-AR')}</b></span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {allPreview.length > 0 && (
+                        <>
+                          <label className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                            <input type="checkbox" checked={repriceNotify} onChange={(e) => setRepriceNotify(e.target.checked)} />
+                            Avisar por mail a cada cliente del nuevo valor
+                          </label>
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 text-xs text-amber-800 mb-3">
+                            Esto le cobra el nuevo valor a estos clientes desde su proximo debito en Mercado Pago. Revisa la lista antes de confirmar.
+                          </div>
+                          <div className="flex gap-2">
+                            <button onClick={doRepriceAll} disabled={allLoading} className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60">
+                              {allLoading ? 'Aplicando...' : ('Confirmar y aplicar a ' + allPreview.length)}
+                            </button>
+                            <button onClick={closeRepriceAll} className="text-gray-600 text-sm px-3">Cancelar</button>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : null}
+                  {allMsg && <p className="text-sm mt-3 text-gray-800">{allMsg}</p>}
                 </div>
               </div>
             </div>

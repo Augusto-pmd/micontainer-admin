@@ -46,8 +46,17 @@ export const saveRoomOverride = async (
 };
 
 export const repriceSubscriptions = async (
-  branchId: string, m2: number, newAmount: number, dryRun: boolean, notify = false
+  branchId: string, m2: number, currentAmount: number, newAmount: number, dryRun: boolean, notify = false
 ): Promise<any> => {
-  const r = await api.post(`/pricing-engine/reprice/${encodeURIComponent(branchId)}`, { m2, newAmount, dryRun, notify });
+  const r = await api.post(`/pricing-engine/reprice/${encodeURIComponent(branchId)}`, { m2, currentAmount, newAmount, dryRun, notify });
+  return r.data;
+};
+
+export const repriceAll = async (
+  branchId: string,
+  items: Array<{ m2: number; currentAmount: number; newAmount: number }>,
+  dryRun: boolean, notify = false
+): Promise<any> => {
+  const r = await api.post(`/pricing-engine/reprice-all/${encodeURIComponent(branchId)}`, { items, dryRun, notify });
   return r.data;
 };
