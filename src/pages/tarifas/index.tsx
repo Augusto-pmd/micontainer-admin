@@ -14,6 +14,8 @@ import {
 
 const fmt = (n: number) => (Number(n) || 0).toLocaleString('es-AR');
 const normM2 = (m2: string | number) => String(Number(m2));
+// Etiqueta de medida: 22.1 es la variante planta baja (mas cara).
+const sizeLabel = (k: string) => (k === '22.1' ? '22 m\u00b2 PB' : `${k} m\u00b2`);
 
 export default function Tarifas() {
   const [branches, setBranches] = useState<BranchLite[]>([]);
@@ -38,6 +40,8 @@ export default function Tarifas() {
   const [allPreview, setAllPreview] = useState<any[] | null>(null);
   const [allLoading, setAllLoading] = useState(false);
   const [allMsg, setAllMsg] = useState('');
+  const [repriceNoMatch, setRepriceNoMatch] = useState<any[]>([]);
+  const [allNoMatch, setAllNoMatch] = useState<any[]>([]);
 
   // Cargar sucursales
   useEffect(() => {
@@ -123,6 +127,7 @@ export default function Tarifas() {
     try {
       const res: any = await repriceSubscriptions(branchId, Number(k), current, amount, true);
       setRepricePreview(res.afectados || []);
+      setRepriceNoMatch(res.noMatch || []);
     } catch { setRepriceMsg('No se pudo cargar la vista previa.'); setRepricePreview([]); }
     finally { setRepriceLoading(false); }
   };
@@ -148,6 +153,7 @@ export default function Tarifas() {
     try {
       const res: any = await repriceAll(branchId, buildAllItems(), true);
       setAllPreview(res.afectados || []);
+      setAllNoMatch(res.noMatch || []);
     } catch { setAllMsg('No se pudo cargar la vista previa.'); setAllPreview([]); }
     finally { setAllLoading(false); }
   };
@@ -233,7 +239,7 @@ export default function Tarifas() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {sizes.map((k) => (
                 <div key={k} className="flex items-center gap-2">
-                  <span className="w-20 text-sm text-gray-600">{k} m²</span>
+                  <span className="w-20 text-sm text-gray-600">{sizeLabel(k)}</span>
                   <div className="flex items-center gap-1 flex-1">
                     <span className="text-gray-400">$</span>
                     <input
@@ -300,6 +306,11 @@ export default function Tarifas() {
                           ))}
                         </div>
                       )}
+                      {repriceNoMatch.length > 0 && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-xs text-yellow-800 mb-3">
+                          {repriceNoMatch.length} cliente(s) de esta medida sin suscripcion MP encontrada (email distinto o pago por otro medio): {repriceNoMatch.map((n: any) => n.name || n.email).filter(Boolean).slice(0, 8).join(', ')}{repriceNoMatch.length > 8 ? '...' : ''}
+                        </div>
+                      )}
                       {repricePreview.length > 0 && (
                         <>
                           <label className="flex items-center gap-2 text-sm text-gray-700 mb-3">
@@ -350,6 +361,11 @@ export default function Tarifas() {
                               <span className="text-gray-600">${Number(t.actual).toLocaleString('es-AR')} &rarr; <b className="text-gray-900">${Number(t.nuevo).toLocaleString('es-AR')}</b></span>
                             </div>
                           ))}
+                        </div>
+                      )}
+                      {allNoMatch.length > 0 && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-xs text-yellow-800 mb-3">
+                          {allNoMatch.length} cliente(s) alquilado(s) sin suscripcion MP encontrada (email distinto o pago por otro medio).
                         </div>
                       )}
                       {allPreview.length > 0 && (
