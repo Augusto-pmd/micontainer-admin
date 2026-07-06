@@ -295,7 +295,7 @@ export default function Tarifas() {
                         Se cambia el valor a <b>${repriceAmount.toLocaleString('es-AR')}</b>/mes en <b>{repricePreview.length}</b> cliente(s) con suscripcion activa de {repriceM2} m2:
                       </p>
                       {repricePreview.length === 0 ? (
-                        <p className="text-sm text-gray-500">No hay suscripciones activas de esta medida.</p>
+                        <p className="text-sm text-gray-500">Ningun cliente de esta medida tiene suscripcion MP para cambiar. Los que alquilan aparecen abajo.</p>
                       ) : (
                         <div className="border rounded-lg divide-y max-h-64 overflow-y-auto mb-3">
                           {repricePreview.map((t: any) => (
@@ -307,8 +307,16 @@ export default function Tarifas() {
                         </div>
                       )}
                       {repriceNoMatch.length > 0 && (
-                        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-xs text-yellow-800 mb-3">
-                          {repriceNoMatch.length} cliente(s) de esta medida sin suscripcion MP encontrada (email distinto o pago por otro medio): {repriceNoMatch.map((n: any) => n.name || n.email).filter(Boolean).slice(0, 8).join(', ')}{repriceNoMatch.length > 8 ? '...' : ''}
+                        <div className="mb-3">
+                          <p className="text-xs font-semibold text-yellow-800 mb-1">{repriceNoMatch.length} alquilada(s) de esta medida SIN suscripcion MP (no se les puede cambiar el cobro automatico):</p>
+                          <div className="border border-yellow-200 bg-yellow-50 rounded-lg divide-y divide-yellow-100 max-h-40 overflow-y-auto">
+                            {repriceNoMatch.map((n: any, i: number) => (
+                              <div key={i} className="flex justify-between items-center px-3 py-1.5 text-xs text-yellow-900">
+                                <span>{n.name || n.email || '(sin nombre)'}</span>
+                                <span className="opacity-70">{n.motivo}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                       {repricePreview.length > 0 && (
