@@ -25,6 +25,15 @@ export const googleProvider = new GoogleAuthProvider();
 /** Solo permite acceso a cuentas @micontainer.com */
 export const ALLOWED_DOMAIN = 'micontainer.com';
 
+/** Staff con email fuera de @micontainer.com. Debe coincidir con la allowlist requireStaff del backend. */
+export const ALLOWED_EMAILS = [
+  'augustomn29@gmail.com',
+  'amorporloshierros@gmail.com',
+  'l.lanzalot@pmdarquitectura.com',
+  'info@pmdarquitectura.com',
+  'micontainer.storage@gmail.com',
+];
+
 /** Detecta celulares/tablets: el popup de Google no funciona ahi, hay que usar redirect. */
 export function isMobileDevice(): boolean {
   if (typeof navigator === 'undefined') return false;
@@ -34,8 +43,9 @@ export function isMobileDevice(): boolean {
 }
 
 function assertAllowedDomain(user: User): User {
-  const email = user.email ?? '';
-  if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+  const email = (user.email ?? '').toLowerCase();
+  const allowed = email.endsWith(`@${ALLOWED_DOMAIN}`) || ALLOWED_EMAILS.includes(email);
+  if (!allowed) {
     void signOut(auth);
     throw new Error(`Acceso restringido a cuentas @${ALLOWED_DOMAIN}`);
   }
