@@ -275,7 +275,7 @@ export default function Tarifas() {
 
           {repriceM2 != null && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeReprice}>
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="px-5 py-4 border-b flex items-center justify-between">
                   <h3 className="font-bold text-gray-900">Actualizar suscripciones - {repriceM2} m2</h3>
                   <button onClick={closeReprice} className="text-gray-400 text-xl leading-none">x</button>
@@ -291,19 +291,49 @@ export default function Tarifas() {
                       {repricePreview.length === 0 ? (
                         <p className="text-sm text-gray-500">No hay suscripciones activas de esta medida.</p>
                       ) : (
-                        <div className="border rounded-lg divide-y max-h-64 overflow-y-auto mb-3">
-                          {repricePreview.map((t: any) => (
-                            <div key={t.id} className={`flex justify-between items-center px-3 py-2 text-sm gap-2 ${t.cambia === false ? 'opacity-50' : ''}`}>
-                              <span className="text-gray-800 shrink-0">{t.cliente || t.email || t.id}</span>
-                              <span className="text-gray-600 text-right text-xs">
-                                {t.sinCobro ? <span className="text-amber-600">sin cobro aún</span> : <>últ. cobro ${Number(t.actual).toLocaleString('es-AR')}{t.actualFecha ? ` (${String(t.actualFecha).slice(0, 10)})` : ''}</>}
-                                {' · '}config. ${Number(t.configurado).toLocaleString('es-AR')}{t.desde ? ` (desde ${String(t.desde).slice(0, 10)})` : ''}
-                                {t.cambia === false
-                                  ? <span className="text-gray-500"> · ya en valor</span>
-                                  : <> &rarr; <b className="text-gray-900">${Number(t.nuevo).toLocaleString('es-AR')}</b></>}
-                              </span>
-                            </div>
-                          ))}
+                        <div className="border rounded-lg overflow-hidden mb-3">
+                          <div className="max-h-72 overflow-y-auto">
+                            <table className="w-full text-xs border-collapse">
+                              <thead className="bg-gray-50 text-gray-500 sticky top-0">
+                                <tr className="text-left">
+                                  <th className="px-3 py-2 font-semibold">Cliente</th>
+                                  <th className="px-3 py-2 font-semibold text-right">Último cobro</th>
+                                  <th className="px-3 py-2 font-semibold text-right">Configurado</th>
+                                  <th className="px-3 py-2 font-semibold text-right">Nuevo</th>
+                                  <th className="px-3 py-2 font-semibold text-center">Estado</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100">
+                                {repricePreview.map((t: any) => (
+                                  <tr key={t.id} className={t.cambia === false ? 'bg-gray-50/60 text-gray-400' : 'text-gray-800'}>
+                                    <td className="px-3 py-2 font-medium">{t.cliente || t.email || t.id}</td>
+                                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                                      {t.sinCobro ? (
+                                        <span className="text-amber-600">sin cobro aún</span>
+                                      ) : (
+                                        <>
+                                          <span className="tabular-nums">${Number(t.actual).toLocaleString('es-AR')}</span>
+                                          {t.actualFecha && <span className="block text-[10px] text-gray-400">{String(t.actualFecha).slice(0, 10)}</span>}
+                                        </>
+                                      )}
+                                    </td>
+                                    <td className="px-3 py-2 text-right whitespace-nowrap">
+                                      <span className="tabular-nums">${Number(t.configurado).toLocaleString('es-AR')}</span>
+                                      {t.desde && <span className="block text-[10px] text-gray-400">desde {String(t.desde).slice(0, 10)}</span>}
+                                    </td>
+                                    <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums font-semibold text-gray-900">${Number(t.nuevo).toLocaleString('es-AR')}</td>
+                                    <td className="px-3 py-2 text-center">
+                                      {t.cambia === false ? (
+                                        <span className="inline-block px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-[10px]">ya en valor</span>
+                                      ) : (
+                                        <span className="inline-block px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-[10px]">cambia</span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       )}
                       {repricePreview.length > 0 && (
@@ -333,7 +363,7 @@ export default function Tarifas() {
 
           {allOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeRepriceAll}>
-              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
                 <div className="px-5 py-4 border-b flex items-center justify-between">
                   <h3 className="font-bold text-gray-900">Aplicar precios a todas las suscripciones</h3>
                   <button onClick={closeRepriceAll} className="text-gray-400 text-xl leading-none">x</button>
@@ -349,13 +379,29 @@ export default function Tarifas() {
                       {allPreview.length === 0 ? (
                         <p className="text-sm text-gray-500">No hay suscripciones con cambios para aplicar.</p>
                       ) : (
-                        <div className="border rounded-lg divide-y max-h-64 overflow-y-auto mb-3">
-                          {allPreview.map((t: any) => (
-                            <div key={t.id} className="flex justify-between items-center px-3 py-2 text-sm">
-                              <span className="text-gray-800">{t.m2} m2 &middot; {t.cliente || t.email || t.id}</span>
-                              <span className="text-gray-600">${Number(t.actual).toLocaleString('es-AR')} &rarr; <b className="text-gray-900">${Number(t.nuevo).toLocaleString('es-AR')}</b></span>
-                            </div>
-                          ))}
+                        <div className="border rounded-lg overflow-hidden mb-3">
+                          <div className="max-h-72 overflow-y-auto">
+                            <table className="w-full text-xs border-collapse">
+                              <thead className="bg-gray-50 text-gray-500 sticky top-0">
+                                <tr className="text-left">
+                                  <th className="px-3 py-2 font-semibold">m²</th>
+                                  <th className="px-3 py-2 font-semibold">Cliente</th>
+                                  <th className="px-3 py-2 font-semibold text-right">Último cobro</th>
+                                  <th className="px-3 py-2 font-semibold text-right">Nuevo</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100 text-gray-800">
+                                {allPreview.map((t: any) => (
+                                  <tr key={t.id}>
+                                    <td className="px-3 py-2 whitespace-nowrap text-gray-500">{t.m2} m²</td>
+                                    <td className="px-3 py-2 font-medium">{t.cliente || t.email || t.id}</td>
+                                    <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums">${Number(t.actual).toLocaleString('es-AR')}</td>
+                                    <td className="px-3 py-2 text-right whitespace-nowrap tabular-nums font-semibold text-gray-900">${Number(t.nuevo).toLocaleString('es-AR')}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       )}
                       {allPreview.length > 0 && (
