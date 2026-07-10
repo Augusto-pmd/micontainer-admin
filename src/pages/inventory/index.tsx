@@ -44,6 +44,8 @@ export default function Inventory() {
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<any | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [sizeOpen, setSizeOpen] = useState(false);
+  const [selectedM2, setSelectedM2] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -88,11 +90,27 @@ export default function Inventory() {
     }
   };
 
-  const filtered = useMemo(
+  const branchFiltered = useMemo(
     () => selectedBranchId !== null
       ? rooms.filter(r => (((r as unknown) as { branchId?: string }).branchId ?? r.building?.branch?.id) === selectedBranchId)
       : rooms,
     [rooms, selectedBranchId],
+  );
+
+  // Tamaños (m²) que existen en el inventario de la sucursal, con cuántas bauleras hay de cada uno.
+  const sizes = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of branchFiltered) {
+      const k = String(r.areaM2 ?? '').trim();
+      if (!k) continue;
+      m.set(k, (m.get(k) || 0) + 1);
+    }
+    return Array.from(m.entries()).sort((a, b) => Number(a[0]) - Number(b[0]));
+  }, [branchFiltered]);
+
+  const filtered = useMemo(
+    () => selectedM2 ? branchFiltered.filter(r => String(r.areaM2 ?? '').trim() === selectedM2) : branchFiltered,
+    [branchFiltered, selectedM2],
   );
 
   const grouped = useMemo(() => {
@@ -145,14 +163,56 @@ export default function Inventory() {
           <h1 className="text-2xl font-bold text-gray-900">Inventario de Bauleras</h1>
           <p className="text-sm text-gray-500 mt-0.5">Estado en tiempo real · tocá una baulera para ver el detalle</p>
         </div>
-        <select
-          value={selectedBranchId ?? ''}
-          onChange={e => setSelectedBranchId(e.target.value ? Number(e.target.value) : null)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
-        >
-          <option value="">Todas las sucursales</option>
-          {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-        </select>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Filtro por tamaño (m²) — lista desplegable con los tamaños del inventario */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setSizeOpen(o => !o)}
+              className={`border rounded-lg px-3 py-2 text-sm bg-white flex items-center gap-2 ${selectedM2 ? 'border-green-500 text-green-700 font-semibold' : 'border-gray-300 text-gray-700'}`}
+            >
+              {selectedM2 ? `Tamaño: ${selectedM2} m²` : 'Filtrar por tamaño'}
+              {selectedM2
+                ? <span onClick={(e) => { e.stopPropagation(); setSelectedM2(null); setSizeOpen(false); }} className="text-gray-400 hover:text-gray-700" title="Quitar filtro">✕</span>
+                : <span className={`text-gray-400 transition-transform ${sizeOpen ? 'rotate-180' : ''}`}>▾</span>}
+            </button>
+            {sizeOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setSizeOpen(false)} />
+                <div className="absolute right-0 mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg z-20 max-h-80 overflow-y-auto py-1">
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedM2(null); setSizeOpen(false); }}
+                    className={`w-full flex justify-between items-center px-3 py-2 text-sm hover:bg-gray-50 ${!selectedM2 ? 'font-semibold text-green-700' : 'text-gray-700'}`}
+                  >
+                    <span>Todos los tamaños</span>
+                    <span className="text-xs text-gray-400">{branchFiltered.length}</span>
+                  </button>
+                  {sizes.length === 0 && <p className="px-3 py-2 text-sm text-gray-400">Sin tamaños</p>}
+                  {sizes.map(([m2, count]) => (
+                    <button
+                      key={m2}
+                      type="button"
+                      onClick={() => { setSelectedM2(m2); setSizeOpen(false); }}
+                      className={`w-full flex justify-between items-center px-3 py-2 text-sm hover:bg-gray-50 ${selectedM2 === m2 ? 'font-semibold text-green-700 bg-green-50' : 'text-gray-700'}`}
+                    >
+                      <span>{m2} m²</span>
+                      <span className="text-xs text-gray-400">{count} baulera{count !== 1 ? 's' : ''}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <select
+            value={selectedBranchId ?? ''}
+            onChange={e => setSelectedBranchId(e.target.value ? Number(e.target.value) : null)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <option value="">Todas las sucursales</option>
+            {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Stats */}
