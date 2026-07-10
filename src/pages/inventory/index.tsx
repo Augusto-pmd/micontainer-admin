@@ -102,7 +102,7 @@ export default function Inventory() {
     const m = new Map<string, number>();
     for (const r of branchFiltered) {
       const k = String(r.areaM2 ?? '').trim();
-      if (!k) continue;
+      if (!k || Number(k) <= 0) continue; // excluye bauleras con m² 0 / sin cargar
       m.set(k, (m.get(k) || 0) + 1);
     }
     return Array.from(m.entries()).sort((a, b) => Number(a[0]) - Number(b[0]));
