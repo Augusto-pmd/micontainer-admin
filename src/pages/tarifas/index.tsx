@@ -286,16 +286,22 @@ export default function Tarifas() {
                   ) : repricePreview ? (
                     <>
                       <p className="text-sm text-gray-700 mb-2">
-                        Se cambia el valor a <b>${repriceAmount.toLocaleString('es-AR')}</b>/mes en <b>{repricePreview.length}</b> cliente(s) con suscripcion activa de {repriceM2} m2:
+                        Nuevo valor: <b>${repriceAmount.toLocaleString('es-AR')}</b>/mes en {repriceM2} m². <b>{repricePreview.filter((t: any) => t.cambia !== false).length}</b> cambian · <b>{repricePreview.filter((t: any) => t.cambia === false).length}</b> ya en ese valor (no se tocan ni avisan):
                       </p>
                       {repricePreview.length === 0 ? (
                         <p className="text-sm text-gray-500">No hay suscripciones activas de esta medida.</p>
                       ) : (
                         <div className="border rounded-lg divide-y max-h-64 overflow-y-auto mb-3">
                           {repricePreview.map((t: any) => (
-                            <div key={t.id} className="flex justify-between items-center px-3 py-2 text-sm">
-                              <span className="text-gray-800">{t.cliente || t.email || t.id}</span>
-                              <span className="text-gray-600">${Number(t.actual).toLocaleString('es-AR')} &rarr; <b className="text-gray-900">${Number(t.nuevo).toLocaleString('es-AR')}</b></span>
+                            <div key={t.id} className={`flex justify-between items-center px-3 py-2 text-sm gap-2 ${t.cambia === false ? 'opacity-50' : ''}`}>
+                              <span className="text-gray-800 shrink-0">{t.cliente || t.email || t.id}</span>
+                              <span className="text-gray-600 text-right text-xs">
+                                {t.sinCobro ? <span className="text-amber-600">sin cobro aún</span> : <>últ. cobro ${Number(t.actual).toLocaleString('es-AR')}</>}
+                                {' · '}config. ${Number(t.configurado).toLocaleString('es-AR')}{t.desde ? ` (desde ${String(t.desde).slice(0, 10)})` : ''}
+                                {t.cambia === false
+                                  ? <span className="text-gray-500"> · ya en valor</span>
+                                  : <> &rarr; <b className="text-gray-900">${Number(t.nuevo).toLocaleString('es-AR')}</b></>}
+                              </span>
                             </div>
                           ))}
                         </div>
@@ -311,7 +317,7 @@ export default function Tarifas() {
                           </div>
                           <div className="flex gap-2">
                             <button onClick={doReprice} disabled={repriceLoading} className="bg-blue-700 hover:bg-blue-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60">
-                              {repriceLoading ? 'Aplicando...' : ('Confirmar y aplicar a ' + repricePreview.length)}
+                              {repriceLoading ? 'Aplicando...' : ('Confirmar y aplicar a ' + repricePreview.filter((t: any) => t.cambia !== false).length)}
                             </button>
                             <button onClick={closeReprice} className="text-gray-600 text-sm px-3">Cancelar</button>
                           </div>
