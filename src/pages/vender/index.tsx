@@ -8,7 +8,7 @@ export default function Vender() {
     m2: "", storageRoomId: "", bauleraCodigo: "",
     startDate: "", endDate: "", durationMonths: "1",
     promoMonths: "0", discountPct: "0", priceOverride: "",
-    paymentMode: "onetime",
+    paymentMode: "subscription", // Vender SOLO hace suscripción; el pago único no está integrado
   });
   const [freeRooms, setFreeRooms] = useState<FreeRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
@@ -128,8 +128,8 @@ export default function Vender() {
         <section className="bg-white rounded-xl border border-gray-200 p-4">
           <h2 className="font-semibold text-gray-800 mb-3">Forma de pago y precio</h2>
           <div className="grid grid-cols-2 gap-2 mb-3">
-            <button type="button" onClick={() => set("paymentMode", "onetime")}
-              className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "onetime" ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-700 border-gray-300"}`}>
+            <button type="button" onClick={() => set("paymentMode", "subscription")}
+              className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "subscription" ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-700 border-gray-300"}`}>
               Suscripción mensual
             </button>
             <button type="button" disabled
@@ -139,9 +139,7 @@ export default function Vender() {
             </button>
           </div>
           <p className="text-xs text-gray-400 mb-3">
-            {form.paymentMode === "onetime"
-              ? "El cliente paga N meses juntos (por transferencia o tarjeta). Cobro una sola vez."
-              : "Cobro mensual automático por Mercado Pago. Corre hasta que el cliente la dé de baja."}
+            Cobro mensual automático por Mercado Pago (suscripción). Corre hasta que el cliente la dé de baja. El pago único todavía no está integrado.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className={label}>Desde</label><input className={input} type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} /></div>
