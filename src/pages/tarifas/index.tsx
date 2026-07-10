@@ -296,7 +296,7 @@ export default function Tarifas() {
                             <div key={t.id} className={`flex justify-between items-center px-3 py-2 text-sm gap-2 ${t.cambia === false ? 'opacity-50' : ''}`}>
                               <span className="text-gray-800 shrink-0">{t.cliente || t.email || t.id}</span>
                               <span className="text-gray-600 text-right text-xs">
-                                {t.sinCobro ? <span className="text-amber-600">sin cobro aún</span> : <>últ. cobro ${Number(t.actual).toLocaleString('es-AR')}</>}
+                                {t.sinCobro ? <span className="text-amber-600">sin cobro aún</span> : <>últ. cobro ${Number(t.actual).toLocaleString('es-AR')}{t.actualFecha ? ` (${String(t.actualFecha).slice(0, 10)})` : ''}</>}
                                 {' · '}config. ${Number(t.configurado).toLocaleString('es-AR')}{t.desde ? ` (desde ${String(t.desde).slice(0, 10)})` : ''}
                                 {t.cambia === false
                                   ? <span className="text-gray-500"> · ya en valor</span>
