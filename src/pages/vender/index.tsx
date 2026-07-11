@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createManualSale } from "../../services/sales.services";
+import { createManualSale, createOneTimeSale, createPlanSale } from "../../services/sales.services";
 import { getFreeRoomsByM2, type FreeRoom } from "../../services/reservation.admin.services";
 
 export default function Vender() {
@@ -8,7 +8,8 @@ export default function Vender() {
     m2: "", storageRoomId: "", bauleraCodigo: "",
     startDate: "", endDate: "", durationMonths: "1",
     promoMonths: "0", discountPct: "0", priceOverride: "",
-    paymentMode: "subscription", // Vender SOLO hace suscripción; el pago único no está integrado
+    // 3 RUTAS SEPARADAS: subscription -> /sell · onetime -> /sell-onetime · plan -> /sell-plan
+    paymentMode: "subscription",
   });
   const [freeRooms, setFreeRooms] = useState<FreeRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
@@ -38,10 +39,10 @@ export default function Vender() {
     setResult(null);
     if (!form.email) { setError("Carga el email del cliente"); return; }
     if (!form.m2) { setError("Carga la medida (m2)"); return; }
-    if (form.paymentMode === "onetime" && !form.durationMonths) { setError("Carga la cantidad de meses para el pago único"); return; }
+    if (form.paymentMode === "onetime" && !(Number(form.durationMonths) >= 1)) { setError("Carga la cantidad de meses para el pago único"); return; }
     setSubmitting(true);
     try {
-      const r = await createManualSale({
+      const payload = {
         m2: Number(form.m2),
         storageRoomId: form.storageRoomId || undefined,
         bauleraCodigo: form.bauleraCodigo || undefined,
@@ -52,9 +53,14 @@ export default function Vender() {
         promoMonths: Number(form.promoMonths) || 0,
         discountPct: Number(form.discountPct) || 0,
         priceOverride: form.priceOverride ? Number(form.priceOverride) : undefined,
-        paymentMode: form.paymentMode as "subscription" | "onetime",
-      });
-      setResult({ initPoint: r.initPoint, monthly: r.monthly, duration: r.duration, paymentMode: r.paymentMode, total: r.total });
+      };
+      // Cada modo llama a SU endpoint (rutas separadas — no se cruzan)
+      const r = form.paymentMode === "onetime"
+        ? await createOneTimeSale(payload)
+        : form.paymentMode === "plan"
+          ? await createPlanSale(payload)
+          : await createManualSale({ ...payload, paymentMode: "subscription" });
+      setResult({ initPoint: r.initPoint, monthly: r.monthly, duration: r.duration, paymentMode: form.paymentMode, total: r.total });
     } catch (e: any) {
       setError(e?.response?.data?.error || e?.message || "No se pudo generar el link");
     } finally {
@@ -127,26 +133,42 @@ export default function Vender() {
 
         <section className="bg-white rounded-xl border border-gray-200 p-4">
           <h2 className="font-semibold text-gray-800 mb-3">Forma de pago y precio</h2>
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="grid grid-cols-3 gap-2 mb-3">
             <button type="button" onClick={() => set("paymentMode", "subscription")}
               className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "subscription" ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-700 border-gray-300"}`}>
               Suscripción mensual
             </button>
-            <button type="button" disabled
-              title="Falta cargar el token de Mercado Pago"
-              className="py-2.5 rounded-lg text-sm font-semibold border bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed">
-              Pago único / transferencia (próximamente)
+            <button type="button" onClick={() => { set("paymentMode", "onetime"); if (!(Number(form.durationMonths) > 1)) set("durationMonths", "6"); }}
+              className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "onetime" ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-700 border-gray-300"}`}>
+              Pago único (N meses)
+            </button>
+            <button type="button" onClick={() => { set("paymentMode", "plan"); if (!(Number(form.promoMonths) > 0)) set("promoMonths", "1"); }}
+              className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "plan" ? "bg-violet-700 text-white border-violet-700" : "bg-white text-gray-700 border-gray-300"}`}>
+              Mes gratis (plan)
             </button>
           </div>
           <p className="text-xs text-gray-400 mb-3">
-            Cobro mensual automático por Mercado Pago (suscripción). Corre hasta que el cliente la dé de baja. El pago único todavía no está integrado.
+            {form.paymentMode === "subscription" && "Cobro mensual automático por Mercado Pago (suscripción). Corre hasta que el cliente la dé de baja."}
+            {form.paymentMode === "onetime" && "El cliente paga TODOS los meses de una (un solo cobro, sin débito automático). Vence al final y hay que renovar a mano. 12+ meses aplica el descuento anual de la tarifa."}
+            {form.paymentMode === "plan" && "Link del PLAN de Mercado Pago: el cliente carga la tarjeta, hoy paga $0 y el primer débito cae al terminar el/los mes(es) gratis. Al suscribirse, el sistema lo asocia solo a esta venta."}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className={label}>Desde</label><input className={input} type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} /></div>
-            <div><label className={label}>Meses de promo gratis</label><input className={input} type="number" value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
+            {form.paymentMode === "onetime" && (
+              <div><label className={label}>Meses a pagar de una *</label><input className={input} type="number" min={1} value={form.durationMonths} onChange={(e) => set("durationMonths", e.target.value)} /></div>
+            )}
+            {form.paymentMode === "plan" && (
+              <div><label className={label}>Meses gratis</label><input className={input} type="number" min={1} value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
+            )}
+            {form.paymentMode === "subscription" && (
+              <div><label className={label}>Meses de promo gratis</label><input className={input} type="number" value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
+            )}
             <div><label className={label}>Descuento (%)</label><input className={input} type="number" value={form.discountPct} onChange={(e) => set("discountPct", e.target.value)} /></div>
             <div><label className={label}>Precio manual mensual (opcional)</label><input className={input} type="number" value={form.priceOverride} onChange={(e) => set("priceOverride", e.target.value)} placeholder="usa tarifa si vacio" /></div>
           </div>
+          {form.paymentMode === "onetime" && Number(form.m2) > 0 && Number(form.durationMonths) >= 1 && (
+            <p className="text-xs text-gray-500 mt-2">El total exacto lo calcula el sistema con la tarifa vigente × {form.durationMonths} meses (menos descuentos) y te lo muestra al generar el link.</p>
+          )}
         </section>
 
         {error && <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{error}</div>}
@@ -160,7 +182,13 @@ export default function Vender() {
 
         {result && (
           <section className="bg-green-50 border border-green-200 rounded-xl p-4">
-            <p className="text-sm text-gray-700 mb-1">{result.paymentMode === "onetime" ? `Link generado · Pago único $${(result.total || 0).toLocaleString("es-AR")} (${result.duration} ${result.duration === 1 ? "mes" : "meses"})` : `Link generado · $${result.monthly.toLocaleString("es-AR")}/mes · suscripción mensual`}</p>
+            <p className="text-sm text-gray-700 mb-1">
+              {result.paymentMode === "onetime"
+                ? `Link generado · PAGO ÚNICO $${(result.total || 0).toLocaleString("es-AR")} (${result.duration} ${result.duration === 1 ? "mes" : "meses"} de una)`
+                : result.paymentMode === "plan"
+                  ? `Link del PLAN generado · $${result.monthly.toLocaleString("es-AR")}/mes · hoy paga $0 (mes gratis)`
+                  : `Link generado · $${result.monthly.toLocaleString("es-AR")}/mes · suscripción mensual`}
+            </p>
             <div className="bg-white border border-gray-200 rounded-lg p-2 text-xs break-all text-gray-600 mb-3">{result.initPoint}</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button onClick={copiar} className="bg-gray-800 text-white py-2.5 rounded-lg text-sm font-medium">{copied ? "Copiado!" : "Copiar link"}</button>
