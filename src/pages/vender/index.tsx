@@ -136,13 +136,14 @@ export default function Vender() {
 
         <section className="bg-white rounded-xl border border-gray-200 p-4">
           <h2 className="font-semibold text-gray-800 mb-3">Forma de pago y precio</h2>
-          {/* Botón "Pago único (N meses)" OCULTO (11/07/2026, pedido de Lucas) hasta probar esa
-              ruta end-to-end. El backend /sell-onetime queda vivo; para reactivar el botón,
-              volver a grid-cols-3 y restaurar el botón del medio (ver git history). */}
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          <div className="grid grid-cols-3 gap-2 mb-3">
             <button type="button" onClick={() => set("paymentMode", "subscription")}
               className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "subscription" ? "bg-green-600 text-white border-green-600" : "bg-white text-gray-700 border-gray-300"}`}>
               Suscripción mensual
+            </button>
+            <button type="button" onClick={() => { set("paymentMode", "onetime"); if (!(Number(form.durationMonths) > 1)) set("durationMonths", "6"); }}
+              className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "onetime" ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-700 border-gray-300"}`}>
+              Pago único (N meses)
             </button>
             <button type="button" onClick={() => { set("paymentMode", "plan"); if (!(Number(form.promoMonths) > 0)) set("promoMonths", "1"); }}
               className={`py-2.5 rounded-lg text-sm font-semibold border ${form.paymentMode === "plan" ? "bg-violet-700 text-white border-violet-700" : "bg-white text-gray-700 border-gray-300"}`}>
