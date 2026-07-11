@@ -14,6 +14,7 @@ export interface ManualSalePayload {
   endDate?: string;
   durationMonths?: number;
   promoMonths?: number;
+  promoUnit?: 'days' | 'months';
   discountPct?: number;
   priceOverride?: number;
   paymentMode?: 'subscription' | 'onetime' | 'plan';

@@ -7,7 +7,7 @@ export default function Vender() {
     name: "", email: "", phone: "", dni: "",
     m2: "", storageRoomId: "", bauleraCodigo: "",
     startDate: "", endDate: "", durationMonths: "1",
-    promoMonths: "0", discountPct: "0", priceOverride: "",
+    promoMonths: "0", promoUnit: "months", discountPct: "0", priceOverride: "",
     // 3 RUTAS SEPARADAS: subscription -> /sell · onetime -> /sell-onetime · plan -> /sell-plan
     paymentMode: "subscription",
   });
@@ -50,9 +50,10 @@ export default function Vender() {
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
         durationMonths: form.durationMonths ? Number(form.durationMonths) : undefined,
-        // El mes gratis SOLO existe en la ruta plan. Suscripción y pago único mandan 0 SIEMPRE
+        // El período gratis SOLO existe en la ruta plan. Suscripción y pago único mandan 0 SIEMPRE
         // (el mecanismo viejo de "promo gratis" en la suscripción no funcionaba y queda muerto).
         promoMonths: form.paymentMode === "plan" ? (Number(form.promoMonths) || 1) : 0,
+        promoUnit: form.paymentMode === "plan" ? (form.promoUnit as "days" | "months") : undefined,
         discountPct: Number(form.discountPct) || 0,
         priceOverride: form.priceOverride ? Number(form.priceOverride) : undefined,
       };
@@ -152,7 +153,7 @@ export default function Vender() {
           <p className="text-xs text-gray-400 mb-3">
             {form.paymentMode === "subscription" && "Cobro mensual automático por Mercado Pago (suscripción). Corre hasta que el cliente la dé de baja."}
             {form.paymentMode === "onetime" && "El cliente paga TODOS los meses de una (un solo cobro, sin débito automático). Vence al final y hay que renovar a mano. 12+ meses aplica el descuento anual de la tarifa."}
-            {form.paymentMode === "plan" && "Link del PLAN de Mercado Pago: el cliente carga la tarjeta, hoy paga $0 y el primer débito cae al terminar el/los mes(es) gratis. Al suscribirse, el sistema lo asocia solo a esta venta."}
+            {form.paymentMode === "plan" && "Link del PLAN de Mercado Pago: el cliente carga la tarjeta, hoy paga $0 y el primer débito cae al terminar el tiempo gratis (días o meses, según la promo). Al suscribirse, el sistema lo asocia solo a esta venta."}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className={label}>Desde</label><input className={input} type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} /></div>
@@ -160,7 +161,16 @@ export default function Vender() {
               <div><label className={label}>Meses a pagar de una *</label><input className={input} type="number" min={1} value={form.durationMonths} onChange={(e) => set("durationMonths", e.target.value)} /></div>
             )}
             {form.paymentMode === "plan" && (
-              <div><label className={label}>Meses gratis</label><input className={input} type="number" min={1} value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
+              <div>
+                <label className={label}>Tiempo gratis * <span className="font-normal text-gray-400">(personalizable por promo)</span></label>
+                <div className="flex gap-2">
+                  <input className={input} type="number" min={1} value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} />
+                  <select className={input} value={form.promoUnit} onChange={(e) => set("promoUnit", e.target.value)}>
+                    <option value="months">meses</option>
+                    <option value="days">días</option>
+                  </select>
+                </div>
+              </div>
             )}
             <div><label className={label}>Descuento (%)</label><input className={input} type="number" value={form.discountPct} onChange={(e) => set("discountPct", e.target.value)} /></div>
             <div><label className={label}>Precio manual mensual (opcional)</label><input className={input} type="number" value={form.priceOverride} onChange={(e) => set("priceOverride", e.target.value)} placeholder="usa tarifa si vacio" /></div>
