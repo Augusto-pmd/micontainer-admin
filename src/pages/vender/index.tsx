@@ -50,7 +50,9 @@ export default function Vender() {
         startDate: form.startDate || undefined,
         endDate: form.endDate || undefined,
         durationMonths: form.durationMonths ? Number(form.durationMonths) : undefined,
-        promoMonths: Number(form.promoMonths) || 0,
+        // El mes gratis SOLO existe en la ruta plan. Suscripción y pago único mandan 0 SIEMPRE
+        // (el mecanismo viejo de "promo gratis" en la suscripción no funcionaba y queda muerto).
+        promoMonths: form.paymentMode === "plan" ? (Number(form.promoMonths) || 1) : 0,
         discountPct: Number(form.discountPct) || 0,
         priceOverride: form.priceOverride ? Number(form.priceOverride) : undefined,
       };
@@ -159,9 +161,6 @@ export default function Vender() {
             )}
             {form.paymentMode === "plan" && (
               <div><label className={label}>Meses gratis</label><input className={input} type="number" min={1} value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
-            )}
-            {form.paymentMode === "subscription" && (
-              <div><label className={label}>Meses de promo gratis</label><input className={input} type="number" value={form.promoMonths} onChange={(e) => set("promoMonths", e.target.value)} /></div>
             )}
             <div><label className={label}>Descuento (%)</label><input className={input} type="number" value={form.discountPct} onChange={(e) => set("discountPct", e.target.value)} /></div>
             <div><label className={label}>Precio manual mensual (opcional)</label><input className={input} type="number" value={form.priceOverride} onChange={(e) => set("priceOverride", e.target.value)} placeholder="usa tarifa si vacio" /></div>
