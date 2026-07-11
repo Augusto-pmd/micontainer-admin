@@ -427,7 +427,8 @@ function RoomDetailModal({ detail, loading, onClose, onChanged }: { detail: any;
                     <span className="titila">🚨</span> Pago rechazado
                   </p>
                   <p className={`text-xs mt-1 ${detail.rechazo.vencido ? 'text-red-700' : 'text-orange-700'}`}>
-                    El débito de <b>${Number(detail.rechazo.monto).toLocaleString('es-AR')}</b> fue rechazado el <b>{fmtDate(detail.rechazo.fechaRechazo)}</b>
+                    {/* fecha YYYY-MM-DD mostrada tal cual (sin new Date: el parse UTC la corre un día en ART) */}
+                    El débito de <b>${Number(detail.rechazo.monto).toLocaleString('es-AR')}</b> fue rechazado el <b>{String(detail.rechazo.fechaRechazo).split('-').reverse().join('/')}</b>
                     {' '}({rechazoMotivo(detail.rechazo.mpDetalle)}).
                   </p>
                   <p className={`text-xs mt-1 font-semibold ${detail.rechazo.vencido ? 'text-red-800' : 'text-orange-800'}`}>
