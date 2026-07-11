@@ -10,7 +10,6 @@ import { OrderDetail, OrderEdit, Orders, OrderCreate } from "../pages/order";
 import { StorageRooms, StorageRoomDetail, StorageRoomCreate, StorageRoomEdit } from "../pages/storageRoom";
 import { Dashboard, GlobalMap } from "../pages/dashboard";
 import Inventory from "../pages/inventory";
-import { PricingEngine } from "../pages/pricing";
 import Reservations from "../pages/reservations/Reservations";
 import Waitlist from "../pages/waitlist";
 import Avisos from "../pages/avisos";
@@ -303,15 +302,9 @@ export const router = createBrowserRouter([
         ),
       },
 
-      // Pricing Engine Routes
-      {
-        path: "pricing-engine",
-        element: (
-          <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
-            <PricingEngine />
-          </ProtectedRoute>
-        ),
-      },
+      // Pantalla "Precios" (/pricing-engine) RETIRADA el 11/07/2026 — rota (TypeError al cargar,
+      // sin backend para su UI) y redundante: Tarifas maneja los precios reales (byM2 + reprice).
+      // El endpoint backend /pricing-engine sigue vivo (lo usan Tarifas, roster y la web).
 
       {
         path: "waitlist",

@@ -83,12 +83,8 @@ const links: LinkItem[] = [
     icon: "operators",
     roles: [UserRole.ADMIN],
   },
-  {
-    name: "Precios",
-    href: "/pricing-engine",
-    icon: "pricing",
-    roles: [UserRole.ADMIN],
-  },
+  // "Precios" (pantalla /pricing-engine) RETIRADA del menú el 11/07/2026: estaba rota
+  // (contrato front↔back inexistente, TypeError al cargar) y Tarifas maneja los precios reales.
   {
     name: "Mailing / WSP avisos",
     href: "/avisos",
