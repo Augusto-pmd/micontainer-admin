@@ -3,8 +3,19 @@ import { getAllStorageRoomsServices, getStorageRoomByIdServices, updateStorageRo
 import { getAllBranchesServices } from '../../services/branch.services';
 import { getOrdersByCustomerIdServices } from '../../services/order.services';
 import { updateCustomerServices } from '../../services/customer.services';
+import { getCobrosRechazadosServices, type CobroRechazado } from '../../services/pricing.services';
 import type { StorageRoom, StorageRoomStatus } from '../../types/storageRoom';
 import type { Branch } from '../../types/branch';
+
+// Motivos de rechazo de MP en cristiano
+function rechazoMotivo(detalle?: string): string {
+  const d = (detalle || '').toLowerCase();
+  if (d.includes('insufficient')) return 'fondos insuficientes';
+  if (d.includes('high_risk')) return 'rechazado por riesgo';
+  if (d.includes('card_disabled')) return 'tarjeta deshabilitada';
+  if (d.includes('expired')) return 'tarjeta vencida';
+  return detalle || 'rechazado';
+}
 
 const STATUS_CONFIG: Record<StorageRoomStatus, { label: string; cellBg: string; cellText: string; dot: string; statBg: string }> = {
   available: { label: 'Disponible', cellBg: 'bg-green-100 border-green-400 hover:bg-green-200', cellText: 'text-green-800', dot: 'bg-green-500', statBg: 'bg-green-50 border-green-200 text-green-700' },
@@ -46,6 +57,8 @@ export default function Inventory() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [sizeOpen, setSizeOpen] = useState(false);
   const [selectedM2, setSelectedM2] = useState<string | null>(null);
+  const [rechazados, setRechazados] = useState<CobroRechazado[]>([]);
+  const [plazoDias, setPlazoDias] = useState(10);
 
   useEffect(() => {
     (async () => {
@@ -63,14 +76,27 @@ export default function Inventory() {
         setIsLoading(false);
       }
     })();
+    // Pagos rechazados (MP): titilan en el plano (cache 10 min en el server; no bloquea la carga)
+    getCobrosRechazadosServices()
+      .then((r) => { setRechazados(r.rechazados || []); setPlazoDias(r.plazoDias || 10); })
+      .catch(() => { /* sin datos de rechazos; el inventario carga igual */ });
   }, []);
+
+  // baulera (space) -> rechazo. Mismos códigos que storageRooms.space (misma fuente).
+  const rechazoByCode = useMemo(() => {
+    const m = new Map<string, CobroRechazado>();
+    for (const r of rechazados) m.set(String(r.baulera).trim().toUpperCase(), r);
+    return m;
+  }, [rechazados]);
+  const rechazoDe = (room: StorageRoom) => rechazoByCode.get(String(room.space || '').trim().toUpperCase());
 
   const reload = async () => {
     try { const r = await getAllStorageRoomsServices({ limit: 1000 }); setRooms(r.data); } catch (e) { /* */ }
   };
 
   const openDetail = async (room: StorageRoom) => {
-    setDetail({ room, tenant: null, order: null });
+    const rechazo = rechazoDe(room) || null;
+    setDetail({ room, tenant: null, order: null, rechazo });
     setDetailLoading(true);
     try {
       const full: any = await getStorageRoomByIdServices(room.id);
@@ -82,9 +108,9 @@ export default function Inventory() {
           order = orders.find((o) => o.storageRoomId === room.id || o.contractNumber === full.contractNumber) || orders[0] || null;
         } catch { /* sin órdenes */ }
       }
-      setDetail({ room: full, tenant, order });
+      setDetail({ room: full, tenant, order, rechazo });
     } catch {
-      setDetail({ room, tenant: null, order: null, error: true });
+      setDetail({ room, tenant: null, order: null, rechazo, error: true });
     } finally {
       setDetailLoading(false);
     }
@@ -215,6 +241,20 @@ export default function Inventory() {
         </div>
       </div>
 
+      {/* Alerta de pagos rechazados (MP) */}
+      {rechazados.length > 0 && (
+        <div className="mb-4 border border-red-300 bg-red-50 rounded-xl px-4 py-3 flex items-start gap-3">
+          <span className="titila text-xl leading-none mt-0.5">🚨</span>
+          <div className="text-sm text-red-800">
+            <b>{rechazados.length} pago{rechazados.length !== 1 ? 's' : ''} rechazado{rechazados.length !== 1 ? 's' : ''} en Mercado Pago</b>
+            {' — '}las bauleras titilan en el plano (tocá una para ver el detalle). Plazo para regularizar: {plazoDias} días.
+            <span className="block mt-0.5 text-red-700">
+              {rechazados.map(r => `${r.baulera} (${r.cliente}${r.vencido ? ' · VENCIDO' : ` · quedan ${r.diasRestantes}d`})`).join(' · ')}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         <StatCard label="Total" value={stats.total} cls="bg-gray-50 border-gray-200 text-gray-900" />
@@ -231,6 +271,18 @@ export default function Inventory() {
             {cfg.label}
           </div>
         ))}
+        {rechazados.length > 0 && (
+          <>
+            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+              <div className="w-3 h-3 rounded-sm bg-orange-500 titila" />
+              Pago rechazado (en plazo)
+            </div>
+            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+              <div className="w-3 h-3 rounded-sm bg-red-600 titila" />
+              Pago rechazado (plazo vencido)
+            </div>
+          </>
+        )}
       </div>
 
       {/* Grid por edificio / piso */}
@@ -257,7 +309,7 @@ export default function Inventory() {
                       {floor === 'PB' ? 'Planta Baja' : `Piso ${floor}`} — {floorRooms.length} espacios
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {floorRooms.map(room => <UnitCell key={room.id} room={room} onClick={() => openDetail(room)} />)}
+                      {floorRooms.map(room => <UnitCell key={room.id} room={room} rechazo={rechazoDe(room)} onClick={() => openDetail(room)} />)}
                     </div>
                   </div>
                 ))}
@@ -283,18 +335,29 @@ function StatCard({ label, value, cls }: { label: string; value: number; cls: st
   );
 }
 
-function UnitCell({ room, onClick }: { room: StorageRoom; onClick: () => void }) {
+function UnitCell({ room, rechazo, onClick }: { room: StorageRoom; rechazo?: CobroRechazado; onClick: () => void }) {
   const cfg = STATUS_CONFIG[room.status] ?? STATUS_CONFIG.available;
+  // Pago rechazado -> la celda TITILA: naranja dentro del plazo, rojo fuerte si venció.
+  const rechazoCls = rechazo
+    ? (rechazo.vencido
+        ? 'bg-red-200 border-red-600 hover:bg-red-300 titila'
+        : 'bg-orange-100 border-orange-500 hover:bg-orange-200 titila')
+    : '';
+  const title = rechazo
+    ? `${room.space} · PAGO RECHAZADO (${rechazo.vencido ? 'plazo VENCIDO' : `quedan ${rechazo.diasRestantes} días`}) — tocá para ver detalle`
+    : `${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''} — tocá para ver detalle`;
   return (
     <button
       onClick={onClick}
-      title={`${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''} — tocá para ver detalle`}
-      className={`w-14 h-14 rounded-lg border-2 flex flex-col items-center justify-center cursor-pointer select-none transition-colors ${cfg.cellBg}`}
+      title={title}
+      className={`w-14 h-14 rounded-lg border-2 flex flex-col items-center justify-center cursor-pointer select-none transition-colors ${rechazoCls || cfg.cellBg}`}
     >
-      <span className={`text-[11px] font-bold leading-tight ${cfg.cellText}`}>{room.space}</span>
-      {room.areaM2 && (
+      <span className={`text-[11px] font-bold leading-tight ${rechazo ? (rechazo.vencido ? 'text-red-900' : 'text-orange-800') : cfg.cellText}`}>{room.space}</span>
+      {rechazo ? (
+        <span className={`text-[9px] leading-tight font-bold ${rechazo.vencido ? 'text-red-800' : 'text-orange-700'}`}>$ !</span>
+      ) : room.areaM2 ? (
         <span className={`text-[9px] leading-tight ${cfg.cellText} opacity-60`}>{room.areaM2}m²</span>
-      )}
+      ) : null}
     </button>
   );
 }
@@ -357,6 +420,23 @@ function RoomDetailModal({ detail, loading, onClose, onChanged }: { detail: any;
               <div className="mb-4">
                 <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.statBg}`}>{cfg.label}</span>
               </div>
+
+              {detail.rechazo && (
+                <div className={`mb-4 rounded-lg border px-3 py-2.5 ${detail.rechazo.vencido ? 'bg-red-50 border-red-400' : 'bg-orange-50 border-orange-400'}`}>
+                  <p className={`text-sm font-bold flex items-center gap-1.5 ${detail.rechazo.vencido ? 'text-red-800' : 'text-orange-800'}`}>
+                    <span className="titila">🚨</span> Pago rechazado
+                  </p>
+                  <p className={`text-xs mt-1 ${detail.rechazo.vencido ? 'text-red-700' : 'text-orange-700'}`}>
+                    El débito de <b>${Number(detail.rechazo.monto).toLocaleString('es-AR')}</b> fue rechazado el <b>{fmtDate(detail.rechazo.fechaRechazo)}</b>
+                    {' '}({rechazoMotivo(detail.rechazo.mpDetalle)}).
+                  </p>
+                  <p className={`text-xs mt-1 font-semibold ${detail.rechazo.vencido ? 'text-red-800' : 'text-orange-800'}`}>
+                    {detail.rechazo.vencido
+                      ? `⏰ PLAZO VENCIDO — pasaron ${detail.rechazo.diasTranscurridos} días (el plazo para regularizar era de 10).`
+                      : `Le quedan ${detail.rechazo.diasRestantes} día(s) para regularizar (plazo de 10 días — MP reintenta el débito).`}
+                  </p>
+                </div>
+              )}
 
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Baulera</h3>
               <Row label="Código" value={room.space || room.name} />

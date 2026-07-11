@@ -1,7 +1,8 @@
 import { Link, NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../stores/authStore";
 import { UserRole } from "../types/auth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getCobrosRechazadosServices } from "../services/pricing.services";
 import { FaClipboardList, FaUserTie } from "react-icons/fa6";
 import { MdDashboard, MdWarehouse } from "react-icons/md";
 import { HiOfficeBuilding, HiUsers, HiUserCircle } from "react-icons/hi";
@@ -116,11 +117,13 @@ function MenuItem({
   userRole,
   level = 0,
   onLinkClick,
+  alertCount = 0,
 }: {
   link: LinkItem;
   userRole?: UserRole;
   level?: number;
   onLinkClick?: () => void;
+  alertCount?: number; // pagos rechazados -> el item titila con contador rojo
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -265,13 +268,23 @@ function MenuItem({
           `text-sm capitalize font-normal rounded-lg flex items-center p-2 transition-colors duration-150 group ${
             isActive
               ? 'bg-green-100 text-green-800 font-semibold'
+              : alertCount > 0
+              ? 'text-red-700 bg-red-50 hover:bg-red-100 font-semibold'
               : 'text-gray-600 hover:bg-green-50 hover:text-gray-900'
           }`
         }
         style={{ paddingLeft }}
       >
-        <span className="mr-3">{renderIcon(link.icon)}</span>
+        <span className={`mr-3 ${alertCount > 0 ? 'titila' : ''}`}>{renderIcon(link.icon)}</span>
         <span>{link.name}</span>
+        {alertCount > 0 && (
+          <span
+            className="ml-auto titila bg-red-600 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none"
+            title={`${alertCount} pago(s) rechazado(s) — tocá para ver las bauleras`}
+          >
+            {alertCount}
+          </span>
+        )}
       </NavLink>
     </li>
   );
@@ -280,6 +293,20 @@ function MenuItem({
 export default function DashboardLayout() {
   const { user, logout, isLoading } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Pagos rechazados (MP): si hay, el item Inventario titila con el contador.
+  // El backend lo cachea 10 min -> esta llamada es liviana; se refresca cada 10 min.
+  const [rechazadosCount, setRechazadosCount] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const load = () => {
+      getCobrosRechazadosServices()
+        .then((r) => { if (alive) setRechazadosCount(r.total || 0); })
+        .catch(() => { /* sin alerta si falla; no bloquea el panel */ });
+    };
+    load();
+    const t = setInterval(load, 10 * 60_000);
+    return () => { alive = false; clearInterval(t); };
+  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
@@ -413,6 +440,7 @@ export default function DashboardLayout() {
                       link={link}
                       userRole={user?.role as UserRole}
                       onLinkClick={() => setIsSidebarOpen(false)}
+                      alertCount={link.href === '/inventory' ? rechazadosCount : 0}
                     />
                   ))}
                 </ul>
