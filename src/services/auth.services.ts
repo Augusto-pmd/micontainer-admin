@@ -1,15 +1,6 @@
 import { api } from "./api";
 
-interface Credentials {
-  email: string;
-  password: string;
-}
-
-// Login
-export const loginService = async (credentials: Credentials) => {
-  const response = await api.post("/auth/login", credentials);
-  return response.data;
-};
+// (loginService ELIMINADO 12/07: el login real es Firebase — signInWithEmail/Google en lib/firebase)
 
 // Forgot Password
 export const forgotPasswordService = async (email: string) => {
@@ -17,9 +8,5 @@ export const forgotPasswordService = async (email: string) => {
   return response.data;
 };
 
-// Reset Password
-export const resetPasswordService = async (token: string, newPassword: string) => {
-  const response = await api.post("/auth/reset-password", { token, newPassword });
-  return response.data;
-};
+// (resetPasswordService ELIMINADO 12/07: /auth/reset-password nunca existió; el reset es el mail de Firebase)
 

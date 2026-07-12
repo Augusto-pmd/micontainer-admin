@@ -1,7 +1,7 @@
 import { createBrowserRouter } from "react-router-dom";
 import DashboardLayout from "../components/Layout";
 import { ProtectedRoute } from "../components/ProtectedRoute";
-import { Login, UserProfile, ForgotPassword, ResetPassword } from "../pages/auth";
+import { Login, UserProfile, ForgotPassword } from "../pages/auth";
 import { Branch, BranchDetail, BranchEdit, BranchCreate } from "../pages/branch";
 import { Building, BuildingDetail, BuildingEdit, BuildingMap, BuildingCreate } from "../pages/building";
 import { CustomerDetail, CustomerEdit, Customers, CustomerCreate } from "../pages/customer";
@@ -31,10 +31,8 @@ export const router = createBrowserRouter([
     path: "/forgot-password",
     Component: ForgotPassword,
   },
-  {
-    path: "/reset-password",
-    Component: ResetPassword,
-  },
+  // "/reset-password" RETIRADA (12/07, auditoría de código muerto): nadie navegaba ahí y su
+  // endpoint /auth/reset-password nunca existió — el reset real es el mail de Firebase.
   // Rutas protegidas con layout
   {
     path: "/",
