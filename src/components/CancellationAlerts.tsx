@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { MdWarningAmber } from "react-icons/md";
 import { getCancellations, resolveCancellation, type Cancellation } from "../services/cancellations.services";
 
 export default function CancellationAlerts() {
@@ -46,7 +47,7 @@ export default function CancellationAlerts() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
-          <span className="text-xl">⚠️</span>
+          <MdWarningAmber className="text-xl text-green-600" />
           <h2 className="font-bold text-gray-900">Bajas de suscripción sin gestionar ({items.length})</h2>
         </div>
         <div className="p-4 space-y-3">
