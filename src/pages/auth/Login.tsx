@@ -15,6 +15,9 @@ const Login = () => {
   const { isAuthenticated, error, clearError, setUser, setToken } = useAuth();
   const [googleError, setGoogleError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
+  // OJO: TODOS los hooks van ANTES del return temprano de isAuthenticated — un hook después
+  // de ese return causa el crash React #300 ("fewer hooks") justo al loguearse.
+  const [emailError, setEmailError] = useState('');
 
   // Aplica el usuario de Firebase al store (token + rol real + datos)
   const applyUser = async (fbUser: any) => {
@@ -77,7 +80,6 @@ const Login = () => {
 
   // Login REAL con Firebase Auth (antes llamaba a un endpoint simbólico que devolvía un
   // token de mentira y el acceso solo funcionaba por Google). Misma allowlist que Google.
-  const [emailError, setEmailError] = useState('');
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
