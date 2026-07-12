@@ -12,7 +12,9 @@ export default function Avisos() {
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
-  const [from, setFrom] = useState('Mi Container <onboarding@resend.dev>');
+  // OJO: 'onboarding@resend.dev' es el remitente de PRUEBA de Resend → 403 a cualquier
+  // destinatario externo (por esto los avisos rebotaban aunque el backend estuviera bien).
+  const [from, setFrom] = useState('Mi Container <comercial@micontainer.com>');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState<string | null>(null);
@@ -39,7 +41,8 @@ export default function Avisos() {
   const allSel = list.length > 0 && list.every((l) => selected[l.id]);
   const toggleAll = () => { const v = !allSel; const s: Record<string, boolean> = { ...selected }; list.forEach((l) => (s[l.id] = v)); setSelected(s); };
   const selectedLeads = list.filter((l) => selected[l.id]);
-  const emails = selectedLeads.map((l) => l.email).filter(Boolean);
+  // Dedupe por casilla: aunque una persona figure 2 veces (2 contratos), recibe UN solo mail
+  const emails = [...new Set(selectedLeads.map((l) => (l.email || '').trim().toLowerCase()).filter(Boolean))];
 
   const copyEmails = () => { navigator.clipboard.writeText(emails.join(', ')); setMsg(`${emails.length} emails copiados.`); };
   const openMail = () => {
