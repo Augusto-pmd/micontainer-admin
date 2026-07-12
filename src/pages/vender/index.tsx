@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createManualSale, createOneTimeSale, createPlanSale } from "../../services/sales.services";
 import { getFreeRoomsByM2, type FreeRoom } from "../../services/reservation.admin.services";
+import { getAllStorageRoomsServices } from "../../services/storageRoom.services";
 
 export default function Vender() {
   const [form, setForm] = useState({
@@ -13,6 +14,23 @@ export default function Vender() {
   });
   const [freeRooms, setFreeRooms] = useState<FreeRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
+  // Medidas REALES de la sucursal (listado, no tipeo a mano — evita errores de carga).
+  const [sizes, setSizes] = useState<Array<{ m2: number; libres: number }>>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res: any = await getAllStorageRoomsServices({ limit: 250 } as any);
+        const rooms: any[] = res?.data || res?.rooms || (Array.isArray(res) ? res : []);
+        const map = new Map<number, number>();
+        rooms.forEach((r) => {
+          const m2 = Number(r.areaM2) || 0;
+          if (m2 <= 0) return; // excluye las anuladas (0 m²)
+          map.set(m2, (map.get(m2) || 0) + (r.status === "available" ? 1 : 0));
+        });
+        setSizes([...map.entries()].map(([m2, libres]) => ({ m2, libres })).sort((a, b) => a.m2 - b.m2));
+      } catch { /* si falla, el select queda vacío pero editable */ }
+    })();
+  }, []);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<{ initPoint: string; monthly: number; duration: number; paymentMode?: string; total?: number } | null>(null);
@@ -20,8 +38,8 @@ export default function Vender() {
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const buscarBauleras = async () => {
-    const m2 = Number(form.m2);
+  const buscarBauleras = async (m2v?: number) => {
+    const m2 = m2v ?? Number(form.m2);
     if (!m2) return;
     setLoadingRooms(true);
     try {
@@ -117,7 +135,22 @@ export default function Vender() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={label}>Medida (m2) *</label>
-              <input className={input} type="number" value={form.m2} onChange={(e) => set("m2", e.target.value)} onBlur={buscarBauleras} />
+              {/* Listado de medidas REALES (pedido Lucas 12/07): evita tipeos incorrectos si vende alguien nuevo */}
+              <select
+                className={input}
+                value={form.m2}
+                onChange={(e) => {
+                  set("m2", e.target.value);
+                  set("storageRoomId", "");
+                  set("bauleraCodigo", "");
+                  if (e.target.value) buscarBauleras(Number(e.target.value));
+                }}
+              >
+                <option value="">Elegí la medida…</option>
+                {sizes.map((s) => (
+                  <option key={s.m2} value={s.m2}>{s.m2} m² {s.libres > 0 ? `· ${s.libres} libre${s.libres > 1 ? "s" : ""}` : "· sin stock"}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className={label}>Baulera (opcional)</label>

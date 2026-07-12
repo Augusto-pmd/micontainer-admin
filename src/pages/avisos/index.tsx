@@ -32,11 +32,33 @@ export default function Avisos() {
   };
   useEffect(() => { if (branchId) load(branchId); /* eslint-disable-next-line */ }, [branchId]);
 
+  // FILTROS (pedido Lucas 12/07): por grupo de metros, por baulera o cliente específico.
+  const [m2Filter, setM2Filter] = useState('');
+  const [buscar, setBuscar] = useState('');
+
+  const m2Options = useMemo(() => {
+    const s = new Set<number>();
+    clientes.forEach((c: any) => (c.m2s || []).forEach((n: number) => s.add(n)));
+    noClientes.forEach((c: any) => { const n = Number(c.m2); if (n > 0) s.add(n); });
+    return [...s].sort((a, b) => a - b);
+  }, [clientes, noClientes]);
+
   const list = useMemo(() => {
-    if (group === 'clientes') return clientes;
-    if (group === 'noClientes') return noClientes;
-    return [...clientes, ...noClientes];
-  }, [group, clientes, noClientes]);
+    let base = group === 'clientes' ? clientes : group === 'noClientes' ? noClientes : [...clientes, ...noClientes];
+    if (m2Filter) {
+      const m = Number(m2Filter);
+      base = base.filter((l: any) => (l.m2s || []).includes(m) || Number(l.m2) === m);
+    }
+    if (buscar.trim()) {
+      const q = buscar.toLowerCase().trim();
+      base = base.filter((l: any) =>
+        (l.name || '').toLowerCase().includes(q) ||
+        (l.email || '').toLowerCase().includes(q) ||
+        (l.bauleras || []).some((b: string) => b.toLowerCase().includes(q))
+      );
+    }
+    return base;
+  }, [group, clientes, noClientes, m2Filter, buscar]);
 
   const allSel = list.length > 0 && list.every((l) => selected[l.id]);
   const toggleAll = () => { const v = !allSel; const s: Record<string, boolean> = { ...selected }; list.forEach((l) => (s[l.id] = v)); setSelected(s); };
@@ -91,21 +113,46 @@ export default function Avisos() {
               <button key={v} onClick={() => setGroup(v)} className={`px-3 py-1.5 rounded-lg text-sm ${group === v ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600'}`}>{l}</button>
             ))}
           </div>
+          {/* Filtros: por metros (grupo de m²), por baulera o cliente puntual */}
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <select value={m2Filter} onChange={(e) => { setM2Filter(e.target.value); }} className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+              <option value="">Todos los m²</option>
+              {m2Options.map((m) => <option key={m} value={m}>{m} m²</option>)}
+            </select>
+            <input
+              value={buscar}
+              onChange={(e) => setBuscar(e.target.value)}
+              placeholder="Buscar cliente, email o baulera (ej. A3-037)…"
+              className="flex-1 min-w-[180px] border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+            />
+            {(m2Filter || buscar) && (
+              <button onClick={() => { setM2Filter(''); setBuscar(''); }} className="text-xs text-gray-500 underline">limpiar</button>
+            )}
+          </div>
           <div className="flex items-center justify-between text-sm mb-2">
-            <label className="flex items-center gap-2"><input type="checkbox" checked={allSel} onChange={toggleAll} /> Seleccionar todos</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={allSel} onChange={toggleAll} /> Seleccionar todos {m2Filter || buscar ? '(los filtrados)' : ''}</label>
             <span className="text-gray-400">{selectedLeads.length} elegidos</span>
           </div>
           <div className="max-h-80 overflow-y-auto divide-y divide-gray-100">
-            {list.map((l) => (
+            {list.map((l: any) => (
               <label key={l.id} className="flex items-center gap-3 py-2 text-sm cursor-pointer">
                 <input type="checkbox" checked={!!selected[l.id]} onChange={(e) => setSelected((s) => ({ ...s, [l.id]: e.target.checked }))} />
                 <span className="flex-1">
                   <span className="font-medium text-gray-900">{l.name || '—'}</span>
                   <span className="text-gray-500"> · {l.email || l.phone || 'sin contacto'}</span>
+                  {(l.roomsInfo || []).length > 0 && (
+                    <span className="ml-2 inline-flex gap-1 flex-wrap align-middle">
+                      {l.roomsInfo.map((r: any) => (
+                        <span key={r.baulera} className="bg-green-50 text-green-700 border border-green-200 rounded px-1.5 py-0.5 text-[11px] font-medium">
+                          {r.baulera}{r.m2 ? ` · ${r.m2}m²` : ''}
+                        </span>
+                      ))}
+                    </span>
+                  )}
                 </span>
               </label>
             ))}
-            {list.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No hay contactos en este grupo.</p>}
+            {list.length === 0 && <p className="text-sm text-gray-400 py-6 text-center">No hay contactos {m2Filter || buscar ? 'que matcheen el filtro' : 'en este grupo'}.</p>}
           </div>
         </div>
 

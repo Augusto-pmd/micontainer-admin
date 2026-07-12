@@ -3,10 +3,10 @@ import { useAuth } from "../stores/authStore";
 import { UserRole } from "../types/auth";
 import { useState, useEffect } from "react";
 import { getCobrosRechazadosServices } from "../services/pricing.services";
-import { FaClipboardList, FaUserTie } from "react-icons/fa6";
-import { MdDashboard, MdWarehouse } from "react-icons/md";
-import { HiOfficeBuilding, HiUsers, HiUserCircle } from "react-icons/hi";
-import { BsBuilding, BsGrid } from "react-icons/bs";
+import { FaClipboardList, FaUserTie, FaFileInvoiceDollar, FaClipboardCheck } from "react-icons/fa6";
+import { MdDashboard, MdWarehouse, MdPointOfSale, MdHourglassEmpty, MdAttachMoney, MdLocalOffer, MdBuild } from "react-icons/md";
+import { HiOfficeBuilding, HiUsers, HiUserCircle, HiSpeakerphone } from "react-icons/hi";
+import { BsBuilding, BsGrid, BsCreditCard2Front } from "react-icons/bs";
 import { FaChartLine, FaLayerGroup } from "react-icons/fa";
 import { IoMdSettings } from "react-icons/io";
 import MiContainerLogo from "../assets/img/MiContainerLogo.png";
@@ -136,9 +136,9 @@ function MenuItem({
       case "dashboard":
         return <MdDashboard className="text-xl text-green-600" />;
       case "vender":
-        return <span className="text-lg">🧾</span>;
+        return <FaFileInvoiceDollar className="text-xl text-green-600" />;
       case "ventas":
-        return <span className="text-lg">⏱️</span>;
+        return <MdPointOfSale className="text-xl text-green-600" />;
       case "profile":
         return <HiUserCircle className="text-xl text-green-600" />;
       case "branch":
@@ -150,7 +150,7 @@ function MenuItem({
       case "storage":
         return <MdWarehouse className="text-xl text-green-600" />;
       case "reservations":
-        return <span className="text-lg">💳</span>;
+        return <BsCreditCard2Front className="text-xl text-green-600" />;
       case "orders":
         return <FaClipboardList className="text-xl text-green-600" />;
       case "customers":
@@ -160,17 +160,17 @@ function MenuItem({
       case "pricing":
         return <IoMdSettings className="text-xl text-green-600" />;
       case "waitlist":
-        return <span className="text-lg">⏳</span>;
+        return <MdHourglassEmpty className="text-xl text-green-600" />;
       case "avisos":
-        return <span className="text-lg">📣</span>;
+        return <HiSpeakerphone className="text-xl text-green-600" />;
       case "tarifas":
-        return <span className="text-lg">💲</span>;
+        return <MdAttachMoney className="text-xl text-green-600" />;
       case "promo":
-        return <span className="text-lg">🎉</span>;
+        return <MdLocalOffer className="text-xl text-green-600" />;
       case "auditoria":
-        return <span className="text-lg">📋</span>;
+        return <FaClipboardCheck className="text-xl text-green-600" />;
       case "mantenimiento":
-        return <span className="text-lg">🛠️</span>;
+        return <MdBuild className="text-xl text-green-600" />;
       case "floor":
         return <FaChartLine className="text-xl text-green-600" />;
       case "sizeperm":

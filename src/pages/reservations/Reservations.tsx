@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { BsPersonBoundingBox } from "react-icons/bs";
 import { getAdminReservations, deleteAdminReservation, cancelAdminReservation, getFacePhoto, confirmFaceEnrolled, rejectFacePhoto, getFreeRoomsByM2, reassignReservationRoom, updateAdminReservation, type AdminReservation, type FreeRoom } from "@/services/reservation.admin.services";
 import { showError } from "@/utils/alerts";
 import { Input } from "@/components/ui/input";
@@ -280,7 +281,7 @@ export default function Reservations() {
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {r.faceEnrollStatus === "queued" && (
                         <button onClick={() => openFace(r)} className="titila inline-flex items-center gap-1 bg-violet-700 hover:bg-violet-800 text-white text-xs font-bold px-2.5 py-1 rounded-full mr-3">
-                          📸 Alta de Face ID
+                          <BsPersonBoundingBox />Alta de Face ID
                         </button>
                       )}
                       {r.status !== "active" && <button onClick={() => activate(r)} className="text-blue-700 hover:text-blue-900 text-xs font-semibold mr-3">Activar</button>}
@@ -336,7 +337,7 @@ export default function Reservations() {
       {faceFor && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeFace}>
           <div className="bg-white rounded-xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold text-gray-900 mb-1">📸 Alta de Face ID</h3>
+            <h3 className="font-semibold text-gray-900 mb-1 flex items-center gap-2"><BsPersonBoundingBox className="text-violet-700" />Alta de Face ID</h3>
             <p className="text-xs text-gray-500 mb-3">
               {faceFor.customerName || faceFor.customerEmail} · Baulera {faceFor.bauleraCodigo || faceFor.storageRoomId || "—"} · Reserva {faceFor.id}
             </p>
