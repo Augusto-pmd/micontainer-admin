@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { showSuccess } from "@/utils/alerts";
 import { updateUserSilent, getUserById } from "@/services/user.services";
+import { forgotPasswordService } from "@/services/auth.services";
 import { Spinner } from "@/components/ui/spinner";
 import { resetTour } from "@/hooks/useTour";
 
@@ -16,10 +17,6 @@ const UserProfile = () => {
   const [userData, setUserData] = useState<any>(null);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    newPassword: "",
-    confirmPassword: "",
-  });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
 
@@ -153,48 +150,21 @@ const UserProfile = () => {
     }
   };
 
+  // Cambio de contraseña REAL: manda el mail seguro de Firebase (crear/cambiar contraseña).
+  // El form viejo escribía `password` en Firestore vía updateUserSilent — NO tocaba la
+  // credencial real de Firebase Auth (cosmético y engañoso). El mail sí la cambia de verdad,
+  // y de paso le sirve a los que entran con Google para agregarse una contraseña.
   const handlePasswordChange = async () => {
-    // Limpiar error previo
     setPasswordError("");
-
-    // Validaciones
-    if (!passwordData.newPassword || !passwordData.confirmPassword) {
-      setPasswordError("Por favor completa todos los campos");
-      return;
-    }
-
-    if (passwordData.newPassword.length < 6) {
-      setPasswordError("La contraseña debe tener al menos 6 caracteres");
-      return;
-    }
-
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError("Las contraseñas no coinciden");
-      return;
-    }
-
+    const email = (user?.email || "").toLowerCase();
+    if (!email) { setPasswordError("No se pudo identificar tu email"); return; }
     try {
       setIsChangingPassword(true);
-      
-      if (!user?.id) {
-        setPasswordError("No se pudo identificar el usuario");
-        return;
-      }
-
-      // Actualizar contraseña usando el servicio updateUserSilent (sin alert automático)
-      await updateUserSilent(user.id, { password: passwordData.newPassword });
-      
-      showSuccess("Contraseña actualizada exitosamente");
+      const res = await forgotPasswordService(email);
+      showSuccess(res.message || `Te enviamos un mail a ${email} para cambiar tu contraseña.`);
       setIsPasswordModalOpen(false);
-      setPasswordData({ newPassword: "", confirmPassword: "" });
-      setPasswordError("");
     } catch (error: any) {
-      // El error ya se mostró en el interceptor de la API, solo actualizamos el estado
-      console.error("Error al cambiar contraseña:", error);
-      setPasswordError(
-        error.response?.data?.message || 
-        "Error al cambiar la contraseña. Intenta nuevamente."
-      );
+      setPasswordError(error.response?.data?.message || "No se pudo enviar el mail. Probá de nuevo.");
     } finally {
       setIsChangingPassword(false);
     }
@@ -370,7 +340,7 @@ const UserProfile = () => {
                   </Button>
                 }
                 title="Cambiar Contraseña"
-                description="Ingresa y confirma tu nueva contraseña"
+                description="Por seguridad, el cambio se hace con un link que te llega por mail"
                 open={isPasswordModalOpen}
                 onOpenChange={setIsPasswordModalOpen}
               >
@@ -381,52 +351,17 @@ const UserProfile = () => {
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="newPassword">Nueva Contraseña</Label>
-                    <Input
-                      id="newPassword"
-                      type="password"
-                      placeholder="Ingresa tu nueva contraseña"
-                      value={passwordData.newPassword}
-                      onChange={(e) =>
-                        setPasswordData({
-                          ...passwordData,
-                          newPassword: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
+                  <p className="text-sm text-gray-600">
+                    Te enviamos un mail a <b>{user?.email}</b> con un link seguro (de un solo uso) para
+                    crear o cambiar tu contraseña. Al terminar volvés al login y podés entrar con tu
+                    email y la clave nueva — o seguir usando Google, como prefieras.
+                  </p>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword">
-                      Confirmar Contraseña
-                    </Label>
-                    <Input
-                      id="confirmPassword"
-                      type="password"
-                      placeholder="Confirma tu nueva contraseña"
-                      value={passwordData.confirmPassword}
-                      onChange={(e) =>
-                        setPasswordData({
-                          ...passwordData,
-                          confirmPassword: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4">
+                  <div className="flex justify-end gap-3 pt-2">
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => {
-                        setIsPasswordModalOpen(false);
-                        setPasswordData({
-                          newPassword: "",
-                          confirmPassword: "",
-                        });
-                        setPasswordError("");
-                      }}
+                      onClick={() => { setIsPasswordModalOpen(false); setPasswordError(""); }}
                       disabled={isChangingPassword}
                     >
                       Cancelar
@@ -437,7 +372,7 @@ const UserProfile = () => {
                       onClick={handlePasswordChange}
                       disabled={isChangingPassword}
                     >
-                      {isChangingPassword ? "Guardando..." : "Guardar"}
+                      {isChangingPassword ? "Enviando..." : "Enviarme el mail"}
                     </Button>
                   </div>
                 </div>

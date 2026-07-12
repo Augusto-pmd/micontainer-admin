@@ -3,7 +3,7 @@ import { useAuth } from '@/stores/authStore';
 import React, { useState, useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import MiContainerLogo from '@/assets/img/MiContainerLogo.png';
-import { signInWithGoogle, completeGoogleRedirect } from '@/lib/firebase';
+import { signInWithGoogle, signInWithEmail, completeGoogleRedirect } from '@/lib/firebase';
 import { UserRole } from '@/types/auth';
 import { api } from '@/services/api';
 
@@ -12,7 +12,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { login, isAuthenticated, error, clearError, setUser, setToken } = useAuth();
+  const { isAuthenticated, error, clearError, setUser, setToken } = useAuth();
   const [googleError, setGoogleError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -75,15 +75,26 @@ const Login = () => {
     }
   };
 
+  // Login REAL con Firebase Auth (antes llamaba a un endpoint simbólico que devolvía un
+  // token de mentira y el acceso solo funcionaba por Google). Misma allowlist que Google.
+  const [emailError, setEmailError] = useState('');
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     clearError();
-
+    setEmailError('');
     try {
-      await login(email, password);
-    } catch (error) {
-      console.error('Error de login:', error);
+      const fbUser = await signInWithEmail(email, password);
+      await applyUser(fbUser);
+    } catch (err: any) {
+      const code = String(err?.code || '');
+      if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found')) {
+        setEmailError('Email o contraseña incorrectos. Si nunca creaste tu contraseña, usá "¿Olvidaste tu contraseña?" para generarla.');
+      } else if (code.includes('too-many-requests')) {
+        setEmailError('Demasiados intentos. Esperá unos minutos y probá de nuevo.');
+      } else {
+        setEmailError(err?.message || 'No se pudo iniciar sesión.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -132,6 +143,11 @@ const Login = () => {
         </div>
 
         <form className="mt-4 space-y-6" onSubmit={handleSubmit}>
+          {emailError && (
+            <div className="bg-red-50 border border-red-200 rounded-md p-3">
+              <p className="text-sm text-red-700">{emailError}</p>
+            </div>
+          )}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-md p-4">
               <div className="flex">

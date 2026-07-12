@@ -5,6 +5,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  signInWithEmailAndPassword,
   signOut,
   type User,
 } from 'firebase/auth';
@@ -71,6 +72,17 @@ export async function signInWithGoogle(): Promise<User | null> {
     }
     throw err;
   }
+}
+
+/**
+ * Login REAL con email y contraseña (Firebase Auth). Antes el form era simbólico (pegaba a un
+ * endpoint que devolvía un token de mentira). Aplica la MISMA allowlist que Google: si el email
+ * no es de staff, se cierra la sesión y tira error. La contraseña se crea/cambia con el mail de
+ * "¿Olvidaste tu contraseña?" (los que entran con Google pueden sumarse una con ese mismo flujo).
+ */
+export async function signInWithEmail(email: string, password: string): Promise<User> {
+  const result = await signInWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
+  return assertAllowedDomain(result.user);
 }
 
 /** Procesa el resultado del login por redirect (mobile). Devuelve el usuario o null. */
