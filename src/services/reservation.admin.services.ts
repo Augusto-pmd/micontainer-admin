@@ -24,6 +24,8 @@ export interface AdminReservation {
   bauleraCodigo?: string | null;
   heldUntil?: string | null;
   source?: string;
+  faceEnrollStatus?: 'not_started' | 'queued' | 'enrolled' | 'failed' | 'revoked';
+  paymentMode?: string;
 }
 
 export interface AdminReservationsResponse {
@@ -64,6 +66,21 @@ export const deleteAdminReservation = async (id: string) => {
 export const cancelAdminReservation = async (id: string) => {
   const res = await api.post(`/admin/reservations/${id}/cancel`);
   return res.data as { message: string; mpCancelled: boolean; roomFreed: boolean };
+};
+
+// FACE ID — alta manual por el admin (hasta integrar el dispositivo de acceso):
+// ver la foto (URL firmada 15 min), confirmar el alta (borra la foto) o rechazarla.
+export const getFacePhoto = async (id: string) => {
+  const res = await api.get(`/admin/reservations/${id}/face-photo`);
+  return res.data as { url?: string; path?: string; status?: string; subida?: string; baulera?: string };
+};
+export const confirmFaceEnrolled = async (id: string) => {
+  const res = await api.post(`/admin/reservations/${id}/face-enrolled`);
+  return res.data as { message: string };
+};
+export const rejectFacePhoto = async (id: string) => {
+  const res = await api.post(`/admin/reservations/${id}/face-reject`);
+  return res.data as { message: string };
 };
 
 export interface FreeRoom {

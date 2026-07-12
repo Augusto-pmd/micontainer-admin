@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAdminReservations, deleteAdminReservation, cancelAdminReservation, getFreeRoomsByM2, reassignReservationRoom, updateAdminReservation, type AdminReservation, type FreeRoom } from "@/services/reservation.admin.services";
+import { getAdminReservations, deleteAdminReservation, cancelAdminReservation, getFacePhoto, confirmFaceEnrolled, rejectFacePhoto, getFreeRoomsByM2, reassignReservationRoom, updateAdminReservation, type AdminReservation, type FreeRoom } from "@/services/reservation.admin.services";
 import { showError } from "@/utils/alerts";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -49,6 +49,42 @@ export default function Reservations() {
     if (!window.confirm('¿Eliminar esta reserva? Esta acción no se puede deshacer.\n\nOJO: Eliminar solo borra el registro interno — NO cancela la suscripción en Mercado Pago. Para cortar el cobro usá "Dar de baja".')) return;
     try { await deleteAdminReservation(id); setReservations((x) => x.filter((rv) => rv.id !== id)); }
     catch { showError('No se pudo eliminar la reserva.'); }
+  };
+
+  // ALTA DE FACE ID — paso manual OBLIGATORIO del admin (hasta integrar el dispositivo):
+  // ver la foto que subió el cliente, cargarla a mano en el equipo de acceso, y confirmar
+  // (o rechazarla si no sirve — el cliente puede volver a subir otra).
+  const [faceFor, setFaceFor] = useState<AdminReservation | null>(null);
+  const [facePhoto, setFacePhoto] = useState<{ url?: string; path?: string; subida?: string } | null>(null);
+  const [faceBusy, setFaceBusy] = useState(false);
+  const openFace = async (r: AdminReservation) => {
+    setFaceFor(r); setFacePhoto(null); setFaceBusy(true);
+    try { setFacePhoto(await getFacePhoto(r.id)); }
+    catch (e: any) { showError(e?.response?.data?.error || "No se pudo cargar la foto."); setFaceFor(null); }
+    finally { setFaceBusy(false); }
+  };
+  const closeFace = () => { setFaceFor(null); setFacePhoto(null); };
+  const doFaceEnrolled = async () => {
+    if (!faceFor) return;
+    if (!window.confirm(`¿Confirmás que YA cargaste la cara de ${faceFor.customerName || faceFor.customerEmail} en el dispositivo de acceso?\n\nEl cliente va a ver "Acceso activo" y la foto se borra de los servidores.`)) return;
+    setFaceBusy(true);
+    try {
+      await confirmFaceEnrolled(faceFor.id);
+      setReservations((x) => x.map((rv) => rv.id === faceFor.id ? { ...rv, faceEnrollStatus: "enrolled" } : rv));
+      closeFace();
+    } catch (e: any) { showError(e?.response?.data?.error || "No se pudo confirmar el alta."); }
+    finally { setFaceBusy(false); }
+  };
+  const doFaceReject = async () => {
+    if (!faceFor) return;
+    if (!window.confirm("¿Rechazar esta foto? Se borra y el cliente ve en su portal que debe subir otra.")) return;
+    setFaceBusy(true);
+    try {
+      await rejectFacePhoto(faceFor.id);
+      setReservations((x) => x.map((rv) => rv.id === faceFor.id ? { ...rv, faceEnrollStatus: "failed" } : rv));
+      closeFace();
+    } catch (e: any) { showError(e?.response?.data?.error || "No se pudo rechazar."); }
+    finally { setFaceBusy(false); }
   };
 
   // DAR DE BAJA: cancela la suscripción en MP (corta el cobro DE VERDAD), marca la reserva
@@ -242,6 +278,11 @@ export default function Reservations() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">{fmtDate(r.createdAt)}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {r.faceEnrollStatus === "queued" && (
+                        <button onClick={() => openFace(r)} className="titila inline-flex items-center gap-1 bg-violet-700 hover:bg-violet-800 text-white text-xs font-bold px-2.5 py-1 rounded-full mr-3">
+                          📸 Alta de Face ID
+                        </button>
+                      )}
                       {r.status !== "active" && <button onClick={() => activate(r)} className="text-blue-700 hover:text-blue-900 text-xs font-semibold mr-3">Activar</button>}
                       <button onClick={() => openReassign(r)} className="text-green-700 hover:text-green-900 text-xs font-semibold mr-3">Reasignar</button>
                       {r.status !== "cancelled" && <button onClick={() => darDeBaja(r)} className="text-orange-600 hover:text-orange-800 text-xs font-semibold mr-3">Dar de baja</button>}
@@ -287,6 +328,41 @@ export default function Reservations() {
               <button onClick={doReassign} disabled={reassigning} className="px-4 py-2 text-sm font-semibold bg-green-600 hover:bg-green-700 text-white rounded-lg disabled:opacity-60">
                 {reassigning ? "Asignando…" : "Reasignar"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {faceFor && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={closeFace}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-gray-900 mb-1">📸 Alta de Face ID</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              {faceFor.customerName || faceFor.customerEmail} · Baulera {faceFor.bauleraCodigo || faceFor.storageRoomId || "—"} · Reserva {faceFor.id}
+            </p>
+            {faceBusy && !facePhoto ? (
+              <p className="text-sm text-gray-500 py-6 text-center">Cargando foto…</p>
+            ) : facePhoto?.url ? (
+              <img src={facePhoto.url} alt="Foto del cliente" className="w-full rounded-lg border mb-3" />
+            ) : (
+              <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-3">
+                No se pudo mostrar la imagen acá{facePhoto?.path ? ` — path: ${facePhoto.path} (abrir en Firebase → Storage)` : ""}.
+              </p>
+            )}
+            <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 text-xs text-violet-900 mb-4">
+              <b>Pasos del alta manual:</b> 1) Descargá/mirá la foto. 2) Cargá la cara del cliente en el
+              <b> dispositivo de acceso</b> del local. 3) Recién ahí tocá <b>"Confirmar alta"</b> — el cliente
+              pasa a "Acceso activo" y la foto se borra de los servidores. Si la foto no sirve (borrosa,
+              lentes, etc.), tocá "Rechazar" y el cliente sube otra desde su portal.
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={doFaceEnrolled} disabled={faceBusy} className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-60">
+                {faceBusy ? "..." : "✓ Confirmar alta (ya la cargué en el equipo)"}
+              </button>
+              <button onClick={doFaceReject} disabled={faceBusy} className="bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-sm font-semibold px-3 py-2 rounded-lg disabled:opacity-60">
+                Rechazar foto
+              </button>
+              <button onClick={closeFace} className="text-gray-600 text-sm px-2">Cerrar</button>
             </div>
           </div>
         </div>
