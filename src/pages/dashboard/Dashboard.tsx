@@ -9,6 +9,7 @@ import { useAuth } from "@/stores/authStore";
 import { UserRole } from "@/types/auth";
 import { getAllStorageRoomsServices } from "@/services/storageRoom.services";
 import { getAllOrdersServices } from "@/services/order.services";
+import { getAdminReservations } from "@/services/reservation.admin.services";
 import { useTour } from "@/hooks/useTour";
 
 interface Stats {
@@ -74,6 +75,18 @@ export default function Dashboard() {
   const { user } = useAuth();
   useTour(true);
   const [stats, setStats] = useState<Stats>({ total: 0, available: 0, occupied: 0, blocked: 0, billing: null, loading: true });
+  // Altas de Face ID esperando (clientes que subieron su foto desde el portal): botón violeta
+  // titilante que lleva a Ventas en curso, donde está el alta manual (dispositivo Hikvision).
+  const [faceQueued, setFaceQueued] = useState(0);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res: any = await getAdminReservations({ limit: 200 } as any);
+        const rows: any[] = Array.isArray(res) ? res : (res.data || res.reservations || []);
+        setFaceQueued(rows.filter((r) => r.faceEnrollStatus === "queued").length);
+      } catch { /* sin badge */ }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -109,9 +122,17 @@ export default function Dashboard() {
           {user?.firstName ? greeting(user.firstName) : "Panel de administración"}
         </h1>
         <p className="text-sm text-gray-400 mt-0.5 capitalize">{formatDate()}</p>
-        <Link to="/vender" className="inline-flex items-center gap-2 mt-4 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
-          <span className="text-lg">🧾</span> Vender / Generar link de pago
-        </Link>
+        <div className="flex items-center gap-3 mt-4 flex-wrap">
+          <Link to="/vender" className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+            <span className="text-lg">🧾</span> Vender / Generar link de pago
+          </Link>
+          {faceQueued > 0 && (
+            <Link to="/ventas" className="titila inline-flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+              <span className="text-lg">📸</span> Altas de Face ID pendientes
+              <span className="bg-white text-violet-700 text-xs font-bold rounded-full px-2 py-0.5">{faceQueued}</span>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* KPIs */}

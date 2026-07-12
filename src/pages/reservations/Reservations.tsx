@@ -350,8 +350,9 @@ export default function Reservations() {
               </p>
             )}
             <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 text-xs text-violet-900 mb-4">
-              <b>Pasos del alta manual:</b> 1) Descargá/mirá la foto. 2) Cargá la cara del cliente en el
-              <b> dispositivo de acceso</b> del local. 3) Recién ahí tocá <b>"Confirmar alta"</b> — el cliente
+              <b>Pasos del alta manual:</b> 1) Descargá/mirá la foto (debe verse de la mitad del torso
+              para arriba: hombros y cara). 2) Cargá la cara del cliente en el
+              <b> dispositivo Hikvision</b> del local. 3) Recién ahí tocá <b>"Confirmar alta"</b> — el cliente
               pasa a "Acceso activo" y la foto se borra de los servidores. Si la foto no sirve (borrosa,
               lentes, etc.), tocá "Rechazar" y el cliente sube otra desde su portal.
             </div>
