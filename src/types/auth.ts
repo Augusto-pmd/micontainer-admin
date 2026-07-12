@@ -41,18 +41,6 @@ export interface Operator {
 }
 
 // Interface para el usuario desde el backend
-export interface BackendUser {
-  id: string;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: Role;
-  customer: Customer | null;
-  operator?: Operator | null;
-}
 
 // Interface para el usuario normalizada para el frontend
 export interface User {
@@ -83,23 +71,17 @@ export interface AuthState {
 
 // Acciones de autenticación
 export interface AuthActions {
-  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
   clearError: () => void;
   checkAuth: () => Promise<void>;
-  updateUserRole: (userId: string, role: UserRole) => Promise<void>;
 }
 
 // Store completo de autenticación
 export interface AuthStore extends AuthState, AuthActions {}
 
 // Interface para la respuesta de login del backend
-export interface LoginResponse {
-  user: BackendUser;
-  token: string;
-}
 
 // Props para componentes de protección de rutas
 export interface ProtectedRouteProps {

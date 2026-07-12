@@ -1,30 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { AuthStore, User, BackendUser, LoginResponse } from '../types/auth';
-import { UserRole } from '../types/auth';
-import { loginService } from '../services/auth.services';
+import type { AuthStore, User } from '../types/auth';
 import { api } from '../services/api';
-
-// Función para mapear usuario del backend al formato del frontend
-const mapBackendUserToUser = (backendUser: BackendUser): User => {
-  const userRole = backendUser.role.code as UserRole;
-  
-  return {
-    id: backendUser.id,
-    email: backendUser.email,
-    name: `${backendUser.firstName} ${backendUser.lastName}`,
-    firstName: backendUser.firstName,
-    lastName: backendUser.lastName,
-    role: userRole,
-    roleDetails: backendUser.role,
-    avatar: `${backendUser.firstName.charAt(0)}${backendUser.lastName.charAt(0)}`,
-    isActive: true, // Asumimos que si el usuario puede hacer login, está activo
-    createdAt: new Date(backendUser.createdAt),
-    updatedAt: new Date(backendUser.updatedAt),
-    customer: backendUser.customer,
-    operator: backendUser.operator || null
-  };
-};
 
 export const useAuthStore = create<AuthStore>()(
   persist(
@@ -36,50 +13,7 @@ export const useAuthStore = create<AuthStore>()(
       isLoading: false, // Inicializamos en false, se activará en checkAuth si es necesario
       error: null,
 
-      // Acción de login
-      login: async (email: string, password: string) => {
-        set({ isLoading: true, error: null });
-        
-        try {
-          const response: LoginResponse = await loginService({ email, password });
-          const { user: backendUser, token } = response;
-          
-          // Validar que el usuario no sea un customer
-          if (backendUser.role.code === UserRole.CUSTOMER) {
-            set({
-              user: null,
-              token: null,
-              isAuthenticated: false,
-              isLoading: false,
-              error: 'Los clientes no tienen acceso al panel de administración'
-            });
-            throw new Error('Los clientes no tienen acceso al panel de administración');
-          }
-          
-          // Mapear el usuario del backend al formato del frontend
-          const user = mapBackendUserToUser(backendUser);
-          
-          // Configurar el token en el header por defecto de axios
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-          
-          set({
-            user: { ...user, lastLogin: new Date() },
-            token,
-            isAuthenticated: true,
-            isLoading: false,
-            error: null
-          });
-        } catch (error: any) {
-          set({
-            user: null,
-            token: null,
-            isAuthenticated: false,
-            isLoading: false,
-            error: error?.response?.data?.message || error?.message || 'Error de autenticación'
-          });
-          throw error;
-        }
-      },
+      // (login viejo ELIMINADO 12/07: el login real es Firebase — ver lib/firebase + Login.tsx)
 
       // Acción de logout
       logout: async () => {
@@ -152,27 +86,7 @@ export const useAuthStore = create<AuthStore>()(
         }
       },
 
-      // Actualizar rol de usuario (para admins)
-      updateUserRole: async (userId: string, role: UserRole) => {
-        const { user } = get();
-        
-        if (!user || user.role !== UserRole.ADMIN) {
-          throw new Error('No tienes permisos para esta acción');
-        }
-
-        // En una app real, esto sería una llamada a la API
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Si es el usuario actual, actualizar el estado
-        if (user.id === userId) {
-          set({
-            user: {
-              ...user,
-              role
-            }
-          });
-        }
-      }
+      // (updateUserRole mock ELIMINADO 12/07: nunca se llamó; el rol real vive en operators)
     }),
     {
       name: 'auth-storage',
@@ -195,7 +109,6 @@ export const useAuth = () => {
     isAuthenticated: store.isAuthenticated,
     isLoading: store.isLoading,
     error: store.error,
-    login: store.login,
     logout: store.logout,
     checkAuth: store.checkAuth,
     clearError: store.clearError,

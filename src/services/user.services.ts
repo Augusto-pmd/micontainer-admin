@@ -1,10 +1,5 @@
 import { api } from "./api";
 
-export const getUsers = async () => {
-  const response = await api.get("/user");
-  return response.data;
-};
-
 export const getUserById = async (id: string) => {
   const response = await api.get(`/user/${id}`);
   return response.data;
@@ -33,7 +28,3 @@ export const deleteUser = async (id: string) => {
   return response.data;
 };
 
-export const updateUserRole = async (id: string, role: string) => {
-  const response = await api.patch(`/user/${id}/role`, { role });
-  return response.data;
-};
