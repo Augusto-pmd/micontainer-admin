@@ -38,6 +38,57 @@ import { getAllOperatorsServices, deleteOperatorServices } from "@/services/oper
 import type { Operator, PaginatedOperators } from "@/types/operator";
 import { useOperatorStore } from "@/stores/operatorStore";
 import { showSuccess, showApiError, showDeleteConfirm } from "@/utils/alerts";
+import { api } from "@/services/api";
+
+// USUARIOS CON ACCESO AL PANEL (pedido Lucas 12/07): la lista REAL de quiénes pueden entrar
+// hoy y con qué rol — sale del backend (GET /auth/staff = allowlist unificada + operadores).
+// Después se definirá qué ve cada rol.
+function PanelUsers() {
+  const [users, setUsers] = useState<Array<{ email: string; name: string; role: string; origen: string; puedeEntrar: boolean }>>([]);
+  const [dominio, setDominio] = useState("");
+  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await api.get("/auth/staff");
+        setUsers(r.data?.usuarios || []);
+        setDominio(r.data?.dominioPermitido || "");
+      } catch { /* sin permiso o error: no se muestra */ }
+    })();
+  }, []);
+  if (!users.length) return null;
+  const rolLabel = (r: string) => (r === "role-operator" ? "Operador" : r === "role-admin" ? "Administrador" : r);
+  return (
+    <div className="mb-6 bg-white rounded-xl border border-gray-200">
+      <button type="button" onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3">
+        <span className="font-semibold text-gray-800">👥 Usuarios con acceso al panel ({users.filter(u => u.puedeEntrar).length})</span>
+        <span className="text-gray-400 text-sm">{open ? "ocultar ▲" : "ver ▼"}</span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4">
+          {dominio && <p className="text-xs text-gray-500 mb-2">Además del listado: {dominio}.</p>}
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs text-gray-400 uppercase">
+              <tr><th className="py-1.5">Email</th><th className="py-1.5">Nombre</th><th className="py-1.5">Rol</th><th className="py-1.5">Origen</th></tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {users.map((u) => (
+                <tr key={u.email} className={u.puedeEntrar ? "text-gray-800" : "text-gray-400"}>
+                  <td className="py-1.5 font-medium">{u.email}</td>
+                  <td className="py-1.5">{u.name || "—"}</td>
+                  <td className="py-1.5">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${u.role === "role-operator" ? "bg-blue-50 text-blue-700" : "bg-violet-50 text-violet-700"}`}>{rolLabel(u.role)}</span>
+                  </td>
+                  <td className="py-1.5 text-xs">{u.origen}{!u.puedeEntrar ? " · ⚠️ NO puede entrar (fuera de la allowlist)" : ""}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 const columnLabels: Record<string, string> = {
   id: "ID",
@@ -221,10 +272,10 @@ export const Operators = () => {
   return (
     <div className="w-full">
       {error && <div className="p-4 text-red-500">{error}</div>}
-      
+
       <div className="flex items-center justify-between py-4">
         <h1 className="text-2xl font-bold">Operadores</h1>
-        <Button 
+        <Button
           onClick={() => navigate('/operators/create')}
           className="bg-green-600 hover:bg-green-700"
         >
@@ -232,6 +283,8 @@ export const Operators = () => {
           Crear Operador
         </Button>
       </div>
+
+      <PanelUsers />
 
       <div className="flex items-center py-4">
         <Input

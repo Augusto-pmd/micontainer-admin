@@ -43,12 +43,24 @@ export function isMobileDevice(): boolean {
   );
 }
 
-function assertAllowedDomain(user: User): User {
+// FUENTE ÚNICA (12/07): la allowlist vive en el BACKEND (requireStaff). El login consulta
+// POST /auth/is-staff; la lista local ALLOWED_EMAILS queda SOLO como fallback si el backend
+// no responde. Así no hay más 2 listas a sincronizar a mano.
+async function assertAllowedDomain(user: User): Promise<User> {
   const email = (user.email ?? '').toLowerCase();
-  const allowed = email.endsWith(`@${ALLOWED_DOMAIN}`) || ALLOWED_EMAILS.includes(email);
+  let allowed: boolean | null = null;
+  try {
+    const r = await fetch(`${import.meta.env.VITE_API_URL}/auth/is-staff`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    if (r.ok) allowed = !!(await r.json()).staff;
+  } catch { /* sin red: cae al fallback local */ }
+  if (allowed === null) allowed = email.endsWith(`@${ALLOWED_DOMAIN}`) || ALLOWED_EMAILS.includes(email);
   if (!allowed) {
     void signOut(auth);
-    throw new Error(`Acceso restringido a cuentas @${ALLOWED_DOMAIN}`);
+    throw new Error('Tu cuenta no tiene acceso al panel. Pedile al administrador que te agregue.');
   }
   return user;
 }
