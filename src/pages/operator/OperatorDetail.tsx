@@ -260,7 +260,7 @@ export const OperatorDetail = () => {
               <Button 
                 className="w-full" 
                 variant="outline"
-                onClick={() => navigate(`/branches/${operator.branch.id}`)}
+                onClick={() => navigate(`/branch/${operator.branch.id}`)}
               >
                 Ver sucursal
               </Button>

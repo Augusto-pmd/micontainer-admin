@@ -8,7 +8,6 @@ import { IoMdSettings } from "react-icons/io";
 import { useAuth } from "@/stores/authStore";
 import { UserRole } from "@/types/auth";
 import { getAllStorageRoomsServices } from "@/services/storageRoom.services";
-import { getAllOrdersServices } from "@/services/order.services";
 import { getAdminReservations } from "@/services/reservation.admin.services";
 import { useTour } from "@/hooks/useTour";
 
@@ -91,17 +90,17 @@ export default function Dashboard() {
   useEffect(() => {
     (async () => {
       try {
-        const [allRes, occRes, blkRes, ordersRes] = await Promise.all([
+        const [allRes, occRes, blkRes] = await Promise.all([
           getAllStorageRoomsServices({ limit: 1 }),
-          getAllStorageRoomsServices({ limit: 1, status: "occupied" }),
+          // Ocupadas CON data: el KPI Facturación = Σ precio mensual de las bauleras ocupadas.
+          // (Antes sumaba o.price de las ÓRDENES — campo que no existe → daba $0 siempre.)
+          getAllStorageRoomsServices({ limit: 500, status: "occupied" }),
           getAllStorageRoomsServices({ limit: 1, status: "blocked" }),
-          getAllOrdersServices({ limit: 1000 }).catch(() => null),
         ]);
-        // Sumar precios de órdenes activas para facturación real
-        let billing: number | null = null;
-        if (ordersRes && ordersRes.data?.length > 0) {
-          billing = ordersRes.data.reduce((sum: number, o: any) => sum + (parseFloat(o.price) || 0), 0);
-        }
+        const occRows: any[] = (occRes as any).data || [];
+        const billing = occRows.length > 0
+          ? occRows.reduce((sum: number, r: any) => sum + (Number(r.price) || 0), 0)
+          : null;
         const blocked = blkRes.total;
         setStats({ total: allRes.total, occupied: occRes.total, blocked, available: allRes.total - occRes.total - blocked, billing, loading: false });
       } catch {
@@ -141,7 +140,7 @@ export default function Dashboard() {
         <KpiCard label="Disponibles" value={stats.loading ? "…" : stats.available} sub={`${availablePct}% libre`}        color="green" />
         <KpiCard label="Ocupadas"    value={stats.loading ? "…" : stats.occupied}  sub={`${occupancyPct}% ocupación`}    color={stats.occupied > 0 ? "red" : "gray"} />
         <KpiCard label="Bloqueadas"  value={stats.loading ? "…" : stats.blocked}   sub={stats.blocked > 0 ? "fuera de servicio" : "ninguna"} color="gray" />
-        <KpiCard label="Facturación" value={stats.loading ? "…" : stats.billing !== null ? `$${stats.billing.toLocaleString("es-AR")}` : "—"} sub={stats.billing !== null ? "Órdenes activas" : "Sin datos aún"} color="gray" />
+        <KpiCard label="Facturación" value={stats.loading ? "…" : stats.billing !== null ? `$${stats.billing.toLocaleString("es-AR")}` : "—"} sub={stats.billing !== null ? "mensual · bauleras ocupadas" : "Sin datos aún"} color={stats.billing ? "green" : "gray"} />
       </div>
 
       {/* Acceso rápido */}
