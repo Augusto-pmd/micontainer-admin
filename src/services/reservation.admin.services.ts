@@ -59,6 +59,13 @@ export const deleteAdminReservation = async (id: string) => {
   return res.data;
 };
 
+// DAR DE BAJA (distinto de Eliminar): cancela la suscripción en MP si tiene (corta el cobro),
+// marca la reserva cancelada y libera la baulera. Para pago único solo marca + libera.
+export const cancelAdminReservation = async (id: string) => {
+  const res = await api.post(`/admin/reservations/${id}/cancel`);
+  return res.data as { message: string; mpCancelled: boolean; roomFreed: boolean };
+};
+
 export interface FreeRoom {
   id: string;
   space?: string;

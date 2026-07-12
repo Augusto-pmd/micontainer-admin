@@ -17,7 +17,6 @@ import Avisos from "../pages/avisos";
 import Tarifas from "../pages/tarifas";
 import PromoWeb from "../pages/promo";
 import Vender from "../pages/vender";
-import Ventas from "../pages/ventas";
 import Auditoria from "../pages/auditoria";
 import Mantenimiento from "../pages/mantenimiento";
 import { UserRole } from "../types/auth";
@@ -355,10 +354,13 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        // UNIFICADA (11/07/2026): /ventas ahora muestra la pantalla completa (ex "Reservas MP"):
+        // stats + filtros + Activar/Reasignar/Dar de baja/Eliminar. La página vieja de 2 tablas
+        // (src/pages/ventas) queda sin montar. /reservations (arriba) sigue como alias.
         path: "ventas",
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN, UserRole.OPERATOR]}>
-            <Ventas />
+            <Reservations />
           </ProtectedRoute>
         ),
       },

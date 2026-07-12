@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAdminReservations, deleteAdminReservation, getFreeRoomsByM2, reassignReservationRoom, updateAdminReservation, type AdminReservation, type FreeRoom } from "@/services/reservation.admin.services";
+import { getAdminReservations, deleteAdminReservation, cancelAdminReservation, getFreeRoomsByM2, reassignReservationRoom, updateAdminReservation, type AdminReservation, type FreeRoom } from "@/services/reservation.admin.services";
 import { showError } from "@/utils/alerts";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -46,9 +46,21 @@ export default function Reservations() {
   useEffect(() => { load(); }, []);
 
   const remove = async (id: string) => {
-    if (!window.confirm('¿Eliminar esta reserva? Esta acción no se puede deshacer.')) return;
+    if (!window.confirm('¿Eliminar esta reserva? Esta acción no se puede deshacer.\n\nOJO: Eliminar solo borra el registro interno — NO cancela la suscripción en Mercado Pago. Para cortar el cobro usá "Dar de baja".')) return;
     try { await deleteAdminReservation(id); setReservations((x) => x.filter((rv) => rv.id !== id)); }
     catch { showError('No se pudo eliminar la reserva.'); }
+  };
+
+  // DAR DE BAJA: cancela la suscripción en MP (corta el cobro DE VERDAD), marca la reserva
+  // cancelada y libera la baulera. Es LA baja real — Eliminar solo borra el registro.
+  const darDeBaja = async (r: AdminReservation) => {
+    if (!window.confirm(`¿Dar de BAJA a ${r.customerName || r.customerEmail || r.id}?\n\n• Se cancela la suscripción en Mercado Pago (deja de cobrar)\n• La reserva queda cancelada\n• La baulera se libera`)) return;
+    try {
+      await cancelAdminReservation(r.id);
+      setReservations((x) => x.map((rv) => rv.id === r.id ? { ...rv, status: "cancelled", mpSubscriptionStatus: "cancelled" } : rv));
+    } catch (e: any) {
+      showError(e?.response?.data?.error || "No se pudo dar de baja.");
+    }
   };
 
   const openReassign = async (r: AdminReservation) => {
@@ -116,8 +128,8 @@ export default function Reservations() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Reservas online</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Reservas realizadas desde micontainer.com vía Mercado Pago</p>
+          <h1 className="text-2xl font-bold text-gray-900">Ventas en curso</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Todas las ventas (web + Vender): suscripciones, planes con mes gratis y pagos únicos</p>
         </div>
         <button onClick={load} className="text-sm text-green-700 hover:text-green-900 font-medium">
           ↻ Actualizar
@@ -232,6 +244,7 @@ export default function Reservations() {
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       {r.status !== "active" && <button onClick={() => activate(r)} className="text-blue-700 hover:text-blue-900 text-xs font-semibold mr-3">Activar</button>}
                       <button onClick={() => openReassign(r)} className="text-green-700 hover:text-green-900 text-xs font-semibold mr-3">Reasignar</button>
+                      {r.status !== "cancelled" && <button onClick={() => darDeBaja(r)} className="text-orange-600 hover:text-orange-800 text-xs font-semibold mr-3">Dar de baja</button>}
                       <button onClick={() => remove(r.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Eliminar</button>
                     </td>
                   </tr>

@@ -53,12 +53,9 @@ const links: LinkItem[] = [
     icon: "inventory",
     roles: [UserRole.ADMIN, UserRole.OPERATOR],
   },
-  {
-    name: "Reservas MP",
-    href: "/reservations",
-    icon: "reservations",
-    roles: [UserRole.ADMIN, UserRole.OPERATOR],
-  },
+  // "Reservas MP" UNIFICADA con "Ventas en curso" (11/07/2026, pedido de Lucas): era la misma
+  // colección en 2 pantallas. Queda /ventas con la pantalla completa (stats + filtros +
+  // Activar/Reasignar/Dar de baja/Eliminar). La ruta /reservations sigue viva como alias.
   {
     name: "Reservas a futuro / diferidas",
     href: "/waitlist",
