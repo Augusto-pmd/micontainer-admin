@@ -33,6 +33,15 @@ export interface AdminReservationsResponse {
   total: number;
 }
 
+// Detalle completo de una reserva (incluye la traza del recobro: rebillAt/rebillBy/mpInitPoint)
+export type AdminReservationFull = AdminReservation & {
+  rebillAt?: string; rebillBy?: string; rebillPrevPreapprovalId?: string; mpInitPoint?: string;
+};
+export const getAdminReservationById = async (id: string): Promise<AdminReservationFull> => {
+  const res = await api.get(`/admin/reservations/${id}`);
+  return res.data;
+};
+
 export const getAdminReservations = async (params?: {
   limit?: number;
   status?: string;

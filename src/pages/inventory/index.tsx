@@ -4,7 +4,7 @@ import { getAllBranchesServices } from '../../services/branch.services';
 import { getOrdersByCustomerIdServices } from '../../services/order.services';
 import { updateCustomerServices } from '../../services/customer.services';
 import { getCobrosRechazadosServices, type CobroRechazado } from '../../services/pricing.services';
-import { rebillSubscription } from '../../services/reservation.admin.services';
+import { rebillSubscription, getAdminReservationById, getAdminReservations, type AdminReservationFull } from '../../services/reservation.admin.services';
 import type { StorageRoom, StorageRoomStatus } from '../../types/storageRoom';
 import type { Branch } from '../../types/branch';
 
@@ -109,7 +109,19 @@ export default function Inventory() {
           order = orders.find((o) => o.storageRoomId === room.id || o.contractNumber === full.contractNumber) || orders[0] || null;
         } catch { /* sin órdenes */ }
       }
-      setDetail({ room: full, tenant, order, rechazo });
+      // Reserva vinculada (para mostrar si YA se envió un link de recobro y si lo pagó).
+      let resv: AdminReservationFull | null = null;
+      try {
+        if (full?.reservationId) {
+          resv = await getAdminReservationById(String(full.reservationId));
+        } else if (full?.status === 'occupied') {
+          // Legacy sin reservationId en la baulera: buscar por baulera/room en las reservas.
+          const rl = await getAdminReservations({ limit: 200 });
+          const hit = (rl.data || []).find((x: any) => x.storageRoomId === full.id || (x.bauleraCodigo && x.bauleraCodigo === full.space));
+          if (hit) resv = await getAdminReservationById(hit.id);
+        }
+      } catch { /* sin reserva vinculada */ }
+      setDetail({ room: full, tenant, order, rechazo, resv });
     } catch {
       setDetail({ room, tenant: null, order: null, rechazo, error: true });
     } finally {
@@ -396,7 +408,9 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   // WhatsApp de cobranza (texto de Lucas): chat del cliente con el mensaje armado
   // (nombre + mes rechazado + link). Si no hay teléfono cargado, abre el selector de chat.
   const waUrl = (link: string) => {
-    const r = detail.rechazo as CobroRechazado;
+    // Tolerante a que la baulera YA no figure rechazada (ej: reabrir el modal días después):
+    // usa los datos del rechazo si están, si no el inquilino y el mes actual.
+    const r = (detail.rechazo || {}) as Partial<CobroRechazado>;
     const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     const mesIdx = Number(String(r.fechaRechazo || '').split('-')[1]) - 1;
     const mes = MESES[mesIdx] ?? MESES[new Date().getMonth()];
@@ -452,6 +466,15 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   };
   const tenantName = tenant ? (tenant.fullName || `${tenant.user?.firstName || tenant.firstName || ''} ${tenant.user?.lastName || tenant.lastName || ''}`.trim()) : (room.currentTenant || null);
 
+  // ¿YA se le envió un link de recobro? (traza rebillAt/rebillBy guardada en la reserva)
+  const resv: AdminReservationFull | null = detail.resv || null;
+  const recobroEnviado = !!(resv && resv.rebillAt);
+  const recobroPagado = recobroEnviado && resv!.mpSubscriptionStatus === 'authorized';
+  const recobroLink = rebillState.link || (recobroEnviado ? (resv!.mpInitPoint || '') : '');
+  const fechaEnvio = recobroEnviado ? new Date(resv!.rebillAt!).toLocaleDateString('es-AR') : '';
+  // El "regularizado" se muestra solo un tiempo (45 días) para no ensuciar la ficha a futuro.
+  const recobroReciente = recobroEnviado && Date.now() - Date.parse(resv!.rebillAt!) < 45 * 86400000;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
@@ -487,15 +510,19 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                       ? `⏰ PLAZO VENCIDO — pasaron ${detail.rechazo.diasTranscurridos} días (el plazo para regularizar era de 10).`
                       : `Le quedan ${detail.rechazo.diasRestantes} día(s) para regularizar (plazo de 10 días — MP reintenta el débito).`}
                   </p>
-                  {rebillState.link ? (
+                  {(rebillState.link || (recobroEnviado && !recobroPagado && recobroLink)) ? (
                     <div className="mt-2 rounded-md bg-green-50 border border-green-300 px-2.5 py-2">
-                      <p className="text-xs font-bold text-green-800">✓ Link nuevo enviado{rebillState.email ? ` a ${rebillState.email}` : ''} — la suscripción rechazada quedó cancelada.</p>
+                      <p className="text-xs font-bold text-green-800">
+                        {rebillState.link
+                          ? <>✓ Link nuevo enviado{rebillState.email ? ` a ${rebillState.email}` : ''} — la suscripción rechazada quedó cancelada.</>
+                          : <>✓ YA se le envió un link de recobro el <b>{fechaEnvio}</b>{resv?.rebillBy ? <> (por {resv.rebillBy})</> : null} — no generar otro: reenviale este.</>}
+                      </p>
                       <div className="flex gap-1.5 mt-1.5">
-                        <input readOnly value={rebillState.link} onFocus={(e) => e.target.select()}
+                        <input readOnly value={recobroLink} onFocus={(e) => e.target.select()}
                           className="flex-1 text-[10px] border border-green-200 rounded px-1.5 py-1 bg-white text-gray-600" />
-                        <button onClick={abrirWhatsApp} title="Abre WhatsApp con el mensaje de cobranza armado (nombre + mes + link)"
+                        <button onClick={() => window.open(waUrl(recobroLink), '_blank')} title="Abre WhatsApp con el mensaje de cobranza armado (nombre + mes + link)"
                           className="text-xs font-semibold bg-[#25D366] hover:bg-[#1ebe5b] text-white px-2 py-1 rounded">WhatsApp</button>
-                        <button onClick={() => navigator.clipboard?.writeText(rebillState.link!)}
+                        <button onClick={() => navigator.clipboard?.writeText(recobroLink)}
                           className="text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">Copiar</button>
                       </div>
                       <p className="text-[10px] text-green-700 mt-1">Cuando el cliente lo pague, la baulera se regulariza sola. WhatsApp abre el chat con el mensaje de cobranza listo.</p>
@@ -517,6 +544,33 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                       <p className="text-[10px] text-gray-500 mt-1">Ambos cancelan la sub rechazada en MP, generan un link nuevo para la MISMA baulera y lo mandan por mail. WhatsApp además abre el chat con el mensaje de cobranza armado. Al pagarlo se reactiva solo.</p>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Recobro EN CURSO: link ya enviado y el cliente todavía no pagó (la baulera ya no titila,
+                  pero el operador tiene que saber que ese cliente YA tiene un link mandado). */}
+              {!detail.rechazo && recobroEnviado && !recobroPagado && (
+                <div className="mb-4 rounded-lg border border-violet-300 bg-violet-50 px-3 py-2.5">
+                  <p className="text-sm font-bold text-violet-800">🔗 Recobro en curso — link YA enviado</p>
+                  <p className="text-xs text-violet-700 mt-1">
+                    Se le envió un link de recobro el <b>{fechaEnvio}</b>{resv?.rebillBy ? <> por <b>{resv.rebillBy}</b></> : null}.
+                    La suscripción rechazada quedó cancelada y <b>todavía no pagó el link nuevo</b>. No generar otro: reenviale este.
+                  </p>
+                  {recobroLink && (
+                    <div className="flex gap-1.5 mt-1.5">
+                      <input readOnly value={recobroLink} onFocus={(e) => e.target.select()}
+                        className="flex-1 text-[10px] border border-violet-200 rounded px-1.5 py-1 bg-white text-gray-600" />
+                      <button onClick={() => window.open(waUrl(recobroLink), '_blank')}
+                        className="text-xs font-semibold bg-[#25D366] hover:bg-[#1ebe5b] text-white px-2 py-1 rounded">WhatsApp</button>
+                      <button onClick={() => navigator.clipboard?.writeText(recobroLink)}
+                        className="text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white px-2 py-1 rounded">Copiar</button>
+                    </div>
+                  )}
+                </div>
+              )}
+              {!detail.rechazo && recobroPagado && recobroReciente && (
+                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
+                  <p className="text-xs font-semibold text-green-800">✓ Recobro regularizado — se le envió un link el {fechaEnvio} y lo pagó (la suscripción quedó activa de nuevo).</p>
                 </div>
               )}
 
