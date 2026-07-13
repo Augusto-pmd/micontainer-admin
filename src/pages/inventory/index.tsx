@@ -411,7 +411,7 @@ function UnitCell({ room, rechazo, recobro, onClick }: { room: StorageRoom; rech
   const title = rechazo
     ? `${room.space} · PAGO RECHAZADO (${rechazo.vencido ? 'plazo VENCIDO' : `quedan ${rechazo.diasRestantes} días`}) — tocá para ver detalle`
     : recobro
-      ? `${room.space} · RECOBRO EN CURSO (link enviado hace ${diasRecobro} día${diasRecobro === 1 ? '' : 's'}, falta que pague) — tocá para ver detalle`
+      ? `${room.space} · RECOBRO EN CURSO (link enviado ${diasRecobro <= 0 ? 'hoy' : `hace ${diasRecobro} día${diasRecobro === 1 ? '' : 's'}`}, falta que pague) — tocá para ver detalle`
       : `${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''} — tocá para ver detalle`;
   return (
     <button
@@ -560,6 +560,8 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   // El cartel "regularizado" se muestra solo 10 días: más tiempo se superpone con los cobros
   // del ciclo siguiente (un nuevo rechazo del mes próximo quedaría mezclado con este cartel).
   const recobroReciente = recobroEnviado && Date.now() - Date.parse(resv!.rebillAt!) < 10 * 86400000;
+  const diasRebill = recobroEnviado ? Math.floor((Date.now() - Date.parse(resv!.rebillAt!)) / 86400000) : 0;
+  const haceRebillTxt = diasRebill <= 0 ? 'hoy' : `hace ${diasRebill} día${diasRebill === 1 ? '' : 's'}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -644,9 +646,9 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
               {/* Recobro EN CURSO: link ya enviado y el cliente todavía no pagó (la baulera ya no titila,
                   pero el operador tiene que saber que ese cliente YA tiene un link mandado). */}
               {!detail.rechazo && recobroEnviado && !recobroPagado && (
-                <div className="mb-4 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-2.5 titila">
+                <div className="mb-4 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-2.5">
                   <p className="text-sm font-bold text-violet-800">
-                    Recobro en curso — link enviado hace {Math.floor((Date.now() - Date.parse(resv!.rebillAt!)) / 86400000)} día{Math.floor((Date.now() - Date.parse(resv!.rebillAt!)) / 86400000) === 1 ? '' : 's'} sin pagar
+                    Recobro en curso — link enviado {haceRebillTxt}{diasRebill > 0 ? ' sin pagar' : ''}
                   </p>
                   <p className="text-xs text-violet-700 mt-1">
                     Se le envió un link de recobro de <b>${Number(resv?.monthly || 0).toLocaleString('es-AR')}/mes</b> el <b>{fechaEnvio}</b>{resv?.rebillBy ? <> por <b>{resv.rebillBy}</b></> : null}.
