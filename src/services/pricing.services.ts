@@ -62,9 +62,11 @@ export interface PlanMP {
   montoMP: number; tarifa: number | null; desactualizado: boolean; registrado: boolean; link: string;
 }
 
+export interface SuscriptoViaPlan { baulera: string; cliente: string; email: string; monto: number; plan: string; estado: string; }
+
 export const getPlanesMPServices = async (branchId = 'nordelta') => {
   const res = await api.get(`/pricing-engine/planes/${branchId}`);
-  return res.data as { total: number; desactualizados: number; planes: PlanMP[] };
+  return res.data as { total: number; desactualizados: number; planes: PlanMP[]; suscriptosViaPlan: number; suscriptos: SuscriptoViaPlan[] };
 };
 
 export const syncPlanesMPServices = async (branchId = 'nordelta') => {

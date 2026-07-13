@@ -11,7 +11,7 @@ import {
   type RoomLite,
   type BranchLite,
 } from '../../services/tarifas.services';
-import { getPlanesMPServices, syncPlanesMPServices, type PlanMP } from '../../services/pricing.services';
+import { getPlanesMPServices, syncPlanesMPServices, type PlanMP, type SuscriptoViaPlan } from '../../services/pricing.services';
 
 const fmt = (n: number) => (Number(n) || 0).toLocaleString('es-AR');
 const normM2 = (m2: string | number) => String(Number(m2));
@@ -552,7 +552,7 @@ export default function Tarifas() {
 // suscripciones NO lo actualiza (y el reprice dice "ya aplicado" si ninguna sub cambia).
 // Este panel consulta MP en vivo y pone los planes al día de un click.
 function PlanesMP({ branchId }: { branchId: string }) {
-  const [data, setData] = useState<{ total: number; desactualizados: number; planes: PlanMP[] } | null>(null);
+  const [data, setData] = useState<{ total: number; desactualizados: number; planes: PlanMP[]; suscriptosViaPlan: number; suscriptos: SuscriptoViaPlan[] } | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [pmsg, setPmsg] = useState<string | null>(null);
@@ -634,6 +634,46 @@ function PlanesMP({ branchId }: { branchId: string }) {
           </table>
         </div>
       ))}
+
+      {data && (
+        <div className="mt-5">
+          <h3 className="text-sm font-bold text-gray-900">
+            Clientes suscriptos vía plan <span className="text-gray-400 font-normal">({data.suscriptosViaPlan})</span>
+          </h3>
+          <p className="text-[11px] text-gray-500 mt-0.5 mb-2">
+            Entraron por un link de plan (mes gratis). Ojo: el precio del plan aplica a los que se suscriban
+            <b> de acá en adelante</b> — a los ya suscriptos se les cambia el valor desde "Cambiar valor" (suscripciones), como al resto.
+          </p>
+          {data.suscriptos.length === 0 ? (
+            <p className="text-sm text-gray-500">Nadie está suscripto vía plan todavía — el resto de los clientes tiene suscripción directa.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-gray-400 uppercase">
+                    <th className="py-1.5 pr-3">Baulera</th>
+                    <th className="py-1.5 pr-3">Cliente</th>
+                    <th className="py-1.5 pr-3">Email</th>
+                    <th className="py-1.5 pr-3">Paga</th>
+                    <th className="py-1.5 pr-3">Plan</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.suscriptos.map((s, i) => (
+                    <tr key={i} className="border-t border-gray-100">
+                      <td className="py-1.5 pr-3 font-mono text-xs">{s.baulera}</td>
+                      <td className="py-1.5 pr-3">{s.cliente || '—'}</td>
+                      <td className="py-1.5 pr-3 text-xs text-gray-500">{s.email || '—'}</td>
+                      <td className="py-1.5 pr-3 font-semibold">${fmt(s.monto)}</td>
+                      <td className="py-1.5 pr-3 text-xs">{s.plan}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
