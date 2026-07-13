@@ -444,12 +444,19 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   // Reenvío de link de cobro: con rechazo detectado usa sus datos; MANUAL (sin rechazo, ej:
   // MP muestra el rechazo pero acá no titila) usa la ficha y el backend busca la sub vieja.
   const [rebillState, setRebillState] = useState<{ loading?: boolean; link?: string; email?: string; err?: string; warn?: string }>({});
+  // MONTO del link: visible y EDITABLE antes de mandar (pedido Lucas: "el importe correcto de
+  // lo que deben"). Prefijado con el dato más confiable: el débito RECHAZADO real de MP si
+  // existe; si no (cobro manual), el precio de la ficha — que puede diferir de lo que el
+  // cliente paga de verdad en MP, por eso se muestra para verificar/corregir.
+  const montoSugerido = Number((detail.rechazo as Partial<CobroRechazado> | null)?.monto || (detail.resv as AdminReservationFull | null)?.monthly || room.price) || 0;
+  const [montoLink, setMontoLink] = useState<string>('');
+  useEffect(() => { setMontoLink(montoSugerido > 0 ? String(montoSugerido) : ''); }, [detail]);
   const rebillParams = () => {
     const r = (detail.rechazo || {}) as Partial<CobroRechazado>;
     return {
       subId: r.subId,
       baulera: r.baulera || room.space || undefined,
-      amount: (r.monto || resv?.monthly || Number(room.price) || undefined) as number | undefined,
+      amount: Number(montoLink) > 0 ? Number(montoLink) : undefined,
       email: (r.email || tenant?.email || tenant?.user?.email || resv?.customerEmail || undefined) as string | undefined,
       cliente: (r.cliente || tenantName || undefined) as string | undefined,
     };
@@ -492,6 +499,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   const abrirWhatsApp = async () => {
     if (rebillState.link) { window.open(waUrl(rebillState.link), '_blank'); return; }
     const p = rebillParams();
+    if (!p.amount) { setRebillState({ err: 'Poné el monto mensual del link antes de mandar.' }); return; }
     if (!window.confirm(confirmMsg(p, true))) return;
     // Reservar la pestaña ANTES del await (si no, el bloqueador de pop-ups la mata)
     const w = window.open('about:blank', '_blank');
@@ -508,6 +516,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   };
   const reenviarLink = async () => {
     const p = rebillParams();
+    if (!p.amount) { setRebillState({ err: 'Poné el monto mensual del link antes de mandar.' }); return; }
     if (!window.confirm(confirmMsg(p, false))) return;
     setRebillState({ loading: true });
     try { applyResult(await rebillSubscription(p)); }
@@ -591,6 +600,12 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                   ) : (
                     <div className="mt-2">
                       {rebillState.err && <p className="text-xs text-red-700 font-semibold mb-1">{rebillState.err}</p>}
+                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <label className="text-[10px] font-bold text-gray-700">Monto del link: $</label>
+                        <input type="number" value={montoLink} onChange={(e) => setMontoLink(e.target.value)}
+                          className="w-28 text-xs border border-gray-300 rounded px-1.5 py-1" />
+                        <span className="text-[10px] text-gray-500">el débito rechazado fue ${Number(detail.rechazo.monto).toLocaleString('es-AR')} — corregilo si debe otra cosa</span>
+                      </div>
                       <div className="flex gap-1.5 flex-wrap">
                         <button onClick={reenviarLink} disabled={rebillState.loading}
                           className={`text-xs font-bold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 ${detail.rechazo.vencido ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
@@ -616,7 +631,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                     Recobro en curso — link enviado hace {Math.floor((Date.now() - Date.parse(resv!.rebillAt!)) / 86400000)} día{Math.floor((Date.now() - Date.parse(resv!.rebillAt!)) / 86400000) === 1 ? '' : 's'} sin pagar
                   </p>
                   <p className="text-xs text-violet-700 mt-1">
-                    Se le envió un link de recobro el <b>{fechaEnvio}</b>{resv?.rebillBy ? <> por <b>{resv.rebillBy}</b></> : null}.
+                    Se le envió un link de recobro de <b>${Number(resv?.monthly || 0).toLocaleString('es-AR')}/mes</b> el <b>{fechaEnvio}</b>{resv?.rebillBy ? <> por <b>{resv.rebillBy}</b></> : null}.
                     La suscripción rechazada quedó cancelada y <b>todavía no pagó el link nuevo</b>. No generar otro: reenviale este
                     (o dalo de baja desde Ventas en curso si no responde).
                   </p>
@@ -660,6 +675,12 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                     <>
                       <p className="text-xs font-semibold text-gray-700">¿MP le rechazó el pago pero acá no titila? Reenviale el link igual (cobro manual):</p>
                       {rebillState.err && <p className="text-xs text-red-700 font-semibold mt-1">{rebillState.err}</p>}
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <label className="text-[10px] font-bold text-gray-700">Monto del link: $</label>
+                        <input type="number" value={montoLink} onChange={(e) => setMontoLink(e.target.value)}
+                          className="w-28 text-xs border border-gray-300 rounded px-1.5 py-1" />
+                        <span className="text-[10px] text-orange-700 font-semibold">VERIFICÁ contra MP lo que paga de verdad (acá está el precio de ficha, puede diferir)</span>
+                      </div>
                       <div className="flex gap-1.5 mt-1.5 flex-wrap">
                         <button onClick={reenviarLink} disabled={rebillState.loading}
                           className="text-xs font-bold px-3 py-1.5 rounded-lg text-white bg-gray-700 hover:bg-gray-800 disabled:opacity-50">
