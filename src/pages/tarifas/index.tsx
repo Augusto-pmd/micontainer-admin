@@ -430,6 +430,9 @@ export default function Tarifas() {
             </div>
           )}
 
+          {/* Planes de MP: pegado a los precios (antes estaba al fondo, tras ~500 bauleras) */}
+          <PlanesMP branchId={branchId} />
+
           <section className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
               <div className="flex items-center gap-3 flex-wrap">
@@ -539,8 +542,6 @@ export default function Tarifas() {
               </p>
             </div>
           </section>
-
-          <PlanesMP branchId={branchId} />
         </>
       )}
     </div>
