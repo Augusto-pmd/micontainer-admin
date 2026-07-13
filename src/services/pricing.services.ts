@@ -53,6 +53,25 @@ export const getCobrosRechazadosServices = async (branchId = 'nordelta'): Promis
   return response.data;
 };
 
+// ==================== Planes de MP (mes gratis) ====================
+// Los planes (preapproval_plan) tienen su PROPIO precio en MP: cambiar la tarifa o las
+// suscripciones NO los actualiza solo. Ver montos reales + sincronizar con la tarifa vigente.
+
+export interface PlanMP {
+  planId: string; nombre: string; estado: string; m2: number | null; trial: string;
+  montoMP: number; tarifa: number | null; desactualizado: boolean; registrado: boolean; link: string;
+}
+
+export const getPlanesMPServices = async (branchId = 'nordelta') => {
+  const res = await api.get(`/pricing-engine/planes/${branchId}`);
+  return res.data as { total: number; desactualizados: number; planes: PlanMP[] };
+};
+
+export const syncPlanesMPServices = async (branchId = 'nordelta') => {
+  const res = await api.post(`/pricing-engine/planes/${branchId}/sync`);
+  return res.data as { actualizados: Array<{ planId: string; nombre: string; de: number; a: number }>; yaEnPrecio: number; sinMedida: number; errores: Array<{ planId: string; error: string }> };
+};
+
 // ==================== Pricing Engine ====================
 
 // (CRUD PricingEngine / floor-multiplier / size-perm ELIMINADOS 12/07: solo los usaban 3 stores

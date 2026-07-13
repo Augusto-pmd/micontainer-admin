@@ -11,6 +11,7 @@ import {
   type RoomLite,
   type BranchLite,
 } from '../../services/tarifas.services';
+import { getPlanesMPServices, syncPlanesMPServices, type PlanMP } from '../../services/pricing.services';
 
 const fmt = (n: number) => (Number(n) || 0).toLocaleString('es-AR');
 const normM2 = (m2: string | number) => String(Number(m2));
@@ -538,8 +539,101 @@ export default function Tarifas() {
               </p>
             </div>
           </section>
+
+          <PlanesMP branchId={branchId} />
         </>
       )}
     </div>
+  );
+}
+
+// ── Planes de MP (mes gratis): monto REAL en MP vs tarifa vigente + sincronizar ──
+// Cada plan tiene su PROPIO precio en Mercado Pago: cambiar la tarifa o repricear las
+// suscripciones NO lo actualiza (y el reprice dice "ya aplicado" si ninguna sub cambia).
+// Este panel consulta MP en vivo y pone los planes al día de un click.
+function PlanesMP({ branchId }: { branchId: string }) {
+  const [data, setData] = useState<{ total: number; desactualizados: number; planes: PlanMP[] } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [pmsg, setPmsg] = useState<string | null>(null);
+
+  const cargar = async () => {
+    setLoading(true); setPmsg(null);
+    try { setData(await getPlanesMPServices(branchId || 'nordelta')); }
+    catch { setPmsg('No se pudieron listar los planes de MP'); }
+    finally { setLoading(false); }
+  };
+
+  const sincronizar = async () => {
+    if (!data) return;
+    if (!window.confirm(`¿Poner ${data.desactualizados} plan(es) desactualizado(s) al precio de la tarifa vigente?\n\n• Los links de plan ya compartidos pasan a vender al precio NUEVO\n• No se borra ni cancela ningún plan\n• No toca a los clientes ya suscriptos`)) return;
+    setSyncing(true); setPmsg(null);
+    try {
+      const r = await syncPlanesMPServices(branchId || 'nordelta');
+      setPmsg(`✓ ${r.actualizados.length} actualizados · ${r.yaEnPrecio} ya en precio${r.sinMedida ? ` · ${r.sinMedida} sin medida detectable` : ''}${r.errores.length ? ` · ${r.errores.length} con ERROR` : ''}`);
+      await cargar();
+    } catch { setPmsg('No se pudo sincronizar'); }
+    finally { setSyncing(false); }
+  };
+
+  return (
+    <section className="bg-white border border-gray-200 rounded-xl p-4 mt-6">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="font-bold text-gray-900">Planes de MP (mes gratis)</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Cada plan tiene su <b>propio precio</b> en Mercado Pago: cambiar la tarifa no lo actualiza solo.
+            Acá ves el monto real que quedó en MP y los ponés al día de un click.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={cargar} disabled={loading}
+            className="text-sm font-semibold border border-gray-300 hover:bg-gray-50 rounded-lg px-3 py-1.5 disabled:opacity-50">
+            {loading ? 'Consultando MP…' : (data ? 'Actualizar' : 'Ver planes en MP')}
+          </button>
+          {data && data.desactualizados > 0 && (
+            <button onClick={sincronizar} disabled={syncing}
+              className="text-sm font-bold bg-green-600 hover:bg-green-700 text-white rounded-lg px-3 py-1.5 disabled:opacity-50">
+              {syncing ? 'Sincronizando…' : `Sincronizar ${data.desactualizados} con la tarifa`}
+            </button>
+          )}
+        </div>
+      </div>
+      {pmsg && <p className="text-sm font-semibold text-green-700 mt-2">{pmsg}</p>}
+      {data && (data.planes.length === 0 ? (
+        <p className="text-sm text-gray-500 mt-3">No hay planes en la cuenta de MP.</p>
+      ) : (
+        <div className="overflow-x-auto mt-3">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-gray-400 uppercase">
+                <th className="py-1.5 pr-3">Plan</th>
+                <th className="py-1.5 pr-3">Medida</th>
+                <th className="py-1.5 pr-3">Precio en MP</th>
+                <th className="py-1.5 pr-3">Tarifa vigente</th>
+                <th className="py-1.5 pr-3">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.planes.map((p) => (
+                <tr key={p.planId} className="border-t border-gray-100">
+                  <td className="py-1.5 pr-3">{p.nombre}{!p.registrado && <span className="ml-1.5 text-[10px] text-gray-400">(viejo/manual)</span>}</td>
+                  <td className="py-1.5 pr-3">{p.m2 != null ? `${p.m2} m²` : '—'}</td>
+                  <td className="py-1.5 pr-3 font-semibold">${fmt(p.montoMP)}</td>
+                  <td className="py-1.5 pr-3">{p.tarifa != null ? `$${fmt(p.tarifa)}` : '—'}</td>
+                  <td className="py-1.5 pr-3">
+                    {p.estado !== 'active'
+                      ? <span className="text-xs text-gray-400">{p.estado}</span>
+                      : p.desactualizado
+                        ? <span className="text-xs font-bold text-orange-600">DESACTUALIZADO</span>
+                        : <span className="text-xs font-semibold text-green-700">al día</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </section>
   );
 }
