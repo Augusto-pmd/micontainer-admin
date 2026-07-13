@@ -91,6 +91,25 @@ export default function Inventory() {
   }, [rechazados]);
   const rechazoDe = (room: StorageRoom) => rechazoByCode.get(String(room.space || '').trim().toUpperCase());
 
+  // Recobros EN CURSO (link de recobro enviado y el cliente todavía no pagó): titilan VIOLETA
+  // en el plano para que se sepa de un vistazo que ya están gestionados pero falta el pago.
+  const [recobros, setRecobros] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    getAdminReservations({ limit: 200 })
+      .then((r) => {
+        const s = new Set<string>();
+        (r.data || []).forEach((x: any) => {
+          if (x.rebillAt && x.mpSubscriptionStatus !== 'authorized' && x.status !== 'cancelled') {
+            if (x.bauleraCodigo) s.add(String(x.bauleraCodigo).trim().toUpperCase());
+            if (x.storageRoomId) s.add(`ID:${x.storageRoomId}`);
+          }
+        });
+        setRecobros(s);
+      })
+      .catch(() => { /* sin datos de recobros; el plano carga igual */ });
+  }, []);
+  const recobroDe = (room: StorageRoom) => recobros.has(String(room.space || '').trim().toUpperCase()) || recobros.has(`ID:${room.id}`);
+
   const reload = async () => {
     try { const r = await getAllStorageRoomsServices({ limit: 1000 }); setRooms(r.data); } catch (e) { /* */ }
   };
@@ -296,6 +315,12 @@ export default function Inventory() {
             </div>
           </>
         )}
+        {recobros.size > 0 && (
+          <div className="flex items-center gap-1.5 text-sm text-gray-600">
+            <div className="w-3 h-3 rounded-sm bg-violet-500 titila" />
+            Recobro en curso (link enviado)
+          </div>
+        )}
       </div>
 
       {/* Grid por edificio / piso */}
@@ -322,7 +347,7 @@ export default function Inventory() {
                       {floor === 'PB' ? 'Planta Baja' : `Piso ${floor}`} — {floorRooms.length} espacios
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {floorRooms.map(room => <UnitCell key={room.id} room={room} rechazo={rechazoDe(room)} onClick={() => openDetail(room)} />)}
+                      {floorRooms.map(room => <UnitCell key={room.id} room={room} rechazo={rechazoDe(room)} recobro={recobroDe(room)} onClick={() => openDetail(room)} />)}
                     </div>
                   </div>
                 ))}
@@ -334,7 +359,12 @@ export default function Inventory() {
 
       {detail && (
         <RoomDetailModal detail={detail} loading={detailLoading} onClose={() => setDetail(null)} onChanged={() => { setDetail(null); reload(); }}
-          onRebilled={(subId: string) => setRechazados((x) => x.filter((r) => r.subId !== subId))} />
+          onRebilled={(subId: string) => {
+            // La baulera pasa de "rechazada" (naranja) a "recobro en curso" (violeta) al instante.
+            const hit = rechazados.find((r) => r.subId === subId);
+            if (hit) setRecobros((s) => { const n = new Set(s); n.add(String(hit.baulera).trim().toUpperCase()); return n; });
+            setRechazados((x) => x.filter((r) => r.subId !== subId));
+          }} />
       )}
     </div>
   );
@@ -349,26 +379,31 @@ function StatCard({ label, value, cls }: { label: string; value: number; cls: st
   );
 }
 
-function UnitCell({ room, rechazo, onClick }: { room: StorageRoom; rechazo?: CobroRechazado; onClick: () => void }) {
+function UnitCell({ room, rechazo, recobro, onClick }: { room: StorageRoom; rechazo?: CobroRechazado; recobro?: boolean; onClick: () => void }) {
   const cfg = STATUS_CONFIG[room.status] ?? STATUS_CONFIG.available;
   // Pago rechazado -> la celda TITILA: naranja dentro del plazo, rojo fuerte si venció.
+  // Recobro en curso (link enviado, falta que pague) -> TITILA violeta.
   const rechazoCls = rechazo
     ? (rechazo.vencido
         ? 'bg-red-200 border-red-600 hover:bg-red-300 titila'
         : 'bg-orange-100 border-orange-500 hover:bg-orange-200 titila')
-    : '';
+    : (recobro ? 'bg-violet-100 border-violet-500 hover:bg-violet-200 titila' : '');
   const title = rechazo
     ? `${room.space} · PAGO RECHAZADO (${rechazo.vencido ? 'plazo VENCIDO' : `quedan ${rechazo.diasRestantes} días`}) — tocá para ver detalle`
-    : `${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''} — tocá para ver detalle`;
+    : recobro
+      ? `${room.space} · RECOBRO EN CURSO (link enviado, falta que pague) — tocá para ver detalle`
+      : `${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''} — tocá para ver detalle`;
   return (
     <button
       onClick={onClick}
       title={title}
       className={`w-14 h-14 rounded-lg border-2 flex flex-col items-center justify-center cursor-pointer select-none transition-colors ${rechazoCls || cfg.cellBg}`}
     >
-      <span className={`text-[11px] font-bold leading-tight ${rechazo ? (rechazo.vencido ? 'text-red-900' : 'text-orange-800') : cfg.cellText}`}>{room.space}</span>
+      <span className={`text-[11px] font-bold leading-tight ${rechazo ? (rechazo.vencido ? 'text-red-900' : 'text-orange-800') : recobro ? 'text-violet-800' : cfg.cellText}`}>{room.space}</span>
       {rechazo ? (
         <span className={`text-[9px] leading-tight font-bold ${rechazo.vencido ? 'text-red-800' : 'text-orange-700'}`}>$ !</span>
+      ) : recobro ? (
+        <span className="text-[9px] leading-tight font-bold text-violet-700">$ ⟳</span>
       ) : room.areaM2 ? (
         <span className={`text-[9px] leading-tight ${cfg.cellText} opacity-60`}>{room.areaM2}m²</span>
       ) : null}
@@ -550,8 +585,8 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
               {/* Recobro EN CURSO: link ya enviado y el cliente todavía no pagó (la baulera ya no titila,
                   pero el operador tiene que saber que ese cliente YA tiene un link mandado). */}
               {!detail.rechazo && recobroEnviado && !recobroPagado && (
-                <div className="mb-4 rounded-lg border border-violet-300 bg-violet-50 px-3 py-2.5">
-                  <p className="text-sm font-bold text-violet-800">🔗 Recobro en curso — link YA enviado</p>
+                <div className="mb-4 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-2.5 titila">
+                  <p className="text-sm font-bold text-violet-800">Recobro en curso — link YA enviado</p>
                   <p className="text-xs text-violet-700 mt-1">
                     Se le envió un link de recobro el <b>{fechaEnvio}</b>{resv?.rebillBy ? <> por <b>{resv.rebillBy}</b></> : null}.
                     La suscripción rechazada quedó cancelada y <b>todavía no pagó el link nuevo</b>. No generar otro: reenviale este.
