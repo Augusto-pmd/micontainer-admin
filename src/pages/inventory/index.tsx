@@ -604,7 +604,10 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                       ? `⏰ PLAZO VENCIDO — pasaron ${detail.rechazo.diasTranscurridos} días (el plazo para regularizar era de 10).`
                       : `Le quedan ${detail.rechazo.diasRestantes} día(s) para regularizar (plazo de 10 días — MP reintenta el débito).`}
                   </p>
-                  {(rebillState.link || (recobroEnviado && recobroLink)) ? (
+                  {/* GUARD anti-doble-link: alcanza con que HAYA una deuda pendiente (recobroEnviado),
+                      no que tenga link. Si la deuda existe pero el initPoint vino vacío, NO se muestra
+                      el formulario de generación (crearía un 2° cobro) — se avisa que ya hay uno. */}
+                  {(rebillState.link || recobroEnviado) ? (
                     <div className="mt-2 rounded-md bg-green-50 border border-green-300 px-2.5 py-2">
                       <p className="text-xs font-bold text-green-800">
                         {rebillState.link
@@ -612,15 +615,23 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                           : <>✓ YA se le envió un link de pago el <b>{fechaEnvio}</b>{deudaPend?.sentBy ? <> (por {deudaPend.sentBy})</> : null} — no generes otro: reenviale este.</>}
                       </p>
                       {rebillState.warn && <p className="text-[10px] font-bold text-orange-700 mt-1">OJO: {rebillState.warn}</p>}
-                      <div className="flex gap-1.5 mt-1.5">
-                        <input readOnly value={recobroLink} onFocus={(e) => e.target.select()}
-                          className="flex-1 text-[10px] border border-green-200 rounded px-1.5 py-1 bg-white text-gray-600" />
-                        <button onClick={() => window.open(waUrl(recobroLink), '_blank')} title="Abre WhatsApp con el mensaje de cobranza armado (nombre + mes + link)"
-                          className="text-xs font-semibold bg-[#25D366] hover:bg-[#1ebe5b] text-white px-2 py-1 rounded">WhatsApp</button>
-                        <button onClick={() => navigator.clipboard?.writeText(recobroLink)}
-                          className="text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">Copiar</button>
-                      </div>
-                      <p className="text-[10px] text-green-700 mt-1">Cuando el cliente lo pague, la baulera se regulariza sola. WhatsApp abre el chat con el mensaje de cobranza listo.</p>
+                      {recobroLink ? (
+                        <>
+                          <div className="flex gap-1.5 mt-1.5">
+                            <input readOnly value={recobroLink} onFocus={(e) => e.target.select()}
+                              className="flex-1 text-[10px] border border-green-200 rounded px-1.5 py-1 bg-white text-gray-600" />
+                            <button onClick={() => window.open(waUrl(recobroLink), '_blank')} title="Abre WhatsApp con el mensaje de cobranza armado (nombre + mes + link)"
+                              className="text-xs font-semibold bg-[#25D366] hover:bg-[#1ebe5b] text-white px-2 py-1 rounded">WhatsApp</button>
+                            <button onClick={() => navigator.clipboard?.writeText(recobroLink)}
+                              className="text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">Copiar</button>
+                          </div>
+                          <p className="text-[10px] text-green-700 mt-1">Cuando el cliente lo pague, la baulera se regulariza sola. WhatsApp abre el chat con el mensaje de cobranza listo.</p>
+                        </>
+                      ) : (
+                        <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-300 rounded px-1.5 py-1 mt-1.5">
+                          Ya hay un <b>pago único pendiente</b> para esta baulera, pero el link no quedó guardado acá. Buscalo en <b>Mercado Pago</b> (Cobros) para reenviarlo — <b>no generes otro</b> o habría doble cobro.
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="mt-2">
