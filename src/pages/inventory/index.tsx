@@ -441,8 +441,35 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   const [blockDate, setBlockDate] = useState('');
   const [blockNote, setBlockNote] = useState('');
   const [savingBlock, setSavingBlock] = useState(false);
-  // Reenvío de link de cobro (pago rechazado)
-  const [rebillState, setRebillState] = useState<{ loading?: boolean; link?: string; email?: string; err?: string }>({});
+  // Reenvío de link de cobro: con rechazo detectado usa sus datos; MANUAL (sin rechazo, ej:
+  // MP muestra el rechazo pero acá no titila) usa la ficha y el backend busca la sub vieja.
+  const [rebillState, setRebillState] = useState<{ loading?: boolean; link?: string; email?: string; err?: string; warn?: string }>({});
+  const rebillParams = () => {
+    const r = (detail.rechazo || {}) as Partial<CobroRechazado>;
+    return {
+      subId: r.subId,
+      baulera: r.baulera || room.space || undefined,
+      amount: (r.monto || resv?.monthly || Number(room.price) || undefined) as number | undefined,
+      email: (r.email || tenant?.email || tenant?.user?.email || resv?.customerEmail || undefined) as string | undefined,
+      cliente: (r.cliente || tenantName || undefined) as string | undefined,
+    };
+  };
+  const confirmMsg = (p: ReturnType<typeof rebillParams>, conWsp: boolean) =>
+    `¿${conWsp ? 'Generar link y abrir WhatsApp' : 'Reenviar link de cobro'} para ${p.cliente || p.email || 'este cliente'}?\n\n` +
+    `• Se ${p.subId ? 'CANCELA la suscripción rechazada' : 'busca y CANCELA su suscripción actual (si existe)'} en MP — no cobra doble\n` +
+    `• Se genera un link NUEVO${p.amount ? ` de $${Number(p.amount).toLocaleString('es-AR')}/mes` : ''} atado a la baulera ${p.baulera || ''} (no se abre nada nuevo)\n` +
+    `• Se manda por mail${conWsp ? '\n• WhatsApp se abre con el mensaje de cobranza listo' : ''}\n` +
+    `• Cuando lo pague, se regulariza solo`;
+  const applyResult = (out: Awaited<ReturnType<typeof rebillSubscription>>) => {
+    setRebillState({
+      link: out.initPoint, email: out.email,
+      warn: out.subViejaEncontrada === false
+        ? 'No encontré una suscripción anterior en MP para esta baulera. Si existe, cancelala a mano en MP para que no cobre doble.'
+        : (!out.viejaCancelada ? 'MP no aceptó cancelar la suscripción anterior: cancelala a mano desde el panel de MP.' : undefined),
+    });
+    const r = detail.rechazo as CobroRechazado | null;
+    if (onRebilled && r?.subId) onRebilled(r.subId);
+  };
   // WhatsApp de cobranza (texto de Lucas): chat del cliente con el mensaje armado
   // (nombre + mes rechazado + link). Si no hay teléfono cargado, abre el selector de chat.
   const waUrl = (link: string) => {
@@ -464,15 +491,14 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   // (mismo reenvío: cancela la sub rechazada + mail) y abre WhatsApp con el mensaje listo.
   const abrirWhatsApp = async () => {
     if (rebillState.link) { window.open(waUrl(rebillState.link), '_blank'); return; }
-    const r = detail.rechazo as CobroRechazado;
-    if (!window.confirm(`¿Generar link nuevo y abrir WhatsApp para ${r.cliente || r.email || 'este cliente'}?\n\n• Se CANCELA la suscripción rechazada en MP (deja de reintentar)\n• Se genera un link NUEVO de $${Number(r.monto).toLocaleString('es-AR')}/mes atado a la baulera ${r.baulera}\n• También se lo mandamos por mail\n• WhatsApp se abre con el mensaje de cobranza listo`)) return;
+    const p = rebillParams();
+    if (!window.confirm(confirmMsg(p, true))) return;
     // Reservar la pestaña ANTES del await (si no, el bloqueador de pop-ups la mata)
     const w = window.open('about:blank', '_blank');
     setRebillState({ loading: true });
     try {
-      const out = await rebillSubscription({ subId: r.subId, baulera: r.baulera, amount: r.monto, email: r.email, cliente: r.cliente });
-      setRebillState({ link: out.initPoint, email: out.email });
-      if (onRebilled) onRebilled(r.subId);
+      const out = await rebillSubscription(p);
+      applyResult(out);
       const url = waUrl(out.initPoint || '');
       if (w) w.location.href = url; else window.open(url, '_blank');
     } catch (e: any) {
@@ -481,16 +507,11 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
     }
   };
   const reenviarLink = async () => {
-    const r = detail.rechazo as CobroRechazado;
-    if (!window.confirm(`¿Reenviar link de cobro a ${r.cliente || r.email || 'este cliente'}?\n\n• Se CANCELA la suscripción rechazada en MP (deja de reintentar)\n• Se genera un link NUEVO de $${Number(r.monto).toLocaleString('es-AR')}/mes atado a la baulera ${r.baulera} (no se abre nada nuevo)\n• Se lo mandamos por mail${r.email ? ` a ${r.email}` : ''}\n• Cuando lo pague, se reactiva solo`)) return;
+    const p = rebillParams();
+    if (!window.confirm(confirmMsg(p, false))) return;
     setRebillState({ loading: true });
-    try {
-      const out = await rebillSubscription({ subId: r.subId, baulera: r.baulera, amount: r.monto, email: r.email, cliente: r.cliente });
-      setRebillState({ link: out.initPoint, email: out.email });
-      if (onRebilled) onRebilled(r.subId);
-    } catch (e: any) {
-      setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link nuevo' });
-    }
+    try { applyResult(await rebillSubscription(p)); }
+    catch (e: any) { setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link nuevo' }); }
   };
   const cambiarBloqueo = async (st: string, until: string | null) => {
     setSavingBlock(true);
@@ -556,6 +577,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                           ? <>✓ Link nuevo enviado{rebillState.email ? ` a ${rebillState.email}` : ''} — la suscripción rechazada quedó cancelada.</>
                           : <>✓ YA se le envió un link de recobro el <b>{fechaEnvio}</b>{resv?.rebillBy ? <> (por {resv.rebillBy})</> : null} — no generar otro: reenviale este.</>}
                       </p>
+                      {rebillState.warn && <p className="text-[10px] font-bold text-orange-700 mt-1">OJO: {rebillState.warn}</p>}
                       <div className="flex gap-1.5 mt-1.5">
                         <input readOnly value={recobroLink} onFocus={(e) => e.target.select()}
                           className="flex-1 text-[10px] border border-green-200 rounded px-1.5 py-1 bg-white text-gray-600" />
@@ -613,6 +635,44 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
               {!detail.rechazo && recobroPagado && recobroReciente && (
                 <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
                   <p className="text-xs font-semibold text-green-800">✓ Recobro regularizado — se le envió un link el {fechaEnvio} y lo pagó (la suscripción quedó activa de nuevo).</p>
+                </div>
+              )}
+
+              {/* COBRO MANUAL: MP muestra el rechazo pero acá NO titila (sub sin matchear, pausada,
+                  legacy). Se puede reenviar el link igual: el backend busca la sub vieja en MP
+                  por código de baulera / email y la cancela para que no cobre doble. */}
+              {room.status === 'occupied' && !detail.rechazo && !recobroEnviado && (
+                <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                  {rebillState.link ? (
+                    <div className="rounded-md bg-green-50 border border-green-300 px-2.5 py-2">
+                      <p className="text-xs font-bold text-green-800">✓ Link de recobro enviado{rebillState.email ? ` a ${rebillState.email}` : ''}.</p>
+                      {rebillState.warn && <p className="text-[10px] font-bold text-orange-700 mt-1">OJO: {rebillState.warn}</p>}
+                      <div className="flex gap-1.5 mt-1.5">
+                        <input readOnly value={rebillState.link} onFocus={(e) => e.target.select()}
+                          className="flex-1 text-[10px] border border-green-200 rounded px-1.5 py-1 bg-white text-gray-600" />
+                        <button onClick={() => window.open(waUrl(rebillState.link!), '_blank')}
+                          className="text-xs font-semibold bg-[#25D366] hover:bg-[#1ebe5b] text-white px-2 py-1 rounded">WhatsApp</button>
+                        <button onClick={() => navigator.clipboard?.writeText(rebillState.link!)}
+                          className="text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">Copiar</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-xs font-semibold text-gray-700">¿MP le rechazó el pago pero acá no titila? Reenviale el link igual (cobro manual):</p>
+                      {rebillState.err && <p className="text-xs text-red-700 font-semibold mt-1">{rebillState.err}</p>}
+                      <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                        <button onClick={reenviarLink} disabled={rebillState.loading}
+                          className="text-xs font-bold px-3 py-1.5 rounded-lg text-white bg-gray-700 hover:bg-gray-800 disabled:opacity-50">
+                          {rebillState.loading ? 'Generando…' : 'Reenviar link de cobro'}
+                        </button>
+                        <button onClick={abrirWhatsApp} disabled={rebillState.loading}
+                          className="text-xs font-bold px-3 py-1.5 rounded-lg text-white bg-[#25D366] hover:bg-[#1ebe5b] disabled:opacity-50">
+                          {rebillState.loading ? '…' : 'Enviar por WhatsApp'}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-gray-500 mt-1">Busca y cancela su suscripción actual en MP (si existe — no cobra doble), genera un link nuevo para esta baulera y lo manda por mail.</p>
+                    </>
+                  )}
                 </div>
               )}
 

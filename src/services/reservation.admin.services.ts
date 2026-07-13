@@ -80,9 +80,11 @@ export const cancelAdminReservation = async (id: string) => {
 // REENVIAR LINK DE COBRO (pago rechazado): cancela la sub rechazada en MP (deja de reintentar),
 // crea una nueva atada a la MISMA baulera/reserva y se la manda al cliente por mail. Si la paga,
 // el webhook lo reactiva solo. Devuelve el link nuevo para copiar/mandar por WhatsApp.
-export const rebillSubscription = async (p: { subId: string; baulera?: string; amount?: number; email?: string; cliente?: string }) => {
+// subId es opcional: sin él (cobro MANUAL, la web no detectó el rechazo) el backend busca la
+// suscripción vieja en MP por código de baulera / email para cancelarla igual.
+export const rebillSubscription = async (p: { subId?: string; baulera?: string; amount?: number; email?: string; cliente?: string }) => {
   const res = await api.post(`/admin/reservations/rebill`, p);
-  return res.data as { ok: boolean; reservationId?: string; initPoint?: string; viejaCancelada?: boolean; emailEnviado?: boolean; email?: string };
+  return res.data as { ok: boolean; reservationId?: string; initPoint?: string; viejaCancelada?: boolean; subViejaEncontrada?: boolean; emailEnviado?: boolean; email?: string };
 };
 
 // FACE ID — alta manual por el admin (hasta integrar el dispositivo de acceso):
