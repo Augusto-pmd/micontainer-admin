@@ -393,6 +393,22 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   const [savingBlock, setSavingBlock] = useState(false);
   // Reenvío de link de cobro (pago rechazado)
   const [rebillState, setRebillState] = useState<{ loading?: boolean; link?: string; email?: string; err?: string }>({});
+  // WhatsApp de cobranza (texto de Lucas): abre el chat del cliente con el mensaje armado
+  // (nombre + mes rechazado + link nuevo). Si no hay teléfono cargado, abre el selector de chat.
+  const abrirWhatsApp = () => {
+    const r = detail.rechazo as CobroRechazado;
+    const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const mesIdx = Number(String(r.fechaRechazo || '').split('-')[1]) - 1;
+    const mes = MESES[mesIdx] ?? MESES[new Date().getMonth()];
+    const nombre = String(r.cliente || tenantName || '').trim().split(' ')[0] || '';
+    const texto = `Hola ${nombre}, como estas?\nTe contacto debido a que no se pudo debitar el pago correspondiente al mes de ${mes}.\nMercado Pago hizo 4 intentos de cobro, en un lapso de 10 dias, pero no se pudo realizar el cobro.\nPara regularizar el saldo pendiente te envio un link de pago. Por favor, cuando realices el pago, envianos el comprobante:\n${rebillState.link}`;
+    const telRaw = String((tenant && (tenant.phone || tenant.user?.phone)) || '').replace(/\D/g, '');
+    const tel = telRaw ? (telRaw.startsWith('54') ? telRaw : `549${telRaw.replace(/^0/, '').replace(/^15/, '')}`) : '';
+    const url = tel
+      ? `https://wa.me/${tel}?text=${encodeURIComponent(texto)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
+    window.open(url, '_blank');
+  };
   const reenviarLink = async () => {
     const r = detail.rechazo as CobroRechazado;
     if (!window.confirm(`¿Reenviar link de cobro a ${r.cliente || r.email || 'este cliente'}?\n\n• Se CANCELA la suscripción rechazada en MP (deja de reintentar)\n• Se genera un link NUEVO de $${Number(r.monto).toLocaleString('es-AR')}/mes atado a la baulera ${r.baulera} (no se abre nada nuevo)\n• Se lo mandamos por mail${r.email ? ` a ${r.email}` : ''}\n• Cuando lo pague, se reactiva solo`)) return;
@@ -458,10 +474,12 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                       <div className="flex gap-1.5 mt-1.5">
                         <input readOnly value={rebillState.link} onFocus={(e) => e.target.select()}
                           className="flex-1 text-[10px] border border-green-200 rounded px-1.5 py-1 bg-white text-gray-600" />
+                        <button onClick={abrirWhatsApp} title="Abre WhatsApp con el mensaje de cobranza armado (nombre + mes + link)"
+                          className="text-xs font-semibold bg-[#25D366] hover:bg-[#1ebe5b] text-white px-2 py-1 rounded">WhatsApp</button>
                         <button onClick={() => navigator.clipboard?.writeText(rebillState.link!)}
                           className="text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">Copiar</button>
                       </div>
-                      <p className="text-[10px] text-green-700 mt-1">Cuando el cliente lo pague, la baulera se regulariza sola.</p>
+                      <p className="text-[10px] text-green-700 mt-1">Cuando el cliente lo pague, la baulera se regulariza sola. WhatsApp abre el chat con el mensaje de cobranza listo.</p>
                     </div>
                   ) : (
                     <div className="mt-2">
