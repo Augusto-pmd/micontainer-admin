@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { MdMap } from "react-icons/md";
 import { BsGrid, BsPersonBoundingBox } from "react-icons/bs";
-import { FaClipboardList, FaUserTie, FaFileInvoiceDollar } from "react-icons/fa6";
+import { FaClipboardList, FaUserTie, FaFileInvoiceDollar, FaBoxOpen } from "react-icons/fa6";
 import { HiUsers, HiOfficeBuilding } from "react-icons/hi";
 import { IoMdSettings } from "react-icons/io";
 import { useAuth } from "@/stores/authStore";
@@ -77,12 +77,18 @@ export default function Dashboard() {
   // Altas de Face ID esperando (clientes que subieron su foto desde el portal): botón violeta
   // titilante que lleva a Ventas en curso, donde está el alta manual (dispositivo Hikvision).
   const [faceQueued, setFaceQueued] = useState(0);
+  // Clientes que eligieron candado/kit: se entregan y cobran en persona → hay que prepararlos.
+  const [addonsPending, setAddonsPending] = useState(0);
   useEffect(() => {
     (async () => {
       try {
         const res: any = await getAdminReservations({ limit: 200 } as any);
         const rows: any[] = Array.isArray(res) ? res : (res.data || res.reservations || []);
         setFaceQueued(rows.filter((r) => r.faceEnrollStatus === "queued").length);
+        setAddonsPending(rows.filter((r) =>
+          (r.status === "active" || r.status === "pending_payment") &&
+          Array.isArray(r.addons) && r.addons.some((k: string) => k === "lock" || k === "pack")
+        ).length);
       } catch { /* sin badge */ }
     })();
   }, []);
@@ -129,6 +135,12 @@ export default function Dashboard() {
             <Link to="/ventas" className="titila inline-flex items-center gap-2 bg-violet-700 hover:bg-violet-800 text-white font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
               <BsPersonBoundingBox className="text-lg" /> Altas de Face ID pendientes
               <span className="bg-white text-violet-700 text-xs font-bold rounded-full px-2 py-0.5">{faceQueued}</span>
+            </Link>
+          )}
+          {addonsPending > 0 && (
+            <Link to="/ventas" className="inline-flex items-center gap-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-semibold px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+              <FaBoxOpen className="text-lg" /> Add-ons por entregar (candado/kit)
+              <span className="bg-amber-600 text-white text-xs font-bold rounded-full px-2 py-0.5">{addonsPending}</span>
             </Link>
           )}
         </div>

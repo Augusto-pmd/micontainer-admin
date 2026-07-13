@@ -19,6 +19,15 @@ const MP_STATUS_LABEL: Record<string, { label: string; color: string }> = {
   cancelled:  { label: "MP: Cancelada",  color: "bg-red-50 text-red-600" },
 };
 
+// Add-ons que el cliente eligió en la web. Candado/kit se ENTREGAN y COBRAN en persona (no van
+// en el pago online), el retiro se coordina → el staff los ve acá para prepararlos/cobrarlos.
+const ADDON_LABELS: Record<string, { name: string; action: string }> = {
+  lock:   { name: "Candado",      action: "entregar" },
+  pack:   { name: "Kit embalaje", action: "entregar" },
+  pickup: { name: "Retiro",       action: "coordinar" },
+  insure: { name: "Seguro",       action: "—" },
+};
+
 export default function Reservations() {
   const [reservations, setReservations] = useState<AdminReservation[]>([]);
   const [filtered, setFiltered] = useState<AdminReservation[]>([]);
@@ -251,6 +260,19 @@ export default function Reservations() {
                       <div className="text-xs text-gray-500">{r.customerEmail}</div>
                       {r.customerPhone && <div className="text-xs text-gray-400">{r.customerPhone}</div>}
                       {r.customerDni  && <div className="text-xs text-gray-400">DNI: {r.customerDni}</div>}
+                      {Array.isArray(r.addons) && r.addons.some((k) => ADDON_LABELS[k] && ADDON_LABELS[k].action !== "—") && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {r.addons.map((k) => {
+                            const a = ADDON_LABELS[k];
+                            if (!a || a.action === "—") return null;
+                            return (
+                              <span key={k} title="El cliente lo eligió: preparar y cobrar al entregar" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                                {a.name} · {a.action}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900">{r.category}</div>
