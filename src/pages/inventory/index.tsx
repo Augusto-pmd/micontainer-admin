@@ -507,8 +507,9 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   const recobroPagado = recobroEnviado && resv!.mpSubscriptionStatus === 'authorized';
   const recobroLink = rebillState.link || (recobroEnviado ? (resv!.mpInitPoint || '') : '');
   const fechaEnvio = recobroEnviado ? new Date(resv!.rebillAt!).toLocaleDateString('es-AR') : '';
-  // El "regularizado" se muestra solo un tiempo (45 días) para no ensuciar la ficha a futuro.
-  const recobroReciente = recobroEnviado && Date.now() - Date.parse(resv!.rebillAt!) < 45 * 86400000;
+  // El cartel "regularizado" se muestra solo 10 días: más tiempo se superpone con los cobros
+  // del ciclo siguiente (un nuevo rechazo del mes próximo quedaría mezclado con este cartel).
+  const recobroReciente = recobroEnviado && Date.now() - Date.parse(resv!.rebillAt!) < 10 * 86400000;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
