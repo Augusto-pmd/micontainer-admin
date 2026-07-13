@@ -666,7 +666,8 @@ function PlanesMP({ branchId }: { branchId: string }) {
                       <td className="py-1.5 pr-3">{s.cliente || '—'}</td>
                       <td className="py-1.5 pr-3 text-xs text-gray-500">{s.email || '—'}</td>
                       <td className="py-1.5 pr-3 font-semibold">${fmt(s.monto)}</td>
-                      <td className="py-1.5 pr-3 text-xs">{s.plan}</td>
+                      {/* Los IDs largos son planes de la época vieja que ya no existen en MP: no afectan el cobro (cobra su suscripción) */}
+                      <td className="py-1.5 pr-3 text-xs">{/^[0-9a-f]{16,}$/i.test(s.plan) ? <span className="text-gray-400">plan viejo (ya no está en MP)</span> : s.plan}</td>
                     </tr>
                   ))}
                 </tbody>
