@@ -3,7 +3,7 @@ import { getAllStorageRoomsServices, getStorageRoomByIdServices, updateStorageRo
 import { getAllBranchesServices } from '../../services/branch.services';
 import { getOrdersByCustomerIdServices } from '../../services/order.services';
 import { updateCustomerServices } from '../../services/customer.services';
-import { getCobrosRechazadosServices, type CobroRechazado } from '../../services/pricing.services';
+import { getCobrosRechazadosServices, type CobroRechazado, type DeudaPendiente } from '../../services/pricing.services';
 import { generarDeuda, getAdminReservationById, getAdminReservations, type AdminReservationFull } from '../../services/reservation.admin.services';
 import type { StorageRoom, StorageRoomStatus } from '../../types/storageRoom';
 import type { Branch } from '../../types/branch';
@@ -77,9 +77,17 @@ export default function Inventory() {
         setIsLoading(false);
       }
     })();
-    // Pagos rechazados (MP): titilan en el plano (cache 10 min en el server; no bloquea la carga)
+    // Pagos rechazados (MP) + DEUDAS con link enviado: titilan en el plano (cache 10 min server;
+    // las deudas se leen frescas). deudasPendientes = fuente PERSISTENTE del violeta (antes se
+    // derivaba de rebillAt del flujo viejo → no sobrevivía al reload y podía duplicar el link).
     getCobrosRechazadosServices()
-      .then((r) => { setRechazados(r.rechazados || []); setPlazoDias(r.plazoDias || 10); })
+      .then((r) => {
+        setRechazados(r.rechazados || []);
+        setPlazoDias(r.plazoDias || 10);
+        const dm = new Map<string, DeudaPendiente>();
+        (r.deudasPendientes || []).forEach((d) => dm.set(String(d.baulera).trim().toUpperCase(), d));
+        setRecobros(dm);
+      })
       .catch(() => { /* sin datos de rechazos; el inventario carga igual */ });
   }, []);
 
@@ -91,25 +99,10 @@ export default function Inventory() {
   }, [rechazados]);
   const rechazoDe = (room: StorageRoom) => rechazoByCode.get(String(room.space || '').trim().toUpperCase());
 
-  // Recobros EN CURSO (link de recobro enviado y el cliente todavía no pagó): titilan VIOLETA
-  // en el plano para que se sepa de un vistazo que ya están gestionados pero falta el pago.
-  // Guarda código → fecha de envío (rebillAt) para mostrar HACE CUÁNTOS DÍAS está sin pagar.
-  const [recobros, setRecobros] = useState<Map<string, string>>(new Map());
-  useEffect(() => {
-    getAdminReservations({ limit: 200 })
-      .then((r) => {
-        const m = new Map<string, string>();
-        (r.data || []).forEach((x: any) => {
-          if (x.rebillAt && x.mpSubscriptionStatus !== 'authorized' && x.status !== 'cancelled') {
-            if (x.bauleraCodigo) m.set(String(x.bauleraCodigo).trim().toUpperCase(), String(x.rebillAt));
-            if (x.storageRoomId) m.set(`ID:${x.storageRoomId}`, String(x.rebillAt));
-          }
-        });
-        setRecobros(m);
-      })
-      .catch(() => { /* sin datos de recobros; el plano carga igual */ });
-  }, []);
-  const recobroDe = (room: StorageRoom) => recobros.get(String(room.space || '').trim().toUpperCase()) || recobros.get(`ID:${room.id}`);
+  // DEUDAS con link ENVIADO y aún sin pagar → titilan VIOLETA. Vienen del backend (deudasPendientes),
+  // persistente: sobrevive al reload y trae el link vigente (así no se genera un 2° link = doble cobro).
+  const [recobros, setRecobros] = useState<Map<string, DeudaPendiente>>(new Map());
+  const recobroDe = (room: StorageRoom) => recobros.get(String(room.space || '').trim().toUpperCase());
 
   const reload = async () => {
     try { const r = await getAllStorageRoomsServices({ limit: 1000 }); setRooms(r.data); } catch (e) { /* */ }
@@ -117,7 +110,8 @@ export default function Inventory() {
 
   const openDetail = async (room: StorageRoom) => {
     const rechazo = rechazoDe(room) || null;
-    setDetail({ room, tenant: null, order: null, rechazo });
+    const deudaPendiente = recobroDe(room) || null;
+    setDetail({ room, tenant: null, order: null, rechazo, deudaPendiente });
     setDetailLoading(true);
     try {
       const full: any = await getStorageRoomByIdServices(room.id);
@@ -141,9 +135,9 @@ export default function Inventory() {
           if (hit) resv = await getAdminReservationById(hit.id);
         }
       } catch { /* sin reserva vinculada */ }
-      setDetail({ room: full, tenant, order, rechazo, resv });
+      setDetail({ room: full, tenant, order, rechazo, resv, deudaPendiente: recobroDe(room) || null });
     } catch {
-      setDetail({ room, tenant: null, order: null, rechazo, error: true });
+      setDetail({ room, tenant: null, order: null, rechazo, error: true, deudaPendiente: recobroDe(room) || null });
     } finally {
       setDetailLoading(false);
     }
@@ -377,11 +371,17 @@ export default function Inventory() {
 
       {detail && (
         <RoomDetailModal detail={detail} loading={detailLoading} onClose={() => setDetail(null)} onChanged={() => { setDetail(null); reload(); }}
-          onRebilled={(subId: string) => {
-            // La baulera pasa de "rechazada" (naranja) a "recobro en curso" (violeta) al instante.
-            const hit = rechazados.find((r) => r.subId === subId);
-            if (hit) setRecobros((s) => { const n = new Map(s); n.set(String(hit.baulera).trim().toUpperCase(), new Date().toISOString()); return n; });
-            setRechazados((x) => x.filter((r) => r.subId !== subId));
+          onRebilled={() => {
+            // Refetch: el backend invalidó el cache al generar la deuda → deudasPendientes trae el
+            // link vigente y la baulera pasa a violeta (persistente, sin duplicar el link).
+            getCobrosRechazadosServices()
+              .then((r) => {
+                setRechazados(r.rechazados || []);
+                const dm = new Map<string, DeudaPendiente>();
+                (r.deudasPendientes || []).forEach((d) => dm.set(String(d.baulera).trim().toUpperCase(), d));
+                setRecobros(dm);
+              })
+              .catch(() => { /* */ });
           }} />
       )}
     </div>
@@ -397,33 +397,35 @@ function StatCard({ label, value, cls }: { label: string; value: number; cls: st
   );
 }
 
-function UnitCell({ room, rechazo, recobro, onClick }: { room: StorageRoom; rechazo?: CobroRechazado; recobro?: string; onClick: () => void }) {
-  // recobro = rebillAt (fecha de envío del link) → mostrar hace cuántos días espera el pago
-  const diasRecobro = recobro ? Math.floor((Date.now() - Date.parse(recobro)) / 86400000) : 0;
+function UnitCell({ room, rechazo, recobro, onClick }: { room: StorageRoom; rechazo?: CobroRechazado; recobro?: DeudaPendiente; onClick: () => void }) {
   const cfg = STATUS_CONFIG[room.status] ?? STATUS_CONFIG.available;
-  // Pago rechazado -> la celda TITILA: naranja dentro del plazo, rojo fuerte si venció.
-  // Recobro en curso (link enviado, falta que pague) -> TITILA violeta.
-  const rechazoCls = rechazo
-    ? (rechazo.vencido
-        ? 'bg-red-200 border-red-600 hover:bg-red-300 titila'
-        : 'bg-orange-100 border-orange-500 hover:bg-orange-200 titila')
-    : (recobro ? 'bg-violet-100 border-violet-500 hover:bg-violet-200 titila' : '');
-  const title = rechazo
-    ? `${room.space} · PAGO RECHAZADO (${rechazo.vencido ? 'plazo VENCIDO' : `quedan ${rechazo.diasRestantes} días`}) — tocá para ver detalle`
-    : recobro
-      ? `${room.space} · RECOBRO EN CURSO (link enviado ${diasRecobro <= 0 ? 'hoy' : `hace ${diasRecobro} día${diasRecobro === 1 ? '' : 's'}`}, falta que pague) — tocá para ver detalle`
+  const diasRecobro = recobro ? Math.floor((Date.now() - Date.parse(recobro.sentAt)) / 86400000) : 0;
+  // Prioridad: si YA hay un pago único enviado (recobro/deuda pendiente) → VIOLETA (falta que pague).
+  // Si no, rechazado → naranja intento 1-2 / rojo intento 3-4 (SPEC §7: por N° de intento, no por plazo).
+  const intento = rechazo?.reintentos ?? 0;
+  const rojo = intento >= 3;
+  const estado: 'recobro' | 'rojo' | 'naranja' | null = recobro ? 'recobro' : rechazo ? (rojo ? 'rojo' : 'naranja') : null;
+  const cls = estado === 'recobro' ? 'bg-violet-100 border-violet-500 hover:bg-violet-200 titila'
+    : estado === 'rojo' ? 'bg-red-200 border-red-600 hover:bg-red-300 titila'
+    : estado === 'naranja' ? 'bg-orange-100 border-orange-500 hover:bg-orange-200 titila'
+    : '';
+  const title = estado === 'recobro'
+    ? `${room.space} · RECOBRO EN CURSO (link enviado ${diasRecobro <= 0 ? 'hoy' : `hace ${diasRecobro} día${diasRecobro === 1 ? '' : 's'}`}, falta que pague) — tocá para ver`
+    : rechazo
+      ? `${room.space} · PAGO RECHAZADO (intento ${intento || '?'}${rechazo.vencido ? ', plazo VENCIDO' : rechazo.diasRestantes != null ? `, quedan ${rechazo.diasRestantes} días` : ''}) — tocá para ver`
       : `${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''} — tocá para ver detalle`;
+  const inkCls = estado === 'recobro' ? 'text-violet-800' : estado === 'rojo' ? 'text-red-900' : estado === 'naranja' ? 'text-orange-800' : cfg.cellText;
   return (
     <button
       onClick={onClick}
       title={title}
-      className={`w-14 h-14 rounded-lg border-2 flex flex-col items-center justify-center cursor-pointer select-none transition-colors ${rechazoCls || cfg.cellBg}`}
+      className={`w-14 h-14 rounded-lg border-2 flex flex-col items-center justify-center cursor-pointer select-none transition-colors ${cls || cfg.cellBg}`}
     >
-      <span className={`text-[11px] font-bold leading-tight ${rechazo ? (rechazo.vencido ? 'text-red-900' : 'text-orange-800') : recobro ? 'text-violet-800' : cfg.cellText}`}>{room.space}</span>
-      {rechazo ? (
-        <span className={`text-[9px] leading-tight font-bold ${rechazo.vencido ? 'text-red-800' : 'text-orange-700'}`}>$ !</span>
-      ) : recobro ? (
+      <span className={`text-[11px] font-bold leading-tight ${inkCls}`}>{room.space}</span>
+      {estado === 'recobro' ? (
         <span className="text-[9px] leading-tight font-bold text-violet-700">$ ⟳</span>
+      ) : rechazo ? (
+        <span className={`text-[9px] leading-tight font-bold ${rojo ? 'text-red-800' : 'text-orange-700'}`}>$ !</span>
       ) : room.areaM2 ? (
         <span className={`text-[9px] leading-tight ${cfg.cellText} opacity-60`}>{room.areaM2}m²</span>
       ) : null}
@@ -440,7 +442,7 @@ function Row({ label, value }: { label: string; value: any }) {
   );
 }
 
-function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { detail: any; loading: boolean; onClose: () => void; onChanged?: () => void; onRebilled?: (subId: string) => void }) {
+function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { detail: any; loading: boolean; onClose: () => void; onChanged?: () => void; onRebilled?: () => void }) {
   const room = detail.room || {};
   const tenant = detail.tenant || room.tenant || null;
   const order = detail.order || null;
@@ -489,8 +491,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
     `• Cuando lo pague, la baulera deja de titilar (queda al día)`;
   const applyResult = (out: Awaited<ReturnType<typeof generarDeuda>>) => {
     setRebillState({ link: out.initPoint, email: out.email });
-    const r = detail.rechazo as CobroRechazado | null;
-    if (onRebilled && r?.subId) onRebilled(r.subId); // pasa la baulera a violeta (deuda con link enviado)
+    if (onRebilled) onRebilled(); // refetch → la baulera pasa a violeta (deuda con link enviado)
   };
   // WhatsApp de cobranza (texto de Lucas): chat del cliente con el mensaje armado
   // (nombre + mes rechazado + link). Si no hay teléfono cargado, abre el selector de chat.
@@ -555,16 +556,16 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   };
   const tenantName = tenant ? (tenant.fullName || `${tenant.user?.firstName || tenant.firstName || ''} ${tenant.user?.lastName || tenant.lastName || ''}`.trim()) : (room.currentTenant || null);
 
-  // ¿YA se le envió un link de recobro? (traza rebillAt/rebillBy guardada en la reserva)
+  // ¿YA hay un pago único ENVIADO y sin pagar? deudaPendiente = fuente PERSISTENTE del backend
+  // (o rebillState.link si se acaba de generar). Es el GUARD anti-doble-link: si hay uno vivo, se
+  // muestra ese en vez del formulario de generación (antes colgaba de rebillAt → no persistía y
+  // se podía generar un 2° link = doble cobro).
   const resv: AdminReservationFull | null = detail.resv || null;
-  const recobroEnviado = !!(resv && resv.rebillAt);
-  const recobroPagado = recobroEnviado && resv!.mpSubscriptionStatus === 'authorized';
-  const recobroLink = rebillState.link || (recobroEnviado ? (resv!.mpInitPoint || '') : '');
-  const fechaEnvio = recobroEnviado ? new Date(resv!.rebillAt!).toLocaleDateString('es-AR') : '';
-  // El cartel "regularizado" se muestra solo 10 días: más tiempo se superpone con los cobros
-  // del ciclo siguiente (un nuevo rechazo del mes próximo quedaría mezclado con este cartel).
-  const recobroReciente = recobroEnviado && Date.now() - Date.parse(resv!.rebillAt!) < 10 * 86400000;
-  const diasRebill = recobroEnviado ? Math.floor((Date.now() - Date.parse(resv!.rebillAt!)) / 86400000) : 0;
+  const deudaPend: DeudaPendiente | null = detail.deudaPendiente || null;
+  const recobroEnviado = !!deudaPend || !!rebillState.link;
+  const recobroLink = rebillState.link || deudaPend?.initPoint || '';
+  const fechaEnvio = deudaPend ? new Date(deudaPend.sentAt).toLocaleDateString('es-AR') : '';
+  const diasRebill = deudaPend ? Math.floor((Date.now() - Date.parse(deudaPend.sentAt)) / 86400000) : 0;
   const haceRebillTxt = diasRebill <= 0 ? 'hoy' : `hace ${diasRebill} día${diasRebill === 1 ? '' : 's'}`;
 
   return (
@@ -603,12 +604,12 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                       ? `⏰ PLAZO VENCIDO — pasaron ${detail.rechazo.diasTranscurridos} días (el plazo para regularizar era de 10).`
                       : `Le quedan ${detail.rechazo.diasRestantes} día(s) para regularizar (plazo de 10 días — MP reintenta el débito).`}
                   </p>
-                  {(rebillState.link || (recobroEnviado && !recobroPagado && recobroLink)) ? (
+                  {(rebillState.link || (recobroEnviado && recobroLink)) ? (
                     <div className="mt-2 rounded-md bg-green-50 border border-green-300 px-2.5 py-2">
                       <p className="text-xs font-bold text-green-800">
                         {rebillState.link
                           ? <>✓ Link de pago enviado{rebillState.email ? ` a ${rebillState.email}` : ''} — es un pago único; la suscripción sigue viva.</>
-                          : <>✓ YA se le envió un link de recobro el <b>{fechaEnvio}</b>{resv?.rebillBy ? <> (por {resv.rebillBy})</> : null} — no generar otro: reenviale este.</>}
+                          : <>✓ YA se le envió un link de pago el <b>{fechaEnvio}</b>{deudaPend?.sentBy ? <> (por {deudaPend.sentBy})</> : null} — no generes otro: reenviale este.</>}
                       </p>
                       {rebillState.warn && <p className="text-[10px] font-bold text-orange-700 mt-1">OJO: {rebillState.warn}</p>}
                       <div className="flex gap-1.5 mt-1.5">
@@ -624,6 +625,13 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                   ) : (
                     <div className="mt-2">
                       {rebillState.err && <p className="text-xs text-red-700 font-semibold mb-1">{rebillState.err}</p>}
+                      {/* Guarda de 10 días: durante el recycling MP todavía reintenta → si se manda el
+                          pago único ahora y justo MP cobra en un reintento, puede haber doble cobro. */}
+                      {!detail.rechazo.vencido && detail.rechazo.diasRestantes != null && (
+                        <p className="text-[10px] text-amber-800 bg-amber-50 border border-amber-300 rounded px-1.5 py-1 mb-1.5">
+                          ⚠ MP todavía reintenta este cobro (quedan {detail.rechazo.diasRestantes} días del plazo de 10). Ideal generar el pago único <b>cuando termine el plazo</b>: si lo mandás ahora y justo MP cobra en un reintento, puede haber doble cobro.
+                        </p>
+                      )}
                       {/* SPEC §5.3: casilla del tipo de cobro (define el mensaje). Ambos = PAGO ÚNICO. */}
                       <div className="flex items-center gap-3 mb-1.5 flex-wrap">
                         <span className="text-[10px] font-bold text-gray-700">Cobrar:</span>
@@ -655,13 +663,13 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
 
               {/* Recobro EN CURSO: link ya enviado y el cliente todavía no pagó (la baulera ya no titila,
                   pero el operador tiene que saber que ese cliente YA tiene un link mandado). */}
-              {!detail.rechazo && recobroEnviado && !recobroPagado && (
+              {!detail.rechazo && recobroEnviado && (
                 <div className="mb-4 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-2.5">
                   <p className="text-sm font-bold text-violet-800">
                     Recobro en curso — link enviado {haceRebillTxt}{diasRebill > 0 ? ' sin pagar' : ''}
                   </p>
                   <p className="text-xs text-violet-700 mt-1">
-                    Se le envió un link de <b>pago único</b> el <b>{fechaEnvio}</b>{resv?.rebillBy ? <> por <b>{resv.rebillBy}</b></> : null}.
+                    Se le envió un link de <b>pago único</b>{deudaPend ? <> de <b>${Number(deudaPend.monto).toLocaleString('es-AR')}</b></> : null} el <b>{fechaEnvio}</b>{deudaPend?.sentBy ? <> por <b>{deudaPend.sentBy}</b></> : null}.
                     La suscripción <b>sigue viva</b> (no se tocó) y <b>todavía no pagó el link</b>. No generes otro: reenviale este.
                   </p>
                   {recobroLink && (
@@ -674,11 +682,6 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                         className="text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white px-2 py-1 rounded">Copiar</button>
                     </div>
                   )}
-                </div>
-              )}
-              {!detail.rechazo && recobroPagado && recobroReciente && (
-                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 px-3 py-2">
-                  <p className="text-xs font-semibold text-green-800">✓ Pago regularizado — se le envió un link el {fechaEnvio} y lo pagó (la suscripción nunca se tocó).</p>
                 </div>
               )}
 

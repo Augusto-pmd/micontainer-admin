@@ -31,12 +31,30 @@ export interface CobroRechazado {
   subId: string;
   monto: number;
   fechaRechazo: string;
+  periodo?: string;           // 'YYYY-MM' del mes rechazado (para el pago único de deuda)
   diasTranscurridos: number | null;
   diasRestantes: number | null;
   vencido: boolean;
   mpEstado: string;
   mpDetalle: string;
   reintentos: number | null;
+  deudaLinkEnviado?: boolean;  // true = ya hay un pago único pendiente para esta baulera (violeta)
+}
+
+// Deuda con link de pago único ENVIADO y aún sin pagar (titileo VIOLETA). La emite el backend
+// en cobros-rechazados.deudasPendientes; el front la usa para el estado violeta y el link vigente.
+export interface DeudaPendiente {
+  baulera: string;
+  monto: number;
+  periodo: string;
+  tipo: 'mes_adeudado' | 'proporcional';
+  desde?: string | null;
+  hasta?: string | null;
+  sentAt: string;
+  sentBy?: string | null;
+  initPoint?: string | null;
+  cliente?: string | null;
+  email?: string | null;
 }
 
 export interface CobrosRechazadosRes {
@@ -45,6 +63,7 @@ export interface CobrosRechazadosRes {
   revisadas: number;
   sinDato: number;
   rechazados: CobroRechazado[];
+  deudasPendientes?: DeudaPendiente[];
   cacheado?: boolean;
 }
 

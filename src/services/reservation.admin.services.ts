@@ -80,12 +80,8 @@ export const cancelAdminReservation = async (id: string) => {
 // REENVIAR LINK DE COBRO (pago rechazado): cancela la sub rechazada en MP (deja de reintentar),
 // crea una nueva atada a la MISMA baulera/reserva y se la manda al cliente por mail. Si la paga,
 // el webhook lo reactiva solo. Devuelve el link nuevo para copiar/mandar por WhatsApp.
-// subId es opcional: sin él (cobro MANUAL, la web no detectó el rechazo) el backend busca la
-// suscripción vieja en MP por código de baulera / email para cancelarla igual.
-export const rebillSubscription = async (p: { subId?: string; baulera?: string; amount?: number; email?: string; cliente?: string }) => {
-  const res = await api.post(`/admin/reservations/rebill`, p);
-  return res.data as { ok: boolean; reservationId?: string; initPoint?: string; viejaCancelada?: boolean; subViejaEncontrada?: boolean; emailEnviado?: boolean; email?: string };
-};
+// (rebillSubscription ELIMINADO: creaba una suscripción nueva vía /rebill — contra el modelo.
+//  La UI usa generarDeuda -> /deuda, PAGO ÚNICO. El endpoint /rebill quedó deshabilitado -> 410.)
 
 // DEUDA (SPEC cobros-alineados §5): genera un PAGO ÚNICO por un mes adeudado o un proporcional.
 // NO crea suscripción (la del cliente sigue viva sola). Reemplaza a rebillSubscription en la UI.
