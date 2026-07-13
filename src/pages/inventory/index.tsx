@@ -393,21 +393,40 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   const [savingBlock, setSavingBlock] = useState(false);
   // Reenvío de link de cobro (pago rechazado)
   const [rebillState, setRebillState] = useState<{ loading?: boolean; link?: string; email?: string; err?: string }>({});
-  // WhatsApp de cobranza (texto de Lucas): abre el chat del cliente con el mensaje armado
-  // (nombre + mes rechazado + link nuevo). Si no hay teléfono cargado, abre el selector de chat.
-  const abrirWhatsApp = () => {
+  // WhatsApp de cobranza (texto de Lucas): chat del cliente con el mensaje armado
+  // (nombre + mes rechazado + link). Si no hay teléfono cargado, abre el selector de chat.
+  const waUrl = (link: string) => {
     const r = detail.rechazo as CobroRechazado;
     const MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     const mesIdx = Number(String(r.fechaRechazo || '').split('-')[1]) - 1;
     const mes = MESES[mesIdx] ?? MESES[new Date().getMonth()];
     const nombre = String(r.cliente || tenantName || '').trim().split(' ')[0] || '';
-    const texto = `Hola ${nombre}, como estas?\nTe contacto debido a que no se pudo debitar el pago correspondiente al mes de ${mes}.\nMercado Pago hizo 4 intentos de cobro, en un lapso de 10 dias, pero no se pudo realizar el cobro.\nPara regularizar el saldo pendiente te envio un link de pago. Por favor, cuando realices el pago, envianos el comprobante:\n${rebillState.link}`;
+    const texto = `Hola ${nombre}, como estas?\nTe contacto debido a que no se pudo debitar el pago correspondiente al mes de ${mes}.\nMercado Pago hizo 4 intentos de cobro, en un lapso de 10 dias, pero no se pudo realizar el cobro.\nPara regularizar el saldo pendiente te envio un link de pago. Por favor, cuando realices el pago, envianos el comprobante:\n${link}`;
     const telRaw = String((tenant && (tenant.phone || tenant.user?.phone)) || '').replace(/\D/g, '');
     const tel = telRaw ? (telRaw.startsWith('54') ? telRaw : `549${telRaw.replace(/^0/, '').replace(/^15/, '')}`) : '';
-    const url = tel
+    return tel
       ? `https://wa.me/${tel}?text=${encodeURIComponent(texto)}`
       : `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
-    window.open(url, '_blank');
+  };
+  // Botón WhatsApp SIEMPRE visible: si el link ya se generó lo usa; si no, lo genera primero
+  // (mismo reenvío: cancela la sub rechazada + mail) y abre WhatsApp con el mensaje listo.
+  const abrirWhatsApp = async () => {
+    if (rebillState.link) { window.open(waUrl(rebillState.link), '_blank'); return; }
+    const r = detail.rechazo as CobroRechazado;
+    if (!window.confirm(`¿Generar link nuevo y abrir WhatsApp para ${r.cliente || r.email || 'este cliente'}?\n\n• Se CANCELA la suscripción rechazada en MP (deja de reintentar)\n• Se genera un link NUEVO de $${Number(r.monto).toLocaleString('es-AR')}/mes atado a la baulera ${r.baulera}\n• También se lo mandamos por mail\n• WhatsApp se abre con el mensaje de cobranza listo`)) return;
+    // Reservar la pestaña ANTES del await (si no, el bloqueador de pop-ups la mata)
+    const w = window.open('about:blank', '_blank');
+    setRebillState({ loading: true });
+    try {
+      const out = await rebillSubscription({ subId: r.subId, baulera: r.baulera, amount: r.monto, email: r.email, cliente: r.cliente });
+      setRebillState({ link: out.initPoint, email: out.email });
+      if (onRebilled) onRebilled(r.subId);
+      const url = waUrl(out.initPoint || '');
+      if (w) w.location.href = url; else window.open(url, '_blank');
+    } catch (e: any) {
+      if (w) w.close();
+      setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link nuevo' });
+    }
   };
   const reenviarLink = async () => {
     const r = detail.rechazo as CobroRechazado;
@@ -484,11 +503,18 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                   ) : (
                     <div className="mt-2">
                       {rebillState.err && <p className="text-xs text-red-700 font-semibold mb-1">{rebillState.err}</p>}
-                      <button onClick={reenviarLink} disabled={rebillState.loading}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 ${detail.rechazo.vencido ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
-                        {rebillState.loading ? 'Generando…' : 'Reenviar link de cobro'}
-                      </button>
-                      <p className="text-[10px] text-gray-500 mt-1">Cancela la sub rechazada en MP, genera un link nuevo para la MISMA baulera y se lo manda por mail. Al pagarlo se reactiva solo.</p>
+                      <div className="flex gap-1.5 flex-wrap">
+                        <button onClick={reenviarLink} disabled={rebillState.loading}
+                          className={`text-xs font-bold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 ${detail.rechazo.vencido ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
+                          {rebillState.loading ? 'Generando…' : 'Reenviar link de cobro'}
+                        </button>
+                        <button onClick={abrirWhatsApp} disabled={rebillState.loading}
+                          title="Genera el link nuevo (si hace falta) y abre WhatsApp con el mensaje de cobranza listo"
+                          className="text-xs font-bold px-3 py-1.5 rounded-lg text-white bg-[#25D366] hover:bg-[#1ebe5b] disabled:opacity-50">
+                          {rebillState.loading ? '…' : 'Enviar por WhatsApp'}
+                        </button>
+                      </div>
+                      <p className="text-[10px] text-gray-500 mt-1">Ambos cancelan la sub rechazada en MP, generan un link nuevo para la MISMA baulera y lo mandan por mail. WhatsApp además abre el chat con el mensaje de cobranza armado. Al pagarlo se reactiva solo.</p>
                     </div>
                   )}
                 </div>
