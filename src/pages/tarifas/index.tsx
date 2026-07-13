@@ -11,7 +11,7 @@ import {
   type RoomLite,
   type BranchLite,
 } from '../../services/tarifas.services';
-import { getPlanesMPServices, syncPlanesMPServices, type PlanMP, type SuscriptoViaPlan } from '../../services/pricing.services';
+import { getPlanesMPServices, syncPlanesMPServices, cancelSubMPServices, cancelPlanMPServices, type PlanMP, type SuscriptoViaPlan, type SubSuelta } from '../../services/pricing.services';
 
 const fmt = (n: number) => (Number(n) || 0).toLocaleString('es-AR');
 const normM2 = (m2: string | number) => String(Number(m2));
@@ -553,7 +553,22 @@ export default function Tarifas() {
 // suscripciones NO lo actualiza (y el reprice dice "ya aplicado" si ninguna sub cambia).
 // Este panel consulta MP en vivo y pone los planes al día de un click.
 function PlanesMP({ branchId }: { branchId: string }) {
-  const [data, setData] = useState<{ total: number; desactualizados: number; planes: PlanMP[]; suscriptosViaPlan: number; suscriptos: SuscriptoViaPlan[] } | null>(null);
+  const [data, setData] = useState<{ total: number; desactualizados: number; planes: PlanMP[]; suscriptosViaPlan: number; suscriptos: SuscriptoViaPlan[]; sueltasTotal: number; sueltas: SubSuelta[] } | null>(null);
+  const [bajando, setBajando] = useState<string | null>(null);
+  const bajarSub = async (s: SubSuelta) => {
+    if (!window.confirm(`¿Dar de BAJA en MP la suscripción de $${fmt(s.monto)} (${s.ref || 'sin referencia'}, ${s.email || 'sin email'})?\n\n• Corta el cobro en Mercado Pago DE VERDAD\n• No toca ninguna baulera ni reserva\n• No se puede deshacer (para volver a cobrarle: link nuevo)`)) return;
+    setBajando(s.id);
+    try { await cancelSubMPServices(s.id); await cargar(); }
+    catch { setPmsg('MP no aceptó cancelar esa suscripción'); }
+    finally { setBajando(null); }
+  };
+  const bajarPlan = async (p: PlanMP) => {
+    if (!window.confirm(`¿Cancelar el plan "${p.nombre}"?\n\n• Su link deja de funcionar para FUTUROS suscriptos\n• Los que YA están suscriptos NO se tocan (siguen cobrando normal)`)) return;
+    setBajando(p.planId);
+    try { await cancelPlanMPServices(p.planId); await cargar(); }
+    catch { setPmsg('MP no aceptó cancelar ese plan'); }
+    finally { setBajando(null); }
+  };
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [pmsg, setPmsg] = useState<string | null>(null);
@@ -629,6 +644,14 @@ function PlanesMP({ branchId }: { branchId: string }) {
                         ? <span className="text-xs font-bold text-orange-600">DESACTUALIZADO</span>
                         : <span className="text-xs font-semibold text-green-700">al día</span>}
                   </td>
+                  <td className="py-1.5">
+                    {p.estado === 'active' && (
+                      <button onClick={() => bajarPlan(p)} disabled={bajando === p.planId}
+                        className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50">
+                        {bajando === p.planId ? '…' : 'Cancelar plan'}
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -674,6 +697,50 @@ function PlanesMP({ branchId }: { branchId: string }) {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {data && data.sueltas.length > 0 && (
+        <div className="mt-5">
+          <h3 className="text-sm font-bold text-gray-900">
+            Suscripciones sueltas en MP <span className="text-gray-400 font-normal">({data.sueltasTotal})</span>
+          </h3>
+          <p className="text-[11px] text-gray-500 mt-0.5 mb-2">
+            Vivas en MP pero <b>sin baulera enlazada</b>: duplicadas, huérfanas o de otra cosa. Desde acá las das de
+            baja <b>sin generar links nuevos</b> — corta el cobro en MP y no toca ninguna baulera. OJO: verificá en MP
+            de quién es antes de cortar (una "authorized" puede estar cobrando de verdad).
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-gray-400 uppercase">
+                  <th className="py-1.5 pr-3">Referencia</th>
+                  <th className="py-1.5 pr-3">Email pagador</th>
+                  <th className="py-1.5 pr-3">Monto</th>
+                  <th className="py-1.5 pr-3">Estado</th>
+                  <th className="py-1.5"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.sueltas.map((s) => (
+                  <tr key={s.id} className="border-t border-gray-100">
+                    <td className="py-1.5 pr-3 text-xs">{s.ref || <span className="text-gray-400">(sin referencia)</span>}</td>
+                    <td className="py-1.5 pr-3 text-xs text-gray-500">{s.email || '—'}</td>
+                    <td className="py-1.5 pr-3 font-semibold">${fmt(s.monto)}</td>
+                    <td className="py-1.5 pr-3">
+                      <span className={`text-xs font-semibold ${s.estado === 'authorized' ? 'text-green-700' : s.estado === 'paused' ? 'text-orange-600' : 'text-gray-400'}`}>{s.estado}</span>
+                    </td>
+                    <td className="py-1.5">
+                      <button onClick={() => bajarSub(s)} disabled={bajando === s.id}
+                        className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-50">
+                        {bajando === s.id ? '…' : 'Dar de baja en MP'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </section>

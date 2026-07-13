@@ -63,10 +63,23 @@ export interface PlanMP {
 }
 
 export interface SuscriptoViaPlan { baulera: string; cliente: string; email: string; monto: number; plan: string; estado: string; }
+export interface SubSuelta { id: string; ref: string; monto: number; estado: string; email: string; }
 
 export const getPlanesMPServices = async (branchId = 'nordelta') => {
   const res = await api.get(`/pricing-engine/planes/${branchId}`);
-  return res.data as { total: number; desactualizados: number; planes: PlanMP[]; suscriptosViaPlan: number; suscriptos: SuscriptoViaPlan[] };
+  return res.data as { total: number; desactualizados: number; planes: PlanMP[]; suscriptosViaPlan: number; suscriptos: SuscriptoViaPlan[]; sueltasTotal: number; sueltas: SubSuelta[] };
+};
+
+// Baja MANUAL de una suscripción vieja/suelta en MP (sin generar link nuevo): corta el cobro.
+export const cancelSubMPServices = async (subId: string) => {
+  const res = await api.post(`/pricing-engine/subs/${encodeURIComponent(subId)}/cancel`);
+  return res.data as { ok: boolean };
+};
+
+// Cancelar un PLAN viejo: su link muere para futuros; los ya suscriptos no se tocan.
+export const cancelPlanMPServices = async (planId: string) => {
+  const res = await api.post(`/pricing-engine/planes/${encodeURIComponent(planId)}/cancel`);
+  return res.data as { ok: boolean };
 };
 
 export const syncPlanesMPServices = async (branchId = 'nordelta') => {

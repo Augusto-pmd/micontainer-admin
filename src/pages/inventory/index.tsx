@@ -167,10 +167,18 @@ export default function Inventory() {
     return Array.from(m.entries()).sort((a, b) => Number(a[0]) - Number(b[0]));
   }, [branchFiltered]);
 
-  const filtered = useMemo(
-    () => selectedM2 ? branchFiltered.filter(r => String(r.areaM2 ?? '').trim() === selectedM2) : branchFiltered,
-    [branchFiltered, selectedM2],
-  );
+  // Búsqueda por CLIENTE o código de baulera (además del filtro por m²) — pedido Lucas 13/07.
+  const [buscarCliente, setBuscarCliente] = useState('');
+  const filtered = useMemo(() => {
+    let list = selectedM2 ? branchFiltered.filter(r => String(r.areaM2 ?? '').trim() === selectedM2) : branchFiltered;
+    const q = buscarCliente.trim().toLowerCase();
+    if (q) {
+      list = list.filter(r =>
+        String((r as any).currentTenant || '').toLowerCase().includes(q) ||
+        String(r.space || (r as any).name || '').toLowerCase().includes(q));
+    }
+    return list;
+  }, [branchFiltered, selectedM2, buscarCliente]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Map<string, StorageRoom[]>>();
@@ -223,6 +231,15 @@ export default function Inventory() {
           <p className="text-sm text-gray-500 mt-0.5">Estado en tiempo real · tocá una baulera para ver el detalle</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Búsqueda por cliente / baulera */}
+          <input
+            type="text"
+            value={buscarCliente}
+            onChange={(e) => setBuscarCliente(e.target.value)}
+            placeholder="Buscar cliente o baulera…"
+            className={`border rounded-lg px-3 py-2 text-sm w-56 ${buscarCliente ? 'border-green-500' : 'border-gray-300'}`}
+          />
+
           {/* Filtro por tamaño (m²) — lista desplegable con los tamaños del inventario */}
           <div className="relative">
             <button
@@ -573,6 +590,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                     {/* fecha YYYY-MM-DD mostrada tal cual (sin new Date: el parse UTC la corre un día en ART) */}
                     El débito de <b>${Number(detail.rechazo.monto).toLocaleString('es-AR')}</b> fue rechazado el <b>{String(detail.rechazo.fechaRechazo).split('-').reverse().join('/')}</b>
                     {' '}({rechazoMotivo(detail.rechazo.mpDetalle)}).
+                    {detail.rechazo.reintentos != null && <> MP hizo <b>{detail.rechazo.reintentos}</b> intento{detail.rechazo.reintentos === 1 ? '' : 's'} de cobro.</>}
                   </p>
                   <p className={`text-xs mt-1 font-semibold ${detail.rechazo.vencido ? 'text-red-800' : 'text-orange-800'}`}>
                     {detail.rechazo.vencido
