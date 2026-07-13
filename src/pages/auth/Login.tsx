@@ -25,8 +25,12 @@ const Login = () => {
     setToken(idToken);
     api.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
 
-    // Buscar el operador registrado para obtener su rol real
-    let role: UserRole = UserRole.ADMIN; // fallback
+    // Buscar el operador registrado para obtener su rol real. Fallback = OPERADOR (mínimo
+    // privilegio): si la búsqueda falla o el email NO está registrado como admin, no se asume
+    // ADMIN. Antes el fallback era ADMIN => cualquier staff sin registro (o un error de red)
+    // caía como admin y veía los menús admin. La fuente de verdad del rol es la colección
+    // operators; para ser ADMIN hay que figurar ahí con rol admin.
+    let role: UserRole = UserRole.OPERATOR;
     try {
       const opRes = await api.get('/operator?limit=200');
       const ops = opRes.data?.data ?? [];
@@ -34,7 +38,8 @@ const Login = () => {
       if (match?.role) {
         role = match.role === 'role-operator' ? UserRole.OPERATOR : UserRole.ADMIN;
       }
-    } catch { /* si falla la busqueda, se queda con ADMIN */ }
+      // sin match => queda OPERADOR (staff conocido pero no registrado como admin)
+    } catch { /* búsqueda falló => mínimo privilegio (OPERADOR) */ }
 
     setUser({
       id: fbUser.uid,
