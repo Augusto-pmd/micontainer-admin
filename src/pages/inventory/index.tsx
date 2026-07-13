@@ -93,22 +93,23 @@ export default function Inventory() {
 
   // Recobros EN CURSO (link de recobro enviado y el cliente todavía no pagó): titilan VIOLETA
   // en el plano para que se sepa de un vistazo que ya están gestionados pero falta el pago.
-  const [recobros, setRecobros] = useState<Set<string>>(new Set());
+  // Guarda código → fecha de envío (rebillAt) para mostrar HACE CUÁNTOS DÍAS está sin pagar.
+  const [recobros, setRecobros] = useState<Map<string, string>>(new Map());
   useEffect(() => {
     getAdminReservations({ limit: 200 })
       .then((r) => {
-        const s = new Set<string>();
+        const m = new Map<string, string>();
         (r.data || []).forEach((x: any) => {
           if (x.rebillAt && x.mpSubscriptionStatus !== 'authorized' && x.status !== 'cancelled') {
-            if (x.bauleraCodigo) s.add(String(x.bauleraCodigo).trim().toUpperCase());
-            if (x.storageRoomId) s.add(`ID:${x.storageRoomId}`);
+            if (x.bauleraCodigo) m.set(String(x.bauleraCodigo).trim().toUpperCase(), String(x.rebillAt));
+            if (x.storageRoomId) m.set(`ID:${x.storageRoomId}`, String(x.rebillAt));
           }
         });
-        setRecobros(s);
+        setRecobros(m);
       })
       .catch(() => { /* sin datos de recobros; el plano carga igual */ });
   }, []);
-  const recobroDe = (room: StorageRoom) => recobros.has(String(room.space || '').trim().toUpperCase()) || recobros.has(`ID:${room.id}`);
+  const recobroDe = (room: StorageRoom) => recobros.get(String(room.space || '').trim().toUpperCase()) || recobros.get(`ID:${room.id}`);
 
   const reload = async () => {
     try { const r = await getAllStorageRoomsServices({ limit: 1000 }); setRooms(r.data); } catch (e) { /* */ }
@@ -362,7 +363,7 @@ export default function Inventory() {
           onRebilled={(subId: string) => {
             // La baulera pasa de "rechazada" (naranja) a "recobro en curso" (violeta) al instante.
             const hit = rechazados.find((r) => r.subId === subId);
-            if (hit) setRecobros((s) => { const n = new Set(s); n.add(String(hit.baulera).trim().toUpperCase()); return n; });
+            if (hit) setRecobros((s) => { const n = new Map(s); n.set(String(hit.baulera).trim().toUpperCase(), new Date().toISOString()); return n; });
             setRechazados((x) => x.filter((r) => r.subId !== subId));
           }} />
       )}
@@ -379,7 +380,9 @@ function StatCard({ label, value, cls }: { label: string; value: number; cls: st
   );
 }
 
-function UnitCell({ room, rechazo, recobro, onClick }: { room: StorageRoom; rechazo?: CobroRechazado; recobro?: boolean; onClick: () => void }) {
+function UnitCell({ room, rechazo, recobro, onClick }: { room: StorageRoom; rechazo?: CobroRechazado; recobro?: string; onClick: () => void }) {
+  // recobro = rebillAt (fecha de envío del link) → mostrar hace cuántos días espera el pago
+  const diasRecobro = recobro ? Math.floor((Date.now() - Date.parse(recobro)) / 86400000) : 0;
   const cfg = STATUS_CONFIG[room.status] ?? STATUS_CONFIG.available;
   // Pago rechazado -> la celda TITILA: naranja dentro del plazo, rojo fuerte si venció.
   // Recobro en curso (link enviado, falta que pague) -> TITILA violeta.
@@ -391,7 +394,7 @@ function UnitCell({ room, rechazo, recobro, onClick }: { room: StorageRoom; rech
   const title = rechazo
     ? `${room.space} · PAGO RECHAZADO (${rechazo.vencido ? 'plazo VENCIDO' : `quedan ${rechazo.diasRestantes} días`}) — tocá para ver detalle`
     : recobro
-      ? `${room.space} · RECOBRO EN CURSO (link enviado, falta que pague) — tocá para ver detalle`
+      ? `${room.space} · RECOBRO EN CURSO (link enviado hace ${diasRecobro} día${diasRecobro === 1 ? '' : 's'}, falta que pague) — tocá para ver detalle`
       : `${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''} — tocá para ver detalle`;
   return (
     <button
@@ -587,10 +590,13 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                   pero el operador tiene que saber que ese cliente YA tiene un link mandado). */}
               {!detail.rechazo && recobroEnviado && !recobroPagado && (
                 <div className="mb-4 rounded-lg border-2 border-violet-400 bg-violet-50 px-3 py-2.5 titila">
-                  <p className="text-sm font-bold text-violet-800">Recobro en curso — link YA enviado</p>
+                  <p className="text-sm font-bold text-violet-800">
+                    Recobro en curso — link enviado hace {Math.floor((Date.now() - Date.parse(resv!.rebillAt!)) / 86400000)} día{Math.floor((Date.now() - Date.parse(resv!.rebillAt!)) / 86400000) === 1 ? '' : 's'} sin pagar
+                  </p>
                   <p className="text-xs text-violet-700 mt-1">
                     Se le envió un link de recobro el <b>{fechaEnvio}</b>{resv?.rebillBy ? <> por <b>{resv.rebillBy}</b></> : null}.
-                    La suscripción rechazada quedó cancelada y <b>todavía no pagó el link nuevo</b>. No generar otro: reenviale este.
+                    La suscripción rechazada quedó cancelada y <b>todavía no pagó el link nuevo</b>. No generar otro: reenviale este
+                    (o dalo de baja desde Ventas en curso si no responde).
                   </p>
                   {recobroLink && (
                     <div className="flex gap-1.5 mt-1.5">
