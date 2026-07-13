@@ -4,6 +4,7 @@ import { getAllBranchesServices } from '../../services/branch.services';
 import { getOrdersByCustomerIdServices } from '../../services/order.services';
 import { updateCustomerServices } from '../../services/customer.services';
 import { getCobrosRechazadosServices, type CobroRechazado } from '../../services/pricing.services';
+import { rebillSubscription } from '../../services/reservation.admin.services';
 import type { StorageRoom, StorageRoomStatus } from '../../types/storageRoom';
 import type { Branch } from '../../types/branch';
 
@@ -320,7 +321,8 @@ export default function Inventory() {
       )}
 
       {detail && (
-        <RoomDetailModal detail={detail} loading={detailLoading} onClose={() => setDetail(null)} onChanged={() => { setDetail(null); reload(); }} />
+        <RoomDetailModal detail={detail} loading={detailLoading} onClose={() => setDetail(null)} onChanged={() => { setDetail(null); reload(); }}
+          onRebilled={(subId: string) => setRechazados((x) => x.filter((r) => r.subId !== subId))} />
       )}
     </div>
   );
@@ -371,7 +373,7 @@ function Row({ label, value }: { label: string; value: any }) {
   );
 }
 
-function RoomDetailModal({ detail, loading, onClose, onChanged }: { detail: any; loading: boolean; onClose: () => void; onChanged?: () => void }) {
+function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { detail: any; loading: boolean; onClose: () => void; onChanged?: () => void; onRebilled?: (subId: string) => void }) {
   const room = detail.room || {};
   const tenant = detail.tenant || room.tenant || null;
   const order = detail.order || null;
@@ -389,6 +391,20 @@ function RoomDetailModal({ detail, loading, onClose, onChanged }: { detail: any;
   const [blockDate, setBlockDate] = useState('');
   const [blockNote, setBlockNote] = useState('');
   const [savingBlock, setSavingBlock] = useState(false);
+  // Reenvío de link de cobro (pago rechazado)
+  const [rebillState, setRebillState] = useState<{ loading?: boolean; link?: string; email?: string; err?: string }>({});
+  const reenviarLink = async () => {
+    const r = detail.rechazo as CobroRechazado;
+    if (!window.confirm(`¿Reenviar link de cobro a ${r.cliente || r.email || 'este cliente'}?\n\n• Se CANCELA la suscripción rechazada en MP (deja de reintentar)\n• Se genera un link NUEVO de $${Number(r.monto).toLocaleString('es-AR')}/mes atado a la baulera ${r.baulera} (no se abre nada nuevo)\n• Se lo mandamos por mail${r.email ? ` a ${r.email}` : ''}\n• Cuando lo pague, se reactiva solo`)) return;
+    setRebillState({ loading: true });
+    try {
+      const out = await rebillSubscription({ subId: r.subId, baulera: r.baulera, amount: r.monto, email: r.email, cliente: r.cliente });
+      setRebillState({ link: out.initPoint, email: out.email });
+      if (onRebilled) onRebilled(r.subId);
+    } catch (e: any) {
+      setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link nuevo' });
+    }
+  };
   const cambiarBloqueo = async (st: string, until: string | null) => {
     setSavingBlock(true);
     try { await updateStorageRoomServices(room.id as any, { status: st, blockedUntil: until, blockReason: st === 'blocked' ? (blockNote.trim() || 'Bloqueo manual') : null } as any); if (onChanged) onChanged(); }
@@ -436,6 +452,27 @@ function RoomDetailModal({ detail, loading, onClose, onChanged }: { detail: any;
                       ? `⏰ PLAZO VENCIDO — pasaron ${detail.rechazo.diasTranscurridos} días (el plazo para regularizar era de 10).`
                       : `Le quedan ${detail.rechazo.diasRestantes} día(s) para regularizar (plazo de 10 días — MP reintenta el débito).`}
                   </p>
+                  {rebillState.link ? (
+                    <div className="mt-2 rounded-md bg-green-50 border border-green-300 px-2.5 py-2">
+                      <p className="text-xs font-bold text-green-800">✓ Link nuevo enviado{rebillState.email ? ` a ${rebillState.email}` : ''} — la suscripción rechazada quedó cancelada.</p>
+                      <div className="flex gap-1.5 mt-1.5">
+                        <input readOnly value={rebillState.link} onFocus={(e) => e.target.select()}
+                          className="flex-1 text-[10px] border border-green-200 rounded px-1.5 py-1 bg-white text-gray-600" />
+                        <button onClick={() => navigator.clipboard?.writeText(rebillState.link!)}
+                          className="text-xs font-semibold bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded">Copiar</button>
+                      </div>
+                      <p className="text-[10px] text-green-700 mt-1">Cuando el cliente lo pague, la baulera se regulariza sola.</p>
+                    </div>
+                  ) : (
+                    <div className="mt-2">
+                      {rebillState.err && <p className="text-xs text-red-700 font-semibold mb-1">{rebillState.err}</p>}
+                      <button onClick={reenviarLink} disabled={rebillState.loading}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 ${detail.rechazo.vencido ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
+                        {rebillState.loading ? 'Generando…' : 'Reenviar link de cobro'}
+                      </button>
+                      <p className="text-[10px] text-gray-500 mt-1">Cancela la sub rechazada en MP, genera un link nuevo para la MISMA baulera y se lo manda por mail. Al pagarlo se reactiva solo.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
