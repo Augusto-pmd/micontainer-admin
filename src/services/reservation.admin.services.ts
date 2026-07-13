@@ -87,6 +87,16 @@ export const rebillSubscription = async (p: { subId?: string; baulera?: string; 
   return res.data as { ok: boolean; reservationId?: string; initPoint?: string; viejaCancelada?: boolean; subViejaEncontrada?: boolean; emailEnviado?: boolean; email?: string };
 };
 
+// DEUDA (SPEC cobros-alineados §5): genera un PAGO ÚNICO por un mes adeudado o un proporcional.
+// NO crea suscripción (la del cliente sigue viva sola). Reemplaza a rebillSubscription en la UI.
+export const generarDeuda = async (p: {
+  bauleraCodigo: string; monto: number; tipo: 'mes_adeudado' | 'proporcional';
+  periodo?: string; desde?: string; hasta?: string; email: string; cliente?: string; reservationId?: string;
+}) => {
+  const res = await api.post(`/admin/reservations/deuda`, p);
+  return res.data as { debtId: string; initPoint: string; tipo: string; monto: number; periodo: string; email: string };
+};
+
 // FACE ID — alta manual por el admin (hasta integrar el dispositivo de acceso):
 // ver la foto (URL firmada 15 min), confirmar el alta (borra la foto) o rechazarla.
 export const getFacePhoto = async (id: string) => {
