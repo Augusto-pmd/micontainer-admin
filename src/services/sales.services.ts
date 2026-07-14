@@ -18,6 +18,9 @@ export interface ManualSalePayload {
   discountPct?: number;
   priceOverride?: number;
   paymentMode?: 'subscription' | 'onetime' | 'plan';
+  // MES GRATIS (2 links): true = generar YA el pago único del gap (alineación al 1°).
+  // false/ausente = diferirlo (se genera después desde Inventario → botón Proporcional).
+  generarGapAhora?: boolean;
 }
 
 export interface ManualSaleResult {
@@ -30,6 +33,12 @@ export interface ManualSaleResult {
   total?: number;
   endDate?: string;
   planId?: string;
+  // MES GRATIS (SPEC §4): link 1 = suscripción (initPoint); link 2 = gap (pago único de alineación).
+  suscripcionLink?: string;
+  gapLink?: string | null;   // null si se difirió (generarGapAhora=false) o gap=0
+  gapAmount?: number;        // SIEMPRE viene calculado (para mostrar el ciclo aunque se difiera)
+  gapDays?: number;
+  gratis?: string;           // "1 mes(es)" / "45 día(s)"
 }
 
 // Venta manual desde el admin: crea la reserva + suscripcion MP y devuelve el link de pago.

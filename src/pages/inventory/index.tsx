@@ -471,6 +471,12 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   const montoSugerido = Number((detail.rechazo as Partial<CobroRechazado> | null)?.monto || (detail.resv as AdminReservationFull | null)?.monthly || room.price) || 0;
   const [montoLink, setMontoLink] = useState<string>('');
   useEffect(() => { setMontoLink(montoSugerido > 0 ? String(montoSugerido) : ''); }, [detail]);
+  // PERÍODO de la deuda, EDITABLE (pedido Lucas 14/07): desde/hasta van al TÍTULO del link que ve
+  // el cliente ("Mi Container A0-002 — mes adeudado 01/06 al 30/06"), para que sepa QUÉ mes paga.
+  // Si quedan vacíos, el título usa el período del rechazo (o el mes actual) — igual que antes.
+  const [deudaDesde, setDeudaDesde] = useState<string>('');
+  const [deudaHasta, setDeudaHasta] = useState<string>('');
+  useEffect(() => { setDeudaDesde(''); setDeudaHasta(''); }, [detail]);
   const rebillParams = () => {
     const r = (detail.rechazo || {}) as Partial<CobroRechazado>;
     return {
@@ -478,6 +484,8 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
       monto: Number(montoLink) > 0 ? Number(montoLink) : 0,
       tipo: tipoDeuda,
       periodo: (r as { periodo?: string }).periodo || undefined,
+      desde: deudaDesde || undefined,
+      hasta: deudaHasta || undefined,
       email: String(r.email || tenant?.email || tenant?.user?.email || resv?.customerEmail || '').trim().toLowerCase(),
       cliente: String(r.cliente || tenantName || '').trim() || undefined,
       reservationId: resv?.id,
@@ -486,6 +494,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   const confirmMsg = (p: ReturnType<typeof rebillParams>, conWsp: boolean) =>
     `¿${conWsp ? 'Generar link y abrir WhatsApp' : 'Generar link de cobro'} para ${p.cliente || p.email || 'este cliente'}?\n\n` +
     `• Es un PAGO ÚNICO ${p.tipo === 'proporcional' ? '(proporcional de alineación)' : '(mes adeudado)'} de $${Number(p.monto).toLocaleString('es-AR')}\n` +
+    (p.desde || p.hasta ? `• Período: ${p.desde ? p.desde.split('-').reverse().join('/') : '…'} al ${p.hasta ? p.hasta.split('-').reverse().join('/') : '…'} (sale en el link)\n` : '') +
     `• NO se toca la suscripción del cliente — sigue viva y cobra el mes que viene sola\n` +
     `• Se manda por mail${conWsp ? '\n• WhatsApp se abre con el mensaje de cobranza listo' : ''}\n` +
     `• Cuando lo pague, la baulera deja de titilar (queda al día)`;
@@ -655,6 +664,17 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                           className="w-28 text-xs border border-gray-300 rounded px-1.5 py-1" />
                         <span className="text-[10px] text-gray-500">el débito rechazado fue ${Number(detail.rechazo.monto).toLocaleString('es-AR')} — corregilo si debe otra cosa</span>
                       </div>
+                      {/* Período EDITABLE (Lucas 14/07): va al título del link — el cliente ve QUÉ paga.
+                          Vacío = usa el mes del rechazo (el caso común). Editar solo si es deuda vieja. */}
+                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <label className="text-[10px] font-bold text-gray-700">Deuda desde</label>
+                        <input type="date" value={deudaDesde} onChange={(e) => setDeudaDesde(e.target.value)}
+                          className="text-xs border border-gray-300 rounded px-1.5 py-1" />
+                        <label className="text-[10px] font-bold text-gray-700">hasta</label>
+                        <input type="date" value={deudaHasta} onChange={(e) => setDeudaHasta(e.target.value)}
+                          className="text-xs border border-gray-300 rounded px-1.5 py-1" />
+                        <span className="text-[10px] text-gray-500">opcional — sale en el link que ve el cliente; vacío = mes del rechazo</span>
+                      </div>
                       <div className="flex gap-1.5 flex-wrap">
                         <button onClick={reenviarLink} disabled={rebillState.loading}
                           className={`text-xs font-bold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 ${detail.rechazo.vencido ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
@@ -728,6 +748,17 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                         <input type="number" value={montoLink} onChange={(e) => setMontoLink(e.target.value)}
                           className="w-28 text-xs border border-gray-300 rounded px-1.5 py-1" />
                         <span className="text-[10px] text-orange-700 font-semibold">VERIFICÁ el monto (acá está el precio de ficha, puede diferir)</span>
+                      </div>
+                      {/* Período EDITABLE: sale en el título del link (el cliente ve QUÉ paga). En el
+                          cobro manual suele ser deuda vieja → conviene ponerlo. Vacío = mes actual. */}
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <label className="text-[10px] font-bold text-gray-700">Deuda desde</label>
+                        <input type="date" value={deudaDesde} onChange={(e) => setDeudaDesde(e.target.value)}
+                          className="text-xs border border-gray-300 rounded px-1.5 py-1" />
+                        <label className="text-[10px] font-bold text-gray-700">hasta</label>
+                        <input type="date" value={deudaHasta} onChange={(e) => setDeudaHasta(e.target.value)}
+                          className="text-xs border border-gray-300 rounded px-1.5 py-1" />
+                        <span className="text-[10px] text-gray-500">opcional — vacío = mes actual</span>
                       </div>
                       <div className="flex gap-1.5 mt-1.5 flex-wrap">
                         <button onClick={reenviarLink} disabled={rebillState.loading}
