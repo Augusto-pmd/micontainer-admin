@@ -477,6 +477,33 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   const [deudaDesde, setDeudaDesde] = useState<string>('');
   const [deudaHasta, setDeudaHasta] = useState<string>('');
   useEffect(() => { setDeudaDesde(''); setDeudaHasta(''); }, [detail]);
+  // PROPORCIONAL: la cuenta sale SOLA (pedido Lucas 14/07) — días × precio/30. Pre-carga: el gap
+  // guardado en la venta (mes gratis diferido) o, si no hay, de HOY al 1° próximo. Días EDITABLES
+  // por si es otro período (recalcula el monto al tocarlos).
+  const precioMes = Number((detail.resv as AdminReservationFull | null)?.monthly || room.price) || 0;
+  const [diasProp, setDiasProp] = useState<string>('');
+  useEffect(() => {
+    if (tipoDeuda !== 'proporcional') { setDiasProp(''); return; }
+    const g = (detail.resv || {}) as any;
+    if (Number(g.gapDays) > 0 && Number(g.gapAmount) > 0 && !g.gapInitPoint) {
+      // Gap del mes gratis calculado en la venta y aún sin link → pre-cargar tal cual
+      setDiasProp(String(g.gapDays)); setMontoLink(String(g.gapAmount));
+      if (g.gapDesde) setDeudaDesde(String(g.gapDesde));
+      if (g.gapHasta) setDeudaHasta(String(g.gapHasta));
+    } else {
+      const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+      const prox1 = hoy.getDate() === 1 ? new Date(hoy) : new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
+      const dias = Math.round((prox1.getTime() - hoy.getTime()) / 86400000);
+      setDiasProp(String(dias));
+      if (precioMes > 0) setMontoLink(String(Math.round(precioMes * dias / 30)));
+      setDeudaDesde(hoy.toISOString().slice(0, 10)); setDeudaHasta(prox1.toISOString().slice(0, 10));
+    }
+  }, [tipoDeuda, detail]);
+  const onDiasProp = (v: string) => {
+    setDiasProp(v);
+    const d = Number(v);
+    if (d > 0 && precioMes > 0) setMontoLink(String(Math.round(precioMes * d / 30)));
+  };
   const rebillParams = () => {
     const r = (detail.rechazo || {}) as Partial<CobroRechazado>;
     return {
@@ -658,6 +685,14 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                         <label className="text-[11px] flex items-center gap-1 cursor-pointer"><input type="radio" name={`tipo-${room.id}`} checked={tipoDeuda === 'mes_adeudado'} onChange={() => setTipoDeuda('mes_adeudado')} /> Mes adeudado</label>
                         <label className="text-[11px] flex items-center gap-1 cursor-pointer"><input type="radio" name={`tipo-${room.id}`} checked={tipoDeuda === 'proporcional'} onChange={() => setTipoDeuda('proporcional')} /> Proporcional (alineación / gap)</label>
                       </div>
+                      {tipoDeuda === 'proporcional' && (
+                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                          <label className="text-[10px] font-bold text-gray-700">Días a cobrar</label>
+                          <input type="number" min={1} value={diasProp} onChange={(e) => onDiasProp(e.target.value)}
+                            className="w-16 text-xs border border-gray-300 rounded px-1.5 py-1" />
+                          <span className="text-[10px] text-gray-500">la cuenta sale sola (días × precio/30, de hoy al 1° o el gap de la venta) — tocá los días si es otro período</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                         <label className="text-[10px] font-bold text-gray-700">Monto del link: $</label>
                         <input type="number" value={montoLink} onChange={(e) => setMontoLink(e.target.value)}
@@ -743,6 +778,14 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                         <label className="text-[11px] flex items-center gap-1 cursor-pointer"><input type="radio" name={`tipom-${room.id}`} checked={tipoDeuda === 'mes_adeudado'} onChange={() => setTipoDeuda('mes_adeudado')} /> Mes adeudado</label>
                         <label className="text-[11px] flex items-center gap-1 cursor-pointer"><input type="radio" name={`tipom-${room.id}`} checked={tipoDeuda === 'proporcional'} onChange={() => setTipoDeuda('proporcional')} /> Proporcional (alineación / gap)</label>
                       </div>
+                      {tipoDeuda === 'proporcional' && (
+                        <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                          <label className="text-[10px] font-bold text-gray-700">Días a cobrar</label>
+                          <input type="number" min={1} value={diasProp} onChange={(e) => onDiasProp(e.target.value)}
+                            className="w-16 text-xs border border-gray-300 rounded px-1.5 py-1" />
+                          <span className="text-[10px] text-gray-500">la cuenta sale sola (días × precio/30, de hoy al 1° o el gap de la venta) — tocá los días si es otro período</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                         <label className="text-[10px] font-bold text-gray-700">Monto del link: $</label>
                         <input type="number" value={montoLink} onChange={(e) => setMontoLink(e.target.value)}

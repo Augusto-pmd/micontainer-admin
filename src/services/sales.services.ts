@@ -33,11 +33,17 @@ export interface ManualSaleResult {
   total?: number;
   endDate?: string;
   planId?: string;
-  // MES GRATIS (SPEC §4): link 1 = suscripción (initPoint); link 2 = gap (pago único de alineación).
+  // MES GRATIS (modelo 14/07): link 1 = suscripción; link 2 = proporcional de ENTRADA (los días del
+  // mes actual, hoy → 1° próximo). El backend devuelve las FECHAS del ciclo ya calculadas.
   suscripcionLink?: string;
   gapLink?: string | null;   // null si se difirió (generarGapAhora=false) o gap=0
   gapAmount?: number;        // SIEMPRE viene calculado (para mostrar el ciclo aunque se difiera)
   gapDays?: number;
+  gapDesde?: string;         // 'YYYY-MM-DD' hoy
+  gapHasta?: string;         // 'YYYY-MM-DD' el 1° próximo (arranca el gratis)
+  finGratis?: string;        // 'YYYY-MM-DD' fin del período gratis
+  primerDebito?: string;     // 'YYYY-MM-DD' primer débito completo (el 1° siguiente)
+  trialDays?: number;        // días totales del cupón/trial en MP
   gratis?: string;           // "1 mes(es)" / "45 día(s)"
 }
 

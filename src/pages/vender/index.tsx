@@ -38,8 +38,9 @@ export default function Vender() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<{
     initPoint: string; monthly: number; duration: number; paymentMode?: string; total?: number;
-    // Mes gratis (2 links): link 2 = gap; gapAmount/gapDays SIEMPRE vienen (aunque se difiera).
+    // Mes gratis (2 links): link 2 = proporcional de ENTRADA; el backend manda las fechas del ciclo.
     gapLink?: string | null; gapAmount?: number; gapDays?: number; gratis?: string;
+    gapDesde?: string; gapHasta?: string; finGratis?: string; primerDebito?: string; trialDays?: number;
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -93,6 +94,7 @@ export default function Vender() {
       setResult({
         initPoint: r.initPoint, monthly: r.monthly, duration: r.duration, paymentMode: form.paymentMode, total: r.total,
         gapLink: r.gapLink ?? null, gapAmount: r.gapAmount, gapDays: r.gapDays, gratis: r.gratis,
+        gapDesde: r.gapDesde, gapHasta: r.gapHasta, finGratis: r.finGratis, primerDebito: r.primerDebito, trialDays: r.trialDays,
       });
     } catch (e: any) {
       setError(e?.response?.data?.error || e?.message || "No se pudo generar el link");
@@ -104,20 +106,12 @@ export default function Vender() {
   const link = result?.initPoint || "";
   const msg = `Hola${form.name ? " " + form.name : ""}! Te dejo el link para activar tu baulera en Mi Container: ${link}`;
 
-  // CICLO del mes gratis (para mostrarle al operador qué va a pasar): fin del período gratis =
-  // hoy + promo (mismo cálculo que el backend, con clamp de fin de mes) y el 1° de alineación.
-  const cicloPlan = (() => {
-    if (!result || result.paymentMode !== "plan") return null;
-    const qty = Number(form.promoMonths) || 1;
-    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
-    const freeEnd = new Date(hoy);
-    if (form.promoUnit === "days") freeEnd.setDate(freeEnd.getDate() + qty);
-    else { const dia = freeEnd.getDate(); freeEnd.setDate(1); freeEnd.setMonth(freeEnd.getMonth() + qty); const ult = new Date(freeEnd.getFullYear(), freeEnd.getMonth() + 1, 0).getDate(); freeEnd.setDate(Math.min(dia, ult)); }
-    const align = new Date(freeEnd.getFullYear(), freeEnd.getMonth(), 1);
-    if (align.getTime() < freeEnd.getTime()) align.setMonth(align.getMonth() + 1);
-    const f = (d: Date) => d.toLocaleDateString("es-AR", { day: "numeric", month: "numeric" });
-    return { freeEndTxt: f(freeEnd), alignTxt: f(align) };
-  })();
+  // CICLO del mes gratis: fechas YA calculadas por el backend (misma cuenta que el plan real en MP).
+  // Modelo 14/07: proporcional de ENTRADA (hoy → 1° próximo) + gratis desde ese 1° + débito el 1° final.
+  const fFecha = (s?: string) => (s ? s.split("-").reverse().slice(0, 2).join("/") : "");
+  const cicloPlan = result?.paymentMode === "plan" && result.gapHasta
+    ? { desdeTxt: fFecha(result.gapDesde), inicioGratisTxt: fFecha(result.gapHasta), finGratisTxt: fFecha(result.finGratis), primerDebitoTxt: fFecha(result.primerDebito) }
+    : null;
   const gapLink = result?.gapLink || "";
   const gapMsg = `Hola${form.name ? " " + form.name : ""}! Te dejo el link del pago único de alineación (${result?.gapDays ?? 0} días) de tu baulera en Mi Container: ${gapLink}`;
   // Normaliza el telefono a formato internacional para wa.me (Argentina: 549...)
@@ -215,7 +209,7 @@ export default function Vender() {
           <p className="text-xs text-gray-400 mb-3">
             {form.paymentMode === "subscription" && "Cobro mensual automático por Mercado Pago (suscripción). Corre hasta que el cliente la dé de baja."}
             {form.paymentMode === "onetime" && "El cliente paga TODOS los meses de una (un solo cobro, sin débito automático). Vence al final y hay que renovar a mano. 12+ meses aplica el descuento anual de la tarifa."}
-            {form.paymentMode === "plan" && "MES GRATIS = 2 links. Link 1 (suscripción): hoy paga $0, queda gratis desde hoy hasta el 1° siguiente al fin de la promo, y de ahí el débito cae SIEMPRE el 1°. Link 2 (pago único del proporcional/gap): cobra los días entre el fin del tiempo gratis y ese 1°, para que el neto gratis sea EXACTO. Podés generarlo ahora o después desde Inventario."}
+            {form.paymentMode === "plan" && "MES GRATIS = 2 links. Link 2 (pago único): el PROPORCIONAL de los días que quedan de ESTE mes (hoy → 1°) — esos días no se regalan; se paga ahora o después. El período GRATIS arranca ese 1° y dura la promo. Link 1 (suscripción): hoy paga $0 y el primer débito completo cae el 1° al terminar el gratis — y de ahí SIEMPRE el 1°."}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div><label className={label}>Desde</label><input className={input} type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} /></div>
@@ -278,11 +272,13 @@ export default function Vender() {
             {/* CICLO completo del mes gratis, para que el operador sepa qué le va a pasar al cliente */}
             {result.paymentMode === "plan" && cicloPlan && (
               <div className="bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 mb-2 text-xs text-violet-900">
-                <b>Ciclo:</b> gratis desde hoy hasta el <b>{cicloPlan.freeEndTxt}</b> ·{" "}
+                <b>Ciclo:</b>{" "}
                 {(result.gapDays ?? 0) > 0
-                  ? <>proporcional de <b>{result.gapDays} días</b> (${(result.gapAmount || 0).toLocaleString("es-AR")}) del {cicloPlan.freeEndTxt} al <b>{cicloPlan.alignTxt}</b> · </>
-                  : <>el período gratis termina justo un 1° (sin gap) · </>}
-                primer débito completo el <b>{cicloPlan.alignTxt}</b> y de ahí SIEMPRE el 1°.
+                  ? <>proporcional de <b>{result.gapDays} días</b> (${(result.gapAmount || 0).toLocaleString("es-AR")}, del {cicloPlan.desdeTxt} al {cicloPlan.inicioGratisTxt} — link 2, se paga ahora o después) · </>
+                  : <>entra justo un 1° (sin proporcional) · </>}
+                <b>gratis</b> del <b>{cicloPlan.inicioGratisTxt}</b> al <b>{cicloPlan.finGratisTxt}</b> ·
+                primer débito completo el <b>{cicloPlan.primerDebitoTxt}</b> y de ahí SIEMPRE el 1°.
+                {result.trialDays ? <> (cupón del plan en MP: {result.trialDays} días sin débito)</> : null}
               </div>
             )}
             <div className="bg-white border border-gray-200 rounded-lg p-2 text-xs break-all text-gray-600 mb-3">{result.initPoint}</div>

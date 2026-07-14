@@ -33,9 +33,12 @@ export interface AdminReservationsResponse {
   total: number;
 }
 
-// Detalle completo de una reserva (incluye la traza del recobro: rebillAt/rebillBy/mpInitPoint)
+// Detalle completo de una reserva (incluye la traza del recobro: rebillAt/rebillBy/mpInitPoint,
+// y el GAP del mes gratis: proporcional de entrada calculado en la venta, para pre-cargar Inventario)
 export type AdminReservationFull = AdminReservation & {
   rebillAt?: string; rebillBy?: string; rebillPrevPreapprovalId?: string; mpInitPoint?: string;
+  gapDays?: number; gapAmount?: number; gapInitPoint?: string | null;
+  gapDesde?: string | null; gapHasta?: string | null; trialDays?: number;
 };
 export const getAdminReservationById = async (id: string): Promise<AdminReservationFull> => {
   const res = await api.get(`/admin/reservations/${id}`);
