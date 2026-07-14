@@ -77,11 +77,11 @@ export const cancelAdminReservation = async (id: string) => {
   return res.data as { message: string; mpCancelled: boolean; roomFreed: boolean };
 };
 
-// REENVIAR LINK DE COBRO (pago rechazado): cancela la sub rechazada en MP (deja de reintentar),
-// crea una nueva atada a la MISMA baulera/reserva y se la manda al cliente por mail. Si la paga,
-// el webhook lo reactiva solo. Devuelve el link nuevo para copiar/mandar por WhatsApp.
-// (rebillSubscription ELIMINADO: creaba una suscripción nueva vía /rebill — contra el modelo.
-//  La UI usa generarDeuda -> /deuda, PAGO ÚNICO. El endpoint /rebill quedó deshabilitado -> 410.)
+// REENVIAR LINK DE COBRO (pago rechazado): AHORA es generarDeuda -> POST /deuda = PAGO ÚNICO por el
+// mes adeudado / proporcional. NO toca la suscripción del cliente (sigue viva; MP se auto-recupera:
+// reintenta y auto-cancela recién tras 3 meses rechazados). Al pagar el link, el webhook regulariza.
+// (rebillSubscription ELIMINADO: creaba una suscripción NUEVA vía /rebill — contra el modelo. El
+//  endpoint /rebill quedó deshabilitado -> 410.)
 
 // DEUDA (SPEC cobros-alineados §5): genera un PAGO ÚNICO por un mes adeudado o un proporcional.
 // NO crea suscripción (la del cliente sigue viva sola). Reemplaza a rebillSubscription en la UI.

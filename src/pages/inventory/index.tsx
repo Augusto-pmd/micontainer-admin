@@ -511,7 +511,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
       : `https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`;
   };
   // Botón WhatsApp SIEMPRE visible: si el link ya se generó lo usa; si no, lo genera primero
-  // (mismo reenvío: cancela la sub rechazada + mail) y abre WhatsApp con el mensaje listo.
+  // (genera el PAGO ÚNICO vía /deuda — NO toca la suscripción — y abre WhatsApp con el mensaje listo).
   const validarDeuda = (p: ReturnType<typeof rebillParams>): boolean => {
     if (!(p.monto > 0)) { setRebillState({ err: 'Poné el monto antes de mandar.' }); return false; }
     if (!p.email) { setRebillState({ err: 'Falta el email del cliente para mandarle el link.' }); return false; }
@@ -697,8 +697,8 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
               )}
 
               {/* COBRO MANUAL: MP muestra el rechazo pero acá NO titila (sub sin matchear, pausada,
-                  legacy). Se puede reenviar el link igual: el backend busca la sub vieja en MP
-                  por código de baulera / email y la cancela para que no cobre doble. */}
+                  legacy). Se genera un PAGO ÚNICO (/deuda) por el mes adeudado o el proporcional —
+                  NO toca la suscripción del cliente (antes el rebill cancelaba la sub; ya no lo hace). */}
               {room.status === 'occupied' && !detail.rechazo && !recobroEnviado && (
                 <div className="mb-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
                   {rebillState.link ? (
@@ -739,7 +739,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                           {rebillState.loading ? '…' : 'Enviar por WhatsApp'}
                         </button>
                       </div>
-                      <p className="text-[10px] text-gray-500 mt-1">Busca y cancela su suscripción actual en MP (si existe — no cobra doble), genera un link nuevo para esta baulera y lo manda por mail.</p>
+                      <p className="text-[10px] text-gray-500 mt-1">Genera un <b>PAGO ÚNICO</b> por ese mes (o el proporcional) para esta baulera y lo manda por mail/WhatsApp. <b>No toca la suscripción</b> del cliente — no da de baja nada. Al pagarlo, la baulera queda al día.</p>
                     </>
                   )}
                 </div>
