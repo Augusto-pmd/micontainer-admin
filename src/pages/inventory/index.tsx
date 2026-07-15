@@ -504,6 +504,15 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
     const d = Number(v);
     if (d > 0 && precioMes > 0) setMontoLink(String(Math.round(precioMes * d / 30)));
   };
+  // EMAIL del cliente, EDITABLE (bug real 14/07, A3-012: baulera legacy sin mail en la ficha →
+  // "Falta el email" bloqueaba el cobro). Se pre-carga con lo que la ficha resuelva; si no hay,
+  // el operador lo escribe y cobra igual.
+  const [deudaEmail, setDeudaEmail] = useState<string>('');
+  useEffect(() => {
+    const r = (detail.rechazo || {}) as Partial<CobroRechazado>;
+    const em = String(r.email || tenant?.email || tenant?.user?.email || (detail.resv as AdminReservationFull | null)?.customerEmail || '').trim().toLowerCase();
+    setDeudaEmail(em);
+  }, [detail]);
   const rebillParams = () => {
     const r = (detail.rechazo || {}) as Partial<CobroRechazado>;
     return {
@@ -513,7 +522,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
       periodo: (r as { periodo?: string }).periodo || undefined,
       desde: deudaDesde || undefined,
       hasta: deudaHasta || undefined,
-      email: String(r.email || tenant?.email || tenant?.user?.email || resv?.customerEmail || '').trim().toLowerCase(),
+      email: deudaEmail.trim().toLowerCase(),
       cliente: String(r.cliente || tenantName || '').trim() || undefined,
       reservationId: resv?.id,
     };
@@ -710,6 +719,11 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                           className="text-xs border border-gray-300 rounded px-1.5 py-1" />
                         <span className="text-[10px] text-gray-500">opcional — sale en el link que ve el cliente; vacío = mes del rechazo</span>
                       </div>
+                      <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                        <label className="text-[10px] font-bold text-gray-700">Email del cliente</label>
+                        <input type="email" value={deudaEmail} onChange={(e) => setDeudaEmail(e.target.value)} placeholder="si la ficha no lo tiene, escribilo acá"
+                          className="flex-1 min-w-[180px] text-xs border border-gray-300 rounded px-1.5 py-1" />
+                      </div>
                       <div className="flex gap-1.5 flex-wrap">
                         <button onClick={reenviarLink} disabled={rebillState.loading}
                           className={`text-xs font-bold px-3 py-1.5 rounded-lg text-white disabled:opacity-50 ${detail.rechazo.vencido ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'}`}>
@@ -802,6 +816,11 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                         <input type="date" value={deudaHasta} onChange={(e) => setDeudaHasta(e.target.value)}
                           className="text-xs border border-gray-300 rounded px-1.5 py-1" />
                         <span className="text-[10px] text-gray-500">opcional — vacío = mes actual</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                        <label className="text-[10px] font-bold text-gray-700">Email del cliente</label>
+                        <input type="email" value={deudaEmail} onChange={(e) => setDeudaEmail(e.target.value)} placeholder="si la ficha no lo tiene, escribilo acá"
+                          className="flex-1 min-w-[180px] text-xs border border-gray-300 rounded px-1.5 py-1" />
                       </div>
                       <div className="flex gap-1.5 mt-1.5 flex-wrap">
                         <button onClick={reenviarLink} disabled={rebillState.loading}
