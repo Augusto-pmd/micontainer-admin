@@ -36,6 +36,15 @@ export const getStorageRoomByIdServices = async (id: string | number): Promise<S
   return response.data;
 };
 
+// COMPLETAR/CORREGIR los datos del inquilino desde la ficha (bauleras legacy con datos incompletos:
+// el staff los carga una vez y quedan guardados en el cliente real de la baulera).
+export const updateRoomTenantServices = async (roomId: string | number, p: {
+  nombre?: string; email?: string; telefono?: string; dni?: string;
+}) => {
+  const response = await api.post(`/storage-room/${roomId}/tenant`, p);
+  return response.data as { ok: boolean; customerId: string };
+};
+
 export const createStorageRoomServices = async (data: CreateStorageRoomDto): Promise<StorageRoom> => {
   const response = await api.post("/storage-room", data);
   return response.data;

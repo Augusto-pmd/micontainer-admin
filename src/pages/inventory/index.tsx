@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getAllStorageRoomsServices, getStorageRoomByIdServices, updateStorageRoomServices } from '../../services/storageRoom.services';
+import { getAllStorageRoomsServices, getStorageRoomByIdServices, updateStorageRoomServices, updateRoomTenantServices } from '../../services/storageRoom.services';
 import { getAllBranchesServices } from '../../services/branch.services';
 import { getOrdersByCustomerIdServices } from '../../services/order.services';
 import { updateCustomerServices } from '../../services/customer.services';
@@ -652,6 +652,32 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
     try { await updateCustomerServices(tenant.id as any, { manualDebt: debt, debtNote, debtUpdatedAt: new Date().toISOString() } as any); setSaved(true); } catch (e) { /* */ } finally { setSaving(false); }
   };
   const tenantName = tenant ? (tenant.fullName || `${tenant.user?.firstName || tenant.firstName || ''} ${tenant.user?.lastName || tenant.lastName || ''}`.trim()) : (room.currentTenant || null);
+  // COMPLETAR/CORREGIR datos del inquilino (bauleras legacy con datos incompletos — caso Débora A3-012):
+  // se cargan una vez desde la ficha y quedan guardados en el cliente real de la baulera.
+  const [fixTOpen, setFixTOpen] = useState(false);
+  const [fixT, setFixT] = useState({ nombre: '', email: '', telefono: '', dni: '' });
+  const [fixTSaving, setFixTSaving] = useState(false);
+  const [fixTMsg, setFixTMsg] = useState('');
+  useEffect(() => {
+    setFixTOpen(false); setFixTMsg('');
+    setFixT({
+      nombre: String(tenantName || ''),
+      email: String(tenant?.user?.email || tenant?.email || ''),
+      telefono: String(tenant?.phone || tenant?.user?.phone || ''),
+      dni: String(tenant?.dni || ''),
+    });
+  }, [detail]);
+  const guardarInquilino = async () => {
+    setFixTSaving(true); setFixTMsg('');
+    try {
+      await updateRoomTenantServices(room.id, { nombre: fixT.nombre || undefined, email: fixT.email || undefined, telefono: fixT.telefono || undefined, dni: fixT.dni || undefined });
+      setFixTMsg('Guardado ✓ — recargá la ficha para verlo');
+      if (fixT.email) setDeudaEmail(fixT.email.trim().toLowerCase()); // el cobro lo usa al toque
+      if (onChanged) onChanged();
+    } catch (e: any) {
+      setFixTMsg(e?.response?.data?.error || 'No se pudo guardar');
+    } finally { setFixTSaving(false); }
+  };
 
   // ¿YA hay un pago único ENVIADO y sin pagar? deudaPendiente = fuente PERSISTENTE del backend
   // (o rebillState.link si se acaba de generar). Es el GUARD anti-doble-link: si hay uno vivo, se
@@ -946,11 +972,31 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
 
               {occupied || tenant ? (
                 <>
-                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1 mt-5">Inquilino</h3>
+                  <div className="flex items-center justify-between mt-5 mb-1">
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Inquilino</h3>
+                    <button onClick={() => setFixTOpen((v) => !v)} className="text-[11px] font-semibold text-violet-700 hover:text-violet-900 underline">
+                      {fixTOpen ? 'Cerrar' : (tenant?.email || tenant?.user?.email) ? 'Corregir datos' : 'Completar datos'}
+                    </button>
+                  </div>
                   <Row label="Nombre" value={tenantName} />
                   <Row label="DNI" value={tenant?.dni} />
                   <Row label="Teléfono" value={tenant?.phone} />
                   <Row label="Email" value={tenant?.user?.email || tenant?.email} />
+                  {fixTOpen && (
+                    <div className="mt-2 p-3 bg-violet-50 border border-violet-200 rounded-lg space-y-1.5">
+                      <p className="text-[11px] text-violet-800 font-semibold">Se guardan en la ficha del cliente de esta baulera (una sola vez, queda para siempre).</p>
+                      <input value={fixT.nombre} onChange={(e) => setFixT({ ...fixT, nombre: e.target.value })} placeholder="Nombre y apellido" className="w-full text-sm border border-gray-300 rounded px-2 py-1.5" />
+                      <input value={fixT.email} onChange={(e) => setFixT({ ...fixT, email: e.target.value })} placeholder="Email" type="email" className="w-full text-sm border border-gray-300 rounded px-2 py-1.5" />
+                      <div className="flex gap-1.5">
+                        <input value={fixT.telefono} onChange={(e) => setFixT({ ...fixT, telefono: e.target.value })} placeholder="Teléfono" className="flex-1 text-sm border border-gray-300 rounded px-2 py-1.5" />
+                        <input value={fixT.dni} onChange={(e) => setFixT({ ...fixT, dni: e.target.value })} placeholder="DNI" className="w-28 text-sm border border-gray-300 rounded px-2 py-1.5" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={guardarInquilino} disabled={fixTSaving} className="px-3 py-1.5 bg-violet-700 text-white rounded text-sm font-semibold disabled:opacity-50">{fixTSaving ? 'Guardando…' : 'Guardar datos'}</button>
+                        {fixTMsg && <span className={`text-xs font-semibold ${fixTMsg.startsWith('Guardado') ? 'text-green-700' : 'text-red-700'}`}>{fixTMsg}</span>}
+                      </div>
+                    </div>
+                  )}
 
                   <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1 mt-5">Contrato</h3>
                   <Row label="N° de contrato" value={room.contractNumber || order?.contractNumber} />
