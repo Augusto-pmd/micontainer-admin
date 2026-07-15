@@ -23,6 +23,9 @@ export interface ManualSalePayload {
   generarGapAhora?: boolean;
   // Si se difiere: desde qué fecha Inventario marca el gap "sin cobrar" (celeste). Vacío = de una.
   recordarGapDesde?: string;
+  // 'regalar' = REGALO LIMPIO: la promo corre desde HOY, la entrada va gratis y NO existe link 2
+  // ni proporcional ni recordatorio, nunca. Default (ausente/'cobrar'): la entrada se debe.
+  gapModo?: 'cobrar' | 'regalar';
 }
 
 export interface ManualSaleResult {
@@ -41,8 +44,9 @@ export interface ManualSaleResult {
   gapLink?: string | null;   // null si se difirió (generarGapAhora=false) o gap=0
   gapAmount?: number;        // SIEMPRE viene calculado (para mostrar el ciclo aunque se difiera)
   gapDays?: number;
-  gapDesde?: string;         // 'YYYY-MM-DD' hoy
-  gapHasta?: string;         // 'YYYY-MM-DD' el 1° próximo (arranca el gratis)
+  gapModo?: 'a_cobrar' | 'regalado';
+  gapDesde?: string | null;  // 'YYYY-MM-DD' hoy (null si regalado)
+  gapHasta?: string | null;  // 'YYYY-MM-DD' el 1° próximo (null si regalado)
   finGratis?: string;        // 'YYYY-MM-DD' fin del período gratis
   primerDebito?: string;     // 'YYYY-MM-DD' primer débito completo (el 1° siguiente)
   trialDays?: number;        // días totales del cupón/trial en MP
