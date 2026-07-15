@@ -397,6 +397,15 @@ export default function Inventory() {
 
       {detail && (
         <RoomDetailModal detail={detail} loading={detailLoading} onClose={() => setDetail(null)} onChanged={() => { setDetail(null); reload(); }}
+          buscarTenant={async (code: string) => {
+            // "Copiar de otra baulera": el OPERADOR confirma la identidad (por eso acá sí vale
+            // cruzar — no es matcheo automático por nombre); solo le ahorramos el tipeo.
+            const c = code.trim().toUpperCase();
+            const r = rooms.find((x: any) => String(x.space || '').trim().toUpperCase() === c);
+            if (!r) return null;
+            const full: any = await getStorageRoomByIdServices(r.id);
+            return full?.tenant || null;
+          }}
           onRebilled={() => {
             // Refetch: el backend invalidó el cache al generar la deuda → deudasPendientes trae el
             // link vigente y la baulera pasa a violeta (persistente, sin duplicar el link).
@@ -406,6 +415,12 @@ export default function Inventory() {
                 const dm = new Map<string, DeudaPendiente>();
                 (r.deudasPendientes || []).forEach((d) => dm.set(String(d.baulera).trim().toUpperCase(), d));
                 setRecobros(dm);
+                const pm = new Map<string, DeudaPagada[]>();
+                (r.deudasPagadas || []).forEach((d) => { const k = String(d.baulera).trim().toUpperCase(); if (!pm.has(k)) pm.set(k, []); pm.get(k)!.push(d); });
+                setPagadas(pm);
+                const gm = new Map<string, GapPendiente>();
+                (r.gapsPendientes || []).forEach((g) => { if (g.baulera) gm.set(String(g.baulera).trim().toUpperCase(), g); });
+                setGapsPend(gm);
               })
               .catch(() => { /* */ });
           }} />
@@ -474,7 +489,7 @@ function Row({ label, value }: { label: string; value: any }) {
   );
 }
 
-function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { detail: any; loading: boolean; onClose: () => void; onChanged?: () => void; onRebilled?: () => void }) {
+function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, buscarTenant }: { detail: any; loading: boolean; onClose: () => void; onChanged?: () => void; onRebilled?: () => void; buscarTenant?: (code: string) => Promise<any> }) {
   const room = detail.room || {};
   const tenant = detail.tenant || room.tenant || null;
   const order = detail.order || null;
@@ -677,6 +692,26 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
     } catch (e: any) {
       setFixTMsg(e?.response?.data?.error || 'No se pudo guardar');
     } finally { setFixTSaving(false); }
+  };
+  // "Copiar de otra baulera" (caso Débora: A3-012 sin datos, A1-006 completa — misma persona).
+  // El operador escribe el código y confirma la identidad; solo se ahorra el tipeo.
+  const [copiaDe, setCopiaDe] = useState('');
+  const [copiando, setCopiando] = useState(false);
+  const traerDatosDe = async () => {
+    if (!buscarTenant || !copiaDe.trim()) return;
+    setCopiando(true); setFixTMsg('');
+    try {
+      const t = await buscarTenant(copiaDe);
+      if (!t) { setFixTMsg(`No encontré la baulera ${copiaDe.trim().toUpperCase()}`); return; }
+      setFixT({
+        nombre: String(t.fullName || `${t.firstName || ''} ${t.lastName || ''}`.trim() || fixT.nombre),
+        email: String(t.user?.email || t.email || fixT.email || ''),
+        telefono: String(t.phone || t.user?.phone || fixT.telefono || ''),
+        dni: String(t.dni || fixT.dni || ''),
+      });
+      setFixTMsg(`Datos traídos de ${copiaDe.trim().toUpperCase()} — revisá y Guardar`);
+    } catch { setFixTMsg('No se pudieron traer los datos'); }
+    finally { setCopiando(false); }
   };
 
   // ¿YA hay un pago único ENVIADO y sin pagar? deudaPendiente = fuente PERSISTENTE del backend
@@ -985,6 +1020,16 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
                   {fixTOpen && (
                     <div className="mt-2 p-3 bg-violet-50 border border-violet-200 rounded-lg space-y-1.5">
                       <p className="text-[11px] text-violet-800 font-semibold">Se guardan en la ficha del cliente de esta baulera (una sola vez, queda para siempre).</p>
+                      {buscarTenant && (
+                        <div className="flex items-center gap-1.5">
+                          <input value={copiaDe} onChange={(e) => setCopiaDe(e.target.value)} placeholder="¿Mismo cliente que otra baulera? ej. A1-006"
+                            className="flex-1 text-sm border border-gray-300 rounded px-2 py-1.5" />
+                          <button onClick={traerDatosDe} disabled={copiando || !copiaDe.trim()}
+                            className="px-2.5 py-1.5 bg-white border border-violet-400 text-violet-700 rounded text-sm font-semibold disabled:opacity-50">
+                            {copiando ? '…' : 'Traer datos'}
+                          </button>
+                        </div>
+                      )}
                       <input value={fixT.nombre} onChange={(e) => setFixT({ ...fixT, nombre: e.target.value })} placeholder="Nombre y apellido" className="w-full text-sm border border-gray-300 rounded px-2 py-1.5" />
                       <input value={fixT.email} onChange={(e) => setFixT({ ...fixT, email: e.target.value })} placeholder="Email" type="email" className="w-full text-sm border border-gray-300 rounded px-2 py-1.5" />
                       <div className="flex gap-1.5">
