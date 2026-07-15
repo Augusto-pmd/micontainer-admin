@@ -57,6 +57,31 @@ export interface DeudaPendiente {
   email?: string | null;
 }
 
+// Deuda PAGADA: queda asentada en la ficha ("✓ Pagó deuda") — el registro visible de qué se cobró.
+export interface DeudaPagada {
+  baulera: string;
+  monto: number;
+  periodo: string;
+  tipo: 'mes_adeudado' | 'proporcional';
+  desde?: string | null;
+  hasta?: string | null;
+  paidAt?: string | null;
+  cliente?: string | null;
+}
+
+// GAP del mes gratis SIN cobrar (proporcional diferido en la venta): Inventario lo marca para
+// que esa plata no dependa de la memoria del operador.
+export interface GapPendiente {
+  baulera: string;
+  reservationId: string;
+  gapDays: number;
+  gapAmount: number;
+  gapDesde?: string | null;
+  gapHasta?: string | null;
+  cliente?: string | null;
+  email?: string | null;
+}
+
 export interface CobrosRechazadosRes {
   total: number;
   plazoDias: number;
@@ -64,6 +89,8 @@ export interface CobrosRechazadosRes {
   sinDato: number;
   rechazados: CobroRechazado[];
   deudasPendientes?: DeudaPendiente[];
+  deudasPagadas?: DeudaPagada[];
+  gapsPendientes?: GapPendiente[];
   cacheado?: boolean;
 }
 

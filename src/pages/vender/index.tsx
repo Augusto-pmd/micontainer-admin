@@ -14,6 +14,8 @@ export default function Vender() {
     // MES GRATIS (2 links): cuándo generar el pago único del gap (alineación al 1°).
     // "ahora" = sale con los 2 links; "despues" = queda pre-cargado en Inventario (botón Proporcional).
     gapCuando: "ahora",
+    // Si es "despues": desde qué fecha Inventario lo marca celeste "sin cobrar". Vacío = de una.
+    gapRecordar: "",
   });
   const [freeRooms, setFreeRooms] = useState<FreeRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
@@ -84,6 +86,7 @@ export default function Vender() {
         priceOverride: form.priceOverride ? Number(form.priceOverride) : undefined,
         // Mes gratis: generar el link 2 (gap) ahora, o diferirlo a Inventario (decisión del cliente)
         generarGapAhora: form.paymentMode === "plan" && form.gapCuando === "ahora",
+        recordarGapDesde: form.paymentMode === "plan" && form.gapCuando === "despues" && form.gapRecordar ? form.gapRecordar : undefined,
       };
       // Cada modo llama a SU endpoint (rutas separadas — no se cruzan)
       const r = form.paymentMode === "onetime"
@@ -241,6 +244,13 @@ export default function Vender() {
                     Después — queda pre-cargado en Inventario (botón Proporcional)
                   </label>
                 </div>
+                {form.gapCuando === "despues" && (
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <label className="text-xs text-gray-600">Marcarlo en Inventario (celeste "sin cobrar") desde:</label>
+                    <input type="date" className="text-sm border border-gray-300 rounded-lg px-2 py-1.5" value={form.gapRecordar} onChange={(e) => set("gapRecordar", e.target.value)} />
+                    <span className="text-xs text-gray-400">vacío = aparece marcado de una</span>
+                  </div>
+                )}
               </div>
             )}
             <div><label className={label}>Descuento (%)</label><input className={input} type="number" value={form.discountPct} onChange={(e) => set("discountPct", e.target.value)} /></div>

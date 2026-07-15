@@ -21,6 +21,8 @@ export interface ManualSalePayload {
   // MES GRATIS (2 links): true = generar YA el pago único del gap (alineación al 1°).
   // false/ausente = diferirlo (se genera después desde Inventario → botón Proporcional).
   generarGapAhora?: boolean;
+  // Si se difiere: desde qué fecha Inventario marca el gap "sin cobrar" (celeste). Vacío = de una.
+  recordarGapDesde?: string;
 }
 
 export interface ManualSaleResult {

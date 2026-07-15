@@ -3,7 +3,7 @@ import { getAllStorageRoomsServices, getStorageRoomByIdServices, updateStorageRo
 import { getAllBranchesServices } from '../../services/branch.services';
 import { getOrdersByCustomerIdServices } from '../../services/order.services';
 import { updateCustomerServices } from '../../services/customer.services';
-import { getCobrosRechazadosServices, type CobroRechazado, type DeudaPendiente } from '../../services/pricing.services';
+import { getCobrosRechazadosServices, type CobroRechazado, type DeudaPendiente, type DeudaPagada, type GapPendiente } from '../../services/pricing.services';
 import { generarDeuda, getAdminReservationById, getAdminReservations, type AdminReservationFull } from '../../services/reservation.admin.services';
 import type { StorageRoom, StorageRoomStatus } from '../../types/storageRoom';
 import type { Branch } from '../../types/branch';
@@ -87,6 +87,17 @@ export default function Inventory() {
         const dm = new Map<string, DeudaPendiente>();
         (r.deudasPendientes || []).forEach((d) => dm.set(String(d.baulera).trim().toUpperCase(), d));
         setRecobros(dm);
+        // Deudas PAGADAS (queda asentado "✓ Pagó deuda" en la ficha) + GAPs sin cobrar (celeste)
+        const pm = new Map<string, DeudaPagada[]>();
+        (r.deudasPagadas || []).forEach((d) => {
+          const k = String(d.baulera).trim().toUpperCase();
+          if (!pm.has(k)) pm.set(k, []);
+          pm.get(k)!.push(d);
+        });
+        setPagadas(pm);
+        const gm = new Map<string, GapPendiente>();
+        (r.gapsPendientes || []).forEach((g) => { if (g.baulera) gm.set(String(g.baulera).trim().toUpperCase(), g); });
+        setGapsPend(gm);
       })
       .catch(() => { /* sin datos de rechazos; el inventario carga igual */ });
   }, []);
@@ -103,6 +114,12 @@ export default function Inventory() {
   // persistente: sobrevive al reload y trae el link vigente (así no se genera un 2° link = doble cobro).
   const [recobros, setRecobros] = useState<Map<string, DeudaPendiente>>(new Map());
   const recobroDe = (room: StorageRoom) => recobros.get(String(room.space || '').trim().toUpperCase());
+  // DEUDAS PAGADAS: quedan asentadas en la ficha ("✓ Pagó deuda") — el rastro visible de qué se cobró.
+  const [pagadas, setPagadas] = useState<Map<string, DeudaPagada[]>>(new Map());
+  const pagadasDe = (room: StorageRoom) => pagadas.get(String(room.space || '').trim().toUpperCase()) || [];
+  // GAPs del mes gratis SIN cobrar (proporcional diferido) → marcan CELESTE (plata pendiente de cobrar).
+  const [gapsPend, setGapsPend] = useState<Map<string, GapPendiente>>(new Map());
+  const gapPendDe = (room: StorageRoom) => gapsPend.get(String(room.space || '').trim().toUpperCase());
 
   const reload = async () => {
     try { const r = await getAllStorageRoomsServices({ limit: 1000 }); setRooms(r.data); } catch (e) { /* */ }
@@ -111,7 +128,9 @@ export default function Inventory() {
   const openDetail = async (room: StorageRoom) => {
     const rechazo = rechazoDe(room) || null;
     const deudaPendiente = recobroDe(room) || null;
-    setDetail({ room, tenant: null, order: null, rechazo, deudaPendiente });
+    const deudasPagadas = pagadasDe(room);
+    const gapPendiente = gapPendDe(room) || null;
+    setDetail({ room, tenant: null, order: null, rechazo, deudaPendiente, deudasPagadas, gapPendiente });
     setDetailLoading(true);
     try {
       const full: any = await getStorageRoomByIdServices(room.id);
@@ -135,9 +154,9 @@ export default function Inventory() {
           if (hit) resv = await getAdminReservationById(hit.id);
         }
       } catch { /* sin reserva vinculada */ }
-      setDetail({ room: full, tenant, order, rechazo, resv, deudaPendiente: recobroDe(room) || null });
+      setDetail({ room: full, tenant, order, rechazo, resv, deudaPendiente: recobroDe(room) || null, deudasPagadas, gapPendiente });
     } catch {
-      setDetail({ room, tenant: null, order: null, rechazo, error: true, deudaPendiente: recobroDe(room) || null });
+      setDetail({ room, tenant: null, order: null, rechazo, error: true, deudaPendiente: recobroDe(room) || null, deudasPagadas, gapPendiente });
     } finally {
       setDetailLoading(false);
     }
@@ -317,13 +336,14 @@ export default function Inventory() {
         ))}
         {rechazados.length > 0 && (
           <>
+            {/* Leyenda alineada a la semántica REAL de las celdas (SPEC §7: por N° de intento) */}
             <div className="flex items-center gap-1.5 text-sm text-gray-600">
               <div className="w-3 h-3 rounded-sm bg-orange-500 titila" />
-              Pago rechazado (en plazo)
+              Rechazado (intento 1-2 · MP reintenta)
             </div>
             <div className="flex items-center gap-1.5 text-sm text-gray-600">
               <div className="w-3 h-3 rounded-sm bg-red-600 titila" />
-              Pago rechazado (plazo vencido)
+              Rechazado (intento 3-4 · por vencerse)
             </div>
           </>
         )}
@@ -331,6 +351,12 @@ export default function Inventory() {
           <div className="flex items-center gap-1.5 text-sm text-gray-600">
             <div className="w-3 h-3 rounded-sm bg-violet-500 titila" />
             Recobro en curso (link enviado)
+          </div>
+        )}
+        {gapsPend.size > 0 && (
+          <div className="flex items-center gap-1.5 text-sm text-gray-600">
+            <div className="w-3 h-3 rounded-sm bg-sky-500 titila" />
+            Proporcional sin cobrar (mes gratis)
           </div>
         )}
       </div>
@@ -359,7 +385,7 @@ export default function Inventory() {
                       {floor === 'PB' ? 'Planta Baja' : `Piso ${floor}`} — {floorRooms.length} espacios
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {floorRooms.map(room => <UnitCell key={room.id} room={room} rechazo={rechazoDe(room)} recobro={recobroDe(room)} onClick={() => openDetail(room)} />)}
+                      {floorRooms.map(room => <UnitCell key={room.id} room={room} rechazo={rechazoDe(room)} recobro={recobroDe(room)} gapPend={gapPendDe(room)} onClick={() => openDetail(room)} />)}
                     </div>
                   </div>
                 ))}
@@ -397,24 +423,28 @@ function StatCard({ label, value, cls }: { label: string; value: number; cls: st
   );
 }
 
-function UnitCell({ room, rechazo, recobro, onClick }: { room: StorageRoom; rechazo?: CobroRechazado; recobro?: DeudaPendiente; onClick: () => void }) {
+function UnitCell({ room, rechazo, recobro, gapPend, onClick }: { room: StorageRoom; rechazo?: CobroRechazado; recobro?: DeudaPendiente; gapPend?: GapPendiente; onClick: () => void }) {
   const cfg = STATUS_CONFIG[room.status] ?? STATUS_CONFIG.available;
   const diasRecobro = recobro ? Math.floor((Date.now() - Date.parse(recobro.sentAt)) / 86400000) : 0;
   // Prioridad: si YA hay un pago único enviado (recobro/deuda pendiente) → VIOLETA (falta que pague).
   // Si no, rechazado → naranja intento 1-2 / rojo intento 3-4 (SPEC §7: por N° de intento, no por plazo).
+  // Si no, GAP del mes gratis sin cobrar → CELESTE (proporcional pendiente de generar/cobrar).
   const intento = rechazo?.reintentos ?? 0;
   const rojo = intento >= 3;
-  const estado: 'recobro' | 'rojo' | 'naranja' | null = recobro ? 'recobro' : rechazo ? (rojo ? 'rojo' : 'naranja') : null;
+  const estado: 'recobro' | 'rojo' | 'naranja' | 'gap' | null = recobro ? 'recobro' : rechazo ? (rojo ? 'rojo' : 'naranja') : gapPend ? 'gap' : null;
   const cls = estado === 'recobro' ? 'bg-violet-100 border-violet-500 hover:bg-violet-200 titila'
     : estado === 'rojo' ? 'bg-red-200 border-red-600 hover:bg-red-300 titila'
     : estado === 'naranja' ? 'bg-orange-100 border-orange-500 hover:bg-orange-200 titila'
+    : estado === 'gap' ? 'bg-sky-100 border-sky-500 hover:bg-sky-200 titila'
     : '';
   const title = estado === 'recobro'
     ? `${room.space} · RECOBRO EN CURSO (link enviado ${diasRecobro <= 0 ? 'hoy' : `hace ${diasRecobro} día${diasRecobro === 1 ? '' : 's'}`}, falta que pague) — tocá para ver`
     : rechazo
       ? `${room.space} · PAGO RECHAZADO (intento ${intento || '?'}${rechazo.vencido ? ', plazo VENCIDO' : rechazo.diasRestantes != null ? `, quedan ${rechazo.diasRestantes} días` : ''}) — tocá para ver`
-      : `${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''} — tocá para ver detalle`;
-  const inkCls = estado === 'recobro' ? 'text-violet-800' : estado === 'rojo' ? 'text-red-900' : estado === 'naranja' ? 'text-orange-800' : cfg.cellText;
+      : estado === 'gap'
+        ? `${room.space} · PROPORCIONAL SIN COBRAR ($${Number(gapPend!.gapAmount).toLocaleString('es-AR')} por ${gapPend!.gapDays} días — de la venta con mes gratis) — tocá para generar el link`
+        : `${room.space} · ${cfg.label}${room.areaM2 ? ' · ' + room.areaM2 + ' m²' : ''} — tocá para ver detalle`;
+  const inkCls = estado === 'recobro' ? 'text-violet-800' : estado === 'rojo' ? 'text-red-900' : estado === 'naranja' ? 'text-orange-800' : estado === 'gap' ? 'text-sky-800' : cfg.cellText;
   return (
     <button
       onClick={onClick}
@@ -426,6 +456,8 @@ function UnitCell({ room, rechazo, recobro, onClick }: { room: StorageRoom; rech
         <span className="text-[9px] leading-tight font-bold text-violet-700">$ ⟳</span>
       ) : rechazo ? (
         <span className={`text-[9px] leading-tight font-bold ${rojo ? 'text-red-800' : 'text-orange-700'}`}>$ !</span>
+      ) : estado === 'gap' ? (
+        <span className="text-[9px] leading-tight font-bold text-sky-700">$ ◔</span>
       ) : room.areaM2 ? (
         <span className={`text-[9px] leading-tight ${cfg.cellText} opacity-60`}>{room.areaM2}m²</span>
       ) : null}
@@ -483,10 +515,19 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   const precioMes = Number((detail.resv as AdminReservationFull | null)?.monthly || room.price) || 0;
   const [diasProp, setDiasProp] = useState<string>('');
   useEffect(() => {
-    if (tipoDeuda !== 'proporcional') { setDiasProp(''); return; }
+    if (tipoDeuda !== 'proporcional') {
+      // Al VOLVER a "Mes adeudado": restaurar el monto de la baulera y limpiar el período del
+      // proporcional (sin esto quedaba el monto prorrateado y un desde/hasta equivocados en el
+      // título del link — auditoría v3 N1).
+      setDiasProp('');
+      setMontoLink(montoSugerido > 0 ? String(montoSugerido) : '');
+      setDeudaDesde(''); setDeudaHasta('');
+      return;
+    }
     const g = (detail.resv || {}) as any;
-    if (Number(g.gapDays) > 0 && Number(g.gapAmount) > 0 && !g.gapInitPoint) {
-      // Gap del mes gratis calculado en la venta y aún sin link → pre-cargar tal cual
+    if (Number(g.gapDays) > 0 && Number(g.gapAmount) > 0 && !g.gapInitPoint && !g.gapPaidAt) {
+      // Gap del mes gratis calculado en la venta, sin link y SIN PAGAR → pre-cargar tal cual.
+      // (si gapPaidAt existe ya se cobró — NO volver a ofrecerlo: doble cobro, auditoría v3 N2)
       setDiasProp(String(g.gapDays)); setMontoLink(String(g.gapAmount));
       if (g.gapDesde) setDeudaDesde(String(g.gapDesde));
       if (g.gapHasta) setDeudaHasta(String(g.gapHasta));
@@ -563,6 +604,16 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
     if (!p.bauleraCodigo) { setRebillState({ err: 'Sin código de baulera.' }); return false; }
     return true;
   };
+  // GUARD del server (409): ya hay un link de deuda vivo → el backend devuelve ESE link.
+  // Se muestra para reenviar en vez de fallar (nunca dos links vivos del mismo mes).
+  const linkVivoDe409 = (e: any): boolean => {
+    if (e?.response?.status === 409 && e?.response?.data?.initPoint) {
+      setRebillState({ link: e.response.data.initPoint, email: e.response.data.email || undefined, warn: e.response.data.error });
+      if (onRebilled) onRebilled();
+      return true;
+    }
+    return false;
+  };
   const abrirWhatsApp = async () => {
     if (rebillState.link) { window.open(waUrl(rebillState.link), '_blank'); return; }
     const p = rebillParams();
@@ -577,6 +628,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
       const url = waUrl(out.initPoint || '');
       if (w) w.location.href = url; else window.open(url, '_blank');
     } catch (e: any) {
+      if (linkVivoDe409(e)) { const url = waUrl(e.response.data.initPoint); if (w) w.location.href = url; else window.open(url, '_blank'); return; }
       if (w) w.close();
       setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link' });
     }
@@ -587,7 +639,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
     if (!window.confirm(confirmMsg(p, false))) return;
     setRebillState({ loading: true });
     try { applyResult(await generarDeuda(p)); }
-    catch (e: any) { setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link' }); }
+    catch (e: any) { if (linkVivoDe409(e)) return; setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link' }); }
   };
   const cambiarBloqueo = async (st: string, until: string | null) => {
     setSavingBlock(true);
@@ -607,6 +659,11 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
   // se podía generar un 2° link = doble cobro).
   const resv: AdminReservationFull | null = detail.resv || null;
   const deudaPend: DeudaPendiente | null = detail.deudaPendiente || null;
+  // Memoria de cobros (pedido Lucas 15/07): deudas PAGADAS asentadas + gap del mes gratis sin cobrar.
+  const deudasPagadas: DeudaPagada[] = detail.deudasPagadas || [];
+  const gapPendiente: GapPendiente | null = detail.gapPendiente || null;
+  // Link 2 del gap VIVO (generado en la venta, aún sin pagar): avisar en vez de dejar generar otro.
+  const gapLink2Vivo = !!(resv?.gapInitPoint && !(resv as any)?.gapPaidAt);
   const recobroEnviado = !!deudaPend || !!rebillState.link;
   const recobroLink = rebillState.link || deudaPend?.initPoint || '';
   const fechaEnvio = deudaPend ? new Date(deudaPend.sentAt).toLocaleDateString('es-AR') : '';
@@ -632,6 +689,48 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled }: { 
               <div className="mb-4">
                 <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.statBg}`}>{cfg.label}</span>
               </div>
+
+              {/* ✓ PAGÓ DEUDA — el registro VISIBLE de los pagos únicos cobrados (Lucas 15/07: pagó
+                  Débora el mes adeudado y no quedaba rastro en ningún lado). */}
+              {deudasPagadas.length > 0 && (
+                <div className="mb-4 rounded-lg border border-green-300 bg-green-50 px-3 py-2.5">
+                  <p className="text-sm font-bold text-green-800">✓ Pagó deuda</p>
+                  {deudasPagadas.map((d, i) => (
+                    <p key={i} className="text-xs text-green-700 mt-1">
+                      {d.tipo === 'proporcional' ? 'Proporcional' : 'Mes adeudado'} <b>{d.desde ? `${String(d.desde).split('-').reverse().join('/')}${d.hasta ? ' al ' + String(d.hasta).split('-').reverse().join('/') : ''}` : d.periodo}</b>
+                      {' '}— <b>${Number(d.monto).toLocaleString('es-AR')}</b>
+                      {d.paidAt ? <> · pagado el <b>{String(d.paidAt).slice(0, 10).split('-').reverse().join('/')}</b></> : null}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              {/* PROPORCIONAL SIN COBRAR (gap del mes gratis diferido): antes solo se veía si alguien
+                  tocaba la casilla — si nadie se acordaba, esa plata no se cobraba nunca. */}
+              {gapPendiente && (
+                <div className="mb-4 rounded-lg border-2 border-sky-400 bg-sky-50 px-3 py-2.5">
+                  <p className="text-sm font-bold text-sky-800">◔ Proporcional de la venta SIN cobrar</p>
+                  <p className="text-xs text-sky-700 mt-1">
+                    De la venta con mes gratis quedó pendiente el pago único de <b>{gapPendiente.gapDays} días</b> (${Number(gapPendiente.gapAmount).toLocaleString('es-AR')})
+                    {gapPendiente.gapDesde ? <> del <b>{String(gapPendiente.gapDesde).split('-').reverse().join('/')}</b> al <b>{String(gapPendiente.gapHasta || '').split('-').reverse().join('/')}</b></> : null}.
+                    Generalo abajo con la casilla <b>Proporcional</b> (ya viene pre-cargado con estos números).
+                  </p>
+                </div>
+              )}
+
+              {/* LINK 2 del gap VIVO (se generó en la venta y el cliente aún no lo pagó): mostrarlo
+                  para reenviar — sin esto se generaba un 2° link del mismo proporcional. */}
+              {gapLink2Vivo && (
+                <div className="mb-4 rounded-lg border border-sky-300 bg-sky-50 px-3 py-2.5">
+                  <p className="text-xs font-bold text-sky-800">Ya hay un link del proporcional VIVO (generado en la venta{resv?.gapAmount ? ` por $${Number(resv.gapAmount).toLocaleString('es-AR')}` : ''}) — no generes otro: reenviale este.</p>
+                  <div className="flex gap-1.5 mt-1.5">
+                    <input readOnly value={resv?.gapInitPoint || ''} onFocus={(e) => e.target.select()}
+                      className="flex-1 text-[10px] border border-sky-200 rounded px-1.5 py-1 bg-white text-gray-600" />
+                    <button onClick={() => navigator.clipboard?.writeText(resv?.gapInitPoint || '')}
+                      className="text-xs font-semibold bg-sky-600 hover:bg-sky-700 text-white px-2 py-1 rounded">Copiar</button>
+                  </div>
+                </div>
+              )}
 
               {detail.rechazo && (
                 <div className={`mb-4 rounded-lg border px-3 py-2.5 ${detail.rechazo.vencido ? 'bg-red-50 border-red-400' : 'bg-orange-50 border-orange-400'}`}>
