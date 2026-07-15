@@ -10,6 +10,8 @@ export const useRole = () => {
 
   return useMemo(() => {
     const userRole = user?.role;
+    // PROGRAMADOR = súper-rol (Lucas): pasa TODOS los checks sin importar qué rol pidan.
+    const esProgramador = userRole === 'role-programador';
 
     // Jerarquía de roles (mayor número = mayor privilegio)
     const roleHierarchy: Record<UserRole, number> = {
@@ -17,38 +19,42 @@ export const useRole = () => {
       'role-user': 1,
       'role-customer': 1,
       'role-operator': 2,
-      'role-admin': 3
+      'role-admin': 3,
+      'role-programador': 4
     };
 
     return {
       // Rol actual del usuario
       role: userRole,
-      
-      // Verificar si tiene un rol específico
+
+      // Verificar si tiene un rol específico (programador pasa siempre)
       hasRole: (role: UserRole): boolean => {
-        return userRole === role;
+        return esProgramador || userRole === role;
       },
-      
-      // Verificar si tiene ALGUNO de los roles especificados
+
+      // Verificar si tiene ALGUNO de los roles especificados (programador pasa siempre)
       hasAnyRole: (roles: UserRole[]): boolean => {
-        return roles.some(role => userRole === role);
+        return esProgramador || roles.some(role => userRole === role);
       },
-      
+
       // Verificar si el rol es igual o superior al especificado
       hasRoleOrHigher: (minimumRole: UserRole): boolean => {
         if (!userRole) return false;
         return roleHierarchy[userRole] >= roleHierarchy[minimumRole];
       },
-      
-      // Verificar si es admin
+
+      // Verificar si es admin (programador incluido: es admin y más)
       isAdmin: (): boolean => {
-        return userRole === 'role-admin';
+        return esProgramador || userRole === 'role-admin';
       },
-      
+
       // Verificar si es operador o superior
       isOperator: (): boolean => {
-        return userRole === 'role-operator' || userRole === 'role-admin';
-      }
+        return esProgramador || userRole === 'role-operator' || userRole === 'role-admin';
+      },
+
+      // Verificar si es el programador (para la sección Debug y herramientas de desarrollo)
+      isProgramador: (): boolean => esProgramador
     };
   }, [user]);
 };

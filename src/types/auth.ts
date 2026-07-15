@@ -1,5 +1,8 @@
 // Definición de roles disponibles en el sistema (basado en códigos del backend)
 export const UserRole = {
+  // PROGRAMADOR (15/07, pedido Lucas): súper-rol del dueño/desarrollador — acceso ABSOLUTO a todo
+  // (pasa todos los guards sin importar qué rol pidan) + sección Debug propia.
+  PROGRAMADOR: 'role-programador',
   ADMIN: 'role-admin',
   OPERATOR: 'role-operator',
   USER: 'role-user',

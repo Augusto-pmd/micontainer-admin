@@ -102,6 +102,8 @@ const links: LinkItem[] = [
   },
   { name: "Auditoría", href: "/auditoria", icon: "auditoria", roles: [UserRole.ADMIN] },
   { name: "Mantenimiento", href: "/mantenimiento", icon: "mantenimiento", roles: [UserRole.ADMIN] },
+  // DEBUG — solo el PROGRAMADOR (Lucas). Herramientas de diagnóstico; crece con el tiempo.
+  { name: "Debug", href: "/debug", icon: "mantenimiento", roles: [UserRole.PROGRAMADOR] },
 ];
 
 // Componente para renderizar items del menú con soporte para submenús
@@ -120,9 +122,10 @@ function MenuItem({
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Verificar permisos
+  // Verificar permisos (PROGRAMADOR = súper-rol: ve TODO el menú)
   if (link.roles && link.roles.length > 0) {
-    if (!userRole || !link.roles.includes(userRole as UserRole)) {
+    const esProgramador = userRole === UserRole.PROGRAMADOR;
+    if (!userRole || (!esProgramador && !link.roles.includes(userRole as UserRole))) {
       return null;
     }
   }

@@ -19,6 +19,7 @@ import PromoWeb from "../pages/promo";
 import Vender from "../pages/vender";
 import Auditoria from "../pages/auditoria";
 import Mantenimiento from "../pages/mantenimiento";
+import Debug from "../pages/debug";
 import { UserRole } from "../types/auth";
 
 export const router = createBrowserRouter([
@@ -375,6 +376,15 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute requiredRole={[UserRole.ADMIN]}>
             <Mantenimiento />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        // DEBUG — SOLO el PROGRAMADOR (Lucas): herramientas de diagnóstico del sistema.
+        path: "debug",
+        element: (
+          <ProtectedRoute requiredRole={[UserRole.PROGRAMADOR]}>
+            <Debug />
           </ProtectedRoute>
         ),
       },

@@ -30,27 +30,31 @@ const Login = () => {
     // ADMIN. Antes el fallback era ADMIN => cualquier staff sin registro (o un error de red)
     // caía como admin y veía los menús admin. La fuente de verdad del rol es la colección
     // operators; para ser ADMIN hay que figurar ahí con rol admin.
-    // DUEÑOS: SIEMPRE admin, sin depender de la colección `operators` (red de seguridad — un dueño
-    // NUNCA debe quedar afuera de su propio panel por un dato faltante o un GET /operator que falle.
-    // Bug real 14/07: Lucas/amorporloshierros perdió Tarifas/Mantenimiento/Auditoría porque el
-    // fallback pasó a OPERADOR el 12/07 y no estaba cargado como admin en `operators`).
-    const OWNER_ADMINS = new Set([
+    // ROLES FIJOS DE LOS DUEÑOS (no dependen de la colección `operators` ni de que GET /operator
+    // responda — un dueño NUNCA queda afuera de su propio panel por un dato faltante):
+    //  - PROGRAMADOR (Lucas): acceso ABSOLUTO — pasa todos los guards + sección Debug.
+    //  - ADMIN: los demás dueños/staff de confianza (Tarifas, precios, todo lo de admin).
+    const PROGRAMADORES = new Set([
       'amorporloshierros@gmail.com',
-      'am@micontainer.com',
       'l.lanzalot@pmdarquitectura.com',
+    ]);
+    const OWNER_ADMINS = new Set([
+      'am@micontainer.com',
       'comercial@micontainer.com', // Yamila — necesita Tarifas (precios)
     ]);
     const emailLc = (fbUser.email ?? '').toLowerCase();
-    let role: UserRole = OWNER_ADMINS.has(emailLc) ? UserRole.ADMIN : UserRole.OPERATOR;
+    let role: UserRole = PROGRAMADORES.has(emailLc) ? UserRole.PROGRAMADOR
+      : OWNER_ADMINS.has(emailLc) ? UserRole.ADMIN
+      : UserRole.OPERATOR;
     try {
       const opRes = await api.get('/operator?limit=200');
       const ops = opRes.data?.data ?? [];
       const match = ops.find((o: any) => o.email?.toLowerCase() === emailLc);
-      if (match?.role && role !== UserRole.ADMIN) {
+      if (match?.role && role === UserRole.OPERATOR) {
         role = match.role === 'role-operator' ? UserRole.OPERATOR : UserRole.ADMIN;
       }
-      // sin match y no-owner => queda OPERADOR (staff conocido pero no registrado como admin)
-    } catch { /* búsqueda falló => queda lo de OWNER_ADMINS (admin si es dueño, si no OPERADOR) */ }
+      // sin match y no-dueño => queda OPERADOR (staff conocido pero no registrado como admin)
+    } catch { /* búsqueda falló => queda el rol fijo del dueño, o OPERADOR */ }
 
     setUser({
       id: fbUser.uid,
