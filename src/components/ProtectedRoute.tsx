@@ -121,8 +121,9 @@ export const RoleGuard = ({
 }) => {
   const { user } = useAuth();
   const rolesArray = Array.isArray(roles) ? roles : [roles];
-  
-  const hasRequiredRole = user && rolesArray.includes(user.role);
+
+  // PROGRAMADOR = súper-rol: pasa cualquier RoleGuard
+  const hasRequiredRole = user && (user.role === 'role-programador' || rolesArray.includes(user.role));
 
   if (!hasRequiredRole) {
     if (fallback) {

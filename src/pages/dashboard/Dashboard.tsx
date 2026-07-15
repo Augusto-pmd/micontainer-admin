@@ -66,7 +66,9 @@ const QUICK_LINKS = [
   { href: "/customers",      Icon: HiUsers,          label: "Clientes",     desc: "Base de datos de inquilinos",    roles: [UserRole.ADMIN, UserRole.OPERATOR] },
   { href: "/branch",         Icon: HiOfficeBuilding, label: "Sucursales",   desc: "Nordelta y futuras sucursales",  roles: [UserRole.ADMIN] },
   { href: "/operators",      Icon: FaUserTie,        label: "Operadores",   desc: "Usuarios del panel admin",       roles: [UserRole.ADMIN] },
-  { href: "/pricing-engine", Icon: IoMdSettings,     label: "Precios",      desc: "Motor de precios por tamaño",    roles: [UserRole.ADMIN] },
+  // "Precios" (/pricing-engine) apuntaba a la pantalla ROTA que se retiró del menú el 11/07
+  // (auditoría v3 N5: este acceso quedó vivo por error). Los precios reales viven en Tarifas.
+  { href: "/tarifas",        Icon: IoMdSettings,     label: "Tarifas",      desc: "Precios por medida y planes MP", roles: [UserRole.ADMIN] },
   { href: "/global-map",     Icon: MdMap,            label: "Mapa global",  desc: "Vista de edificios y espacios",  roles: [UserRole.ADMIN, UserRole.OPERATOR] },
 ];
 
@@ -117,7 +119,8 @@ export default function Dashboard() {
 
   const occupancyPct = stats.total > 0 ? ((stats.occupied / stats.total) * 100).toFixed(1) : "—";
   const availablePct = stats.total > 0 ? (100 - parseFloat(occupancyPct === "—" ? "0" : occupancyPct)).toFixed(1) : "—";
-  const visibleLinks = QUICK_LINKS.filter(l => l.roles.includes(user?.role as any));
+  // PROGRAMADOR = súper-rol: ve TODOS los accesos rápidos (el filtro exacto lo dejaba sin ninguno)
+  const visibleLinks = user?.role === UserRole.PROGRAMADOR ? QUICK_LINKS : QUICK_LINKS.filter(l => l.roles.includes(user?.role as any));
 
   return (
     <div id="tour-dashboard" className="p-6 max-w-5xl">

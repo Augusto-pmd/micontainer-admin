@@ -379,14 +379,16 @@ export default function DashboardLayout() {
                   <div className="text-xs text-gray-500">
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user?.role === UserRole.ADMIN
+                        user?.role === UserRole.PROGRAMADOR
+                          ? "bg-violet-100 text-violet-800"
+                          : user?.role === UserRole.ADMIN
                           ? "bg-red-100 text-red-800"
                           : user?.role === UserRole.OPERATOR
                           ? "bg-yellow-100 text-yellow-800"
                           : "bg-green-100 text-green-800"
                       }`}
                     >
-                      {user?.role}
+                      {user?.role === UserRole.PROGRAMADOR ? 'PROGRAMADOR' : user?.role}
                     </span>
                   </div>
                 </div>
