@@ -96,6 +96,22 @@ export const generarDeuda = async (p: {
   return res.data as { debtId: string; initPoint: string; tipo: string; monto: number; periodo: string; email: string };
 };
 
+// VINCULAR SUSCRIPCIÓN DE MP (altas manuales / pagos con otra cuenta que quedaron "sueltas"):
+// busca subs candidatas y ata la elegida (estampa el código de baulera en MP + guarda el
+// preapprovalId + activa si estaba pendiente). Cierra el cabo suelto del alta manual.
+export interface MpCandidata {
+  id: string; amount: number; status: string; payerEmail: string; ref: string;
+  mismoEmail: boolean; yaEstaBaulera: boolean; yaOtraBaulera: boolean; cerca: number;
+}
+export const getMpCandidatas = async (id: string) => {
+  const res = await api.get(`/admin/reservations/${id}/mp-candidates`);
+  return res.data as { baulera: string; email: string; monthly: number; candidatos: MpCandidata[] };
+};
+export const vincularMp = async (id: string, subId: string, forzar = false) => {
+  const res = await api.post(`/admin/reservations/${id}/vincular-mp`, { subId, forzar });
+  return res.data as { ok: boolean; subId: string; refEstampada: boolean; activada: boolean; baulera: string };
+};
+
 // FACE ID — alta manual por el admin (hasta integrar el dispositivo de acceso):
 // ver la foto (URL firmada 15 min), confirmar el alta (borra la foto) o rechazarla.
 export const getFacePhoto = async (id: string) => {

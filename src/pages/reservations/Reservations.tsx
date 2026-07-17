@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BsPersonBoundingBox } from "react-icons/bs";
-import { getAdminReservations, deleteAdminReservation, cancelAdminReservation, getFacePhoto, confirmFaceEnrolled, rejectFacePhoto, getFreeRoomsByM2, reassignReservationRoom, updateAdminReservation, type AdminReservation, type FreeRoom } from "@/services/reservation.admin.services";
+import { getAdminReservations, deleteAdminReservation, cancelAdminReservation, getFacePhoto, confirmFaceEnrolled, rejectFacePhoto, getFreeRoomsByM2, reassignReservationRoom, updateAdminReservation, getMpCandidatas, vincularMp, type AdminReservation, type FreeRoom, type MpCandidata } from "@/services/reservation.admin.services";
 import { showError } from "@/utils/alerts";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -140,6 +140,33 @@ export default function Reservations() {
         ? { ...rv, status: "active", mpSubscriptionStatus: "authorized", storageRoomId: res.storageRoomId }
         : rv));
     } catch { showError("No se pudo activar. ¿Hay una baulera libre de esa medida?"); }
+  };
+
+  // VINCULAR SUSCRIPCIÓN DE MP: para altas manuales / pagos con otra cuenta que quedaron sueltas.
+  const [vincFor, setVincFor] = useState<AdminReservation | null>(null);
+  const [vincCands, setVincCands] = useState<MpCandidata[]>([]);
+  const [vincLoading, setVincLoading] = useState(false);
+  const [vincBusy, setVincBusy] = useState("");
+  const openVincular = async (r: AdminReservation) => {
+    setVincFor(r); setVincCands([]); setVincLoading(true);
+    try { const d = await getMpCandidatas(r.id); setVincCands(d.candidatos || []); }
+    catch (e: any) { showError(e?.response?.data?.error || "No se pudieron buscar suscripciones."); setVincFor(null); }
+    finally { setVincLoading(false); }
+  };
+  const doVincular = async (subId: string, forzar = false) => {
+    if (!vincFor) return;
+    if (!window.confirm(`¿Vincular esta suscripción de MP a la baulera ${vincFor.bauleraCodigo || vincFor.id}?\n\nSe graba el código de baulera en Mercado Pago (para que los cobros y rechazos futuros se detecten) y queda atada a esta reserva.`)) return;
+    setVincBusy(subId);
+    try {
+      const out = await vincularMp(vincFor.id, subId, forzar);
+      setReservations((x) => x.map((rv) => rv.id === vincFor.id
+        ? { ...rv, mpPreapprovalId: out.subId, mpSubscriptionStatus: "authorized", status: out.activada ? "active" : rv.status }
+        : rv));
+      setVincFor(null);
+    } catch (e: any) {
+      if (e?.response?.status === 409 && window.confirm(`${e.response.data.error}\n\n¿Reasignarla igual a esta baulera?`)) { await doVincular(subId, true); return; }
+      showError(e?.response?.data?.error || "No se pudo vincular.");
+    } finally { setVincBusy(""); }
   };
 
   useEffect(() => {
@@ -307,6 +334,10 @@ export default function Reservations() {
                         </button>
                       )}
                       {r.status !== "active" && <button onClick={() => activate(r)} className="text-blue-700 hover:text-blue-900 text-xs font-semibold mr-3">Activar</button>}
+                      {/* Vincular MP: sub suelta (alta manual / pagó con otra cuenta) → sin preapprovalId atado */}
+                      {!r.mpPreapprovalId && r.status !== "cancelled" && (
+                        <button onClick={() => openVincular(r)} className="text-violet-700 hover:text-violet-900 text-xs font-semibold mr-3">Vincular MP</button>
+                      )}
                       <button onClick={() => openReassign(r)} className="text-green-700 hover:text-green-900 text-xs font-semibold mr-3">Reasignar</button>
                       {r.status !== "cancelled" && <button onClick={() => darDeBaja(r)} className="text-orange-600 hover:text-orange-800 text-xs font-semibold mr-3">Dar de baja</button>}
                       <button onClick={() => remove(r.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Eliminar</button>
@@ -319,6 +350,44 @@ export default function Reservations() {
           <div className="px-4 py-3 border-t text-xs text-gray-500 bg-gray-50">
             {filtered.length} reserva{filtered.length !== 1 ? "s" : ""}
             {statusFilter !== "all" || search ? ` (filtradas de ${reservations.length})` : ""}
+          </div>
+        </div>
+      )}
+
+      {vincFor && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setVincFor(null)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-gray-900 mb-1">Vincular suscripción de MP</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Baulera <b>{vincFor.bauleraCodigo || vincFor.id}</b> · {vincFor.m2} m² · mensual ${Number(vincFor.monthly).toLocaleString("es-AR")} · cliente {vincFor.customerEmail || "—"}.
+              Elegí la suscripción del cliente (chequeá el mail y el monto). Al vincular se graba el código de baulera en MP.
+            </p>
+            {vincLoading ? (
+              <div className="py-8 text-center text-sm text-gray-500">Buscando suscripciones…</div>
+            ) : vincCands.length === 0 ? (
+              <div className="py-6 text-center text-sm text-gray-500">No aparecieron suscripciones candidatas (por mail ni monto cercano). Verificá en Tarifas → Suscripciones sueltas, o que el pago esté acreditado en MP.</div>
+            ) : (
+              <div className="space-y-2">
+                {vincCands.map((c) => (
+                  <div key={c.id} className={`border rounded-lg px-3 py-2 flex items-center justify-between gap-3 ${c.mismoEmail ? "border-green-300 bg-green-50" : c.yaOtraBaulera ? "border-red-200 bg-red-50" : "border-gray-200"}`}>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">${Number(c.amount).toLocaleString("es-AR")}/mes · {c.status}</p>
+                      <p className="text-xs text-gray-600 truncate">{c.payerEmail || "(sin email)"}</p>
+                      <div className="flex flex-wrap gap-1 mt-0.5">
+                        {c.mismoEmail && <span className="text-[10px] font-bold text-green-700 bg-green-100 rounded px-1.5 py-0.5">mismo mail ✓</span>}
+                        {c.yaEstaBaulera && <span className="text-[10px] font-bold text-green-700 bg-green-100 rounded px-1.5 py-0.5">ya nombra esta baulera</span>}
+                        {c.yaOtraBaulera && <span className="text-[10px] font-bold text-red-700 bg-red-100 rounded px-1.5 py-0.5">⚠ vinculada a: {c.ref}</span>}
+                      </div>
+                    </div>
+                    <button onClick={() => doVincular(c.id)} disabled={!!vincBusy}
+                      className="shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg text-white bg-violet-700 hover:bg-violet-800 disabled:opacity-50">
+                      {vincBusy === c.id ? "Vinculando…" : "Vincular esta"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={() => setVincFor(null)} className="w-full mt-4 text-sm text-gray-500 underline">Cerrar</button>
           </div>
         </div>
       )}
