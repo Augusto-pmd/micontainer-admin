@@ -80,6 +80,13 @@ export default function Inventory() {
     // Pagos rechazados (MP) + DEUDAS con link enviado: titilan en el plano (cache 10 min server;
     // las deudas se leen frescas). deudasPendientes = fuente PERSISTENTE del violeta (antes se
     // derivaba de rebillAt del flujo viejo → no sobrevivía al reload y podía duplicar el link).
+    cargarCobros();
+  }, []);
+
+  // ÚNICA función de refresco de rechazados/deudas/gaps (auditoría integridad 16/07: antes el
+  // mount y onRebilled tenían copias distintas y onChanged no refrescaba nada de esto → los
+  // titileos violeta/celeste quedaban viejos tras completar datos/bloquear/pagar).
+  const cargarCobros = () => {
     getCobrosRechazadosServices()
       .then((r) => {
         setRechazados(r.rechazados || []);
@@ -100,7 +107,7 @@ export default function Inventory() {
         setGapsPend(gm);
       })
       .catch(() => { /* sin datos de rechazos; el inventario carga igual */ });
-  }, []);
+  };
 
   // baulera (space) -> rechazo. Mismos códigos que storageRooms.space (misma fuente).
   const rechazoByCode = useMemo(() => {
@@ -396,7 +403,8 @@ export default function Inventory() {
       )}
 
       {detail && (
-        <RoomDetailModal detail={detail} loading={detailLoading} onClose={() => setDetail(null)} onChanged={() => { setDetail(null); reload(); }}
+        <RoomDetailModal detail={detail} loading={detailLoading} onClose={() => setDetail(null)}
+          onChanged={() => { setDetail(null); reload(); cargarCobros(); }}
           buscarTenant={async (code: string) => {
             // "Copiar de otra baulera": el OPERADOR confirma la identidad (por eso acá sí vale
             // cruzar — no es matcheo automático por nombre); solo le ahorramos el tipeo.
@@ -407,22 +415,10 @@ export default function Inventory() {
             return full?.tenant || null;
           }}
           onRebilled={() => {
-            // Refetch: el backend invalidó el cache al generar la deuda → deudasPendientes trae el
-            // link vigente y la baulera pasa a violeta (persistente, sin duplicar el link).
-            getCobrosRechazadosServices()
-              .then((r) => {
-                setRechazados(r.rechazados || []);
-                const dm = new Map<string, DeudaPendiente>();
-                (r.deudasPendientes || []).forEach((d) => dm.set(String(d.baulera).trim().toUpperCase(), d));
-                setRecobros(dm);
-                const pm = new Map<string, DeudaPagada[]>();
-                (r.deudasPagadas || []).forEach((d) => { const k = String(d.baulera).trim().toUpperCase(); if (!pm.has(k)) pm.set(k, []); pm.get(k)!.push(d); });
-                setPagadas(pm);
-                const gm = new Map<string, GapPendiente>();
-                (r.gapsPendientes || []).forEach((g) => { if (g.baulera) gm.set(String(g.baulera).trim().toUpperCase(), g); });
-                setGapsPend(gm);
-              })
-              .catch(() => { /* */ });
+            // Refetch UNIFICADO: el backend invalidó el cache al generar la deuda → violeta al
+            // toque; y también se refrescan las bauleras (misma función que el mount/onChanged).
+            cargarCobros();
+            reload();
           }} />
       )}
     </div>
@@ -656,15 +652,30 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
     try { applyResult(await generarDeuda(p)); }
     catch (e: any) { if (linkVivoDe409(e)) return; setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link' }); }
   };
+  // Errores VISIBLES (auditoría integridad 16/07): antes bloqueo y deuda manual tenían catch {}
+  // vacío — si el guardado fallaba, el operador creía que quedó y no quedó nada.
+  const [blockErr, setBlockErr] = useState('');
+  const [saveErr, setSaveErr] = useState('');
   const cambiarBloqueo = async (st: string, until: string | null) => {
-    setSavingBlock(true);
+    setSavingBlock(true); setBlockErr('');
     try { await updateStorageRoomServices(room.id as any, { status: st, blockedUntil: until, blockReason: st === 'blocked' ? (blockNote.trim() || 'Bloqueo manual') : null } as any); if (onChanged) onChanged(); }
-    catch (e) { /* */ } finally { setSavingBlock(false); }
+    catch (e: any) { setBlockErr(e?.response?.data?.message || e?.response?.data?.error || 'NO se guardó el cambio de bloqueo — reintentá'); }
+    finally { setSavingBlock(false); }
   };
   const saveDebt = async () => {
-    if (!tenant || !tenant.id) return;
-    setSaving(true); setSaved(false);
-    try { await updateCustomerServices(tenant.id as any, { manualDebt: debt, debtNote, debtUpdatedAt: new Date().toISOString() } as any); setSaved(true); } catch (e) { /* */ } finally { setSaving(false); }
+    setSaving(true); setSaved(false); setSaveErr('');
+    try {
+      if (tenant && tenant.id) {
+        await updateCustomerServices(tenant.id as any, { manualDebt: debt, debtNote, debtUpdatedAt: new Date().toISOString() } as any);
+      } else {
+        // Baulera legacy SIN customer (auditoría 16/07): antes esto retornaba sin guardar ni avisar
+        // — el flag "debe" se leía en el portal del cliente y nunca llegaba. Ahora va por el
+        // endpoint de tenant, que crea/actualiza el customer real de la baulera.
+        await updateRoomTenantServices(room.id, { manualDebt: debt, debtNote });
+      }
+      setSaved(true);
+    } catch (e: any) { setSaveErr(e?.response?.data?.error || e?.response?.data?.message || 'NO se guardó — reintentá'); }
+    finally { setSaving(false); }
   };
   const tenantName = tenant ? (tenant.fullName || `${tenant.user?.firstName || tenant.firstName || ''} ${tenant.user?.lastName || tenant.lastName || ''}`.trim()) : (room.currentTenant || null);
   // COMPLETAR/CORREGIR datos del inquilino (bauleras legacy con datos incompletos — caso Débora A3-012):
@@ -1059,7 +1070,8 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
                     <input value={debtNote} onChange={(e) => setDebtNote(e.target.value)} placeholder="Nota (opcional): ej. debe mayo" className="w-full mt-2 border border-gray-300 rounded px-2 py-1.5 text-sm" />
                     <div className="mt-2 flex items-center gap-2">
                       <button onClick={saveDebt} disabled={saving} className="px-3 py-1.5 bg-violet-700 text-white rounded text-sm font-semibold disabled:opacity-50">{saving ? 'Guardando...' : 'Guardar'}</button>
-                      {saved && <span className="text-sm text-green-700">Guardado</span>}
+                      {saved && <span className="text-sm text-green-700">Guardado ✓</span>}
+                      {saveErr && <span className="text-sm text-red-700 font-semibold">{saveErr}</span>}
                     </div>
                   </div>
                 </>
@@ -1073,6 +1085,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-sm text-gray-700">Bloqueada{room.blockedUntil ? " hasta " + fmtDate(room.blockedUntil) : " (indefinida)"}{(room as any).blockReason && (room as any).blockReason !== 'Bloqueo manual' ? " · " + (room as any).blockReason : ""}</span>
                       <button onClick={() => cambiarBloqueo("available", null)} disabled={savingBlock} className="px-3 py-1.5 bg-green-600 text-white rounded text-sm font-semibold disabled:opacity-50">{savingBlock ? "..." : "Desbloquear"}</button>
+                      {blockErr && <span className="text-sm text-red-700 font-semibold">{blockErr}</span>}
                     </div>
                   ) : !blockOpen ? (
                     <button onClick={() => setBlockOpen(true)} className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm font-semibold">Bloquear baulera</button>
@@ -1086,6 +1099,7 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
                         <button onClick={() => cambiarBloqueo("blocked", blockMode === "fecha" ? blockDate : null)} disabled={savingBlock || (blockMode === "fecha" && !blockDate)} className="px-3 py-1.5 bg-gray-700 text-white rounded text-sm font-semibold disabled:opacity-50">{savingBlock ? "Guardando..." : "Confirmar bloqueo"}</button>
                         <button onClick={() => setBlockOpen(false)} className="px-3 py-1.5 text-gray-600 text-sm">Cancelar</button>
                       </div>
+                      {blockErr && <p className="text-sm text-red-700 font-semibold mt-1">{blockErr}</p>}
                     </div>
                   )}
                 </div>

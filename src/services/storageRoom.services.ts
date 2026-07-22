@@ -37,9 +37,12 @@ export const getStorageRoomByIdServices = async (id: string | number): Promise<S
 };
 
 // COMPLETAR/CORREGIR los datos del inquilino desde la ficha (bauleras legacy con datos incompletos:
-// el staff los carga una vez y quedan guardados en el cliente real de la baulera).
+// el staff los carga una vez y quedan guardados en el cliente real de la baulera). También acepta
+// la DEUDA MANUAL (manualDebt/debtNote): en bauleras sin customer, el backend lo crea y la guarda
+// ahí — antes "marcar como debe" se perdía en silencio (auditoría integridad 16/07).
 export const updateRoomTenantServices = async (roomId: string | number, p: {
   nombre?: string; email?: string; telefono?: string; dni?: string;
+  manualDebt?: boolean; debtNote?: string;
 }) => {
   const response = await api.post(`/storage-room/${roomId}/tenant`, p);
   return response.data as { ok: boolean; customerId: string };

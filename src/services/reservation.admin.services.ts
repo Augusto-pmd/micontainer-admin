@@ -39,6 +39,10 @@ export type AdminReservationFull = AdminReservation & {
   rebillAt?: string; rebillBy?: string; rebillPrevPreapprovalId?: string; mpInitPoint?: string;
   gapDays?: number; gapAmount?: number; gapInitPoint?: string | null;
   gapDesde?: string | null; gapHasta?: string | null; trialDays?: number;
+  // Load-bearing: el guard anti-doble-cobro del proporcional depende de este campo (el webhook lo
+  // estampa al pagarse el gap). Tipado explícito para que nadie lo "limpie" del DTO sin darse cuenta.
+  gapPaidAt?: string | null;
+  gapModo?: 'a_cobrar' | 'regalado';
 };
 export const getAdminReservationById = async (id: string): Promise<AdminReservationFull> => {
   const res = await api.get(`/admin/reservations/${id}`);
