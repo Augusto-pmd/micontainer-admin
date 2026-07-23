@@ -104,6 +104,7 @@ export default function Reservations() {
     try {
       await cancelAdminReservation(r.id);
       setReservations((x) => x.map((rv) => rv.id === r.id ? { ...rv, status: "cancelled", mpSubscriptionStatus: "cancelled" } : rv));
+      load(); // refetch real (auditoría ventas M2): la baulera quedó liberada y el update optimista no lo reflejaba
     } catch (e: any) {
       showError(e?.response?.data?.error || "No se pudo dar de baja.");
     }
@@ -163,6 +164,7 @@ export default function Reservations() {
         ? { ...rv, mpPreapprovalId: out.subId, mpSubscriptionStatus: "authorized", status: out.activada ? "active" : rv.status }
         : rv));
       setVincFor(null);
+      load(); // refetch real (auditoría ventas M2): el vínculo puede haber asignado baulera y el optimista no la trae
     } catch (e: any) {
       if (e?.response?.status === 409 && window.confirm(`${e.response.data.error}\n\n¿Reasignarla igual a esta baulera?`)) { await doVincular(subId, true); return; }
       showError(e?.response?.data?.error || "No se pudo vincular.");
