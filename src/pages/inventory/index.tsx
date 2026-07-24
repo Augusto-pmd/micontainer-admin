@@ -4,7 +4,7 @@ import { getAllBranchesServices } from '../../services/branch.services';
 import { getOrdersByCustomerIdServices } from '../../services/order.services';
 import { updateCustomerServices } from '../../services/customer.services';
 import { getCobrosRechazadosServices, type CobroRechazado, type DeudaPendiente, type DeudaPagada, type GapPendiente } from '../../services/pricing.services';
-import { generarDeuda, getAdminReservationById, getAdminReservations, type AdminReservationFull } from '../../services/reservation.admin.services';
+import { generarDeuda, getAdminReservationById, getAdminReservations, liberarBaulera, type AdminReservationFull } from '../../services/reservation.admin.services';
 import type { StorageRoom, StorageRoomStatus } from '../../types/storageRoom';
 import type { Branch } from '../../types/branch';
 
@@ -677,6 +677,23 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
     } catch (e: any) { setSaveErr(e?.response?.data?.error || e?.response?.data?.message || 'NO se guardó — reintentá'); }
     finally { setSaving(false); }
   };
+  // LIBERAR BAULERA (ocupadas, incluí legacy sin reserva que no aparecen en Ventas). Pregunta aparte
+  // si además cortar la suscripción en MP (decisión Lucas 16/07).
+  const [liberando, setLiberando] = useState(false);
+  const [liberarMsg, setLiberarMsg] = useState('');
+  const liberar = async () => {
+    const cod = room.space || room.name;
+    if (!window.confirm(`¿LIBERAR SOLO la baulera ${cod}?\n\n• Queda DISPONIBLE para revender\n• Es SOLO esta baulera — si el cliente tiene otras, NO se tocan\n• Si tiene reserva, queda cancelada`)) return;
+    // Segunda pregunta: cortar la suscripción DE ESTA BAULERA en MP
+    const cortarSub = window.confirm(`¿Además CORTAR la suscripción de ${cod} en Mercado Pago?\n\n• Se corta SOLO el cobro de ESTA baulera (aunque el cliente tenga otras, esas siguen cobrándose)\n• Aceptar = corta el cobro de ${cod}\n• Cancelar = solo libera la baulera, el cobro no se toca`);
+    setLiberando(true); setLiberarMsg('');
+    try {
+      const out = await liberarBaulera(room.id, cortarSub);
+      setLiberarMsg(`Liberada ✓${out.subCancelada ? ' · suscripción cortada en MP' : out.subEncontrada && !cortarSub ? ' · OJO: tiene una sub viva en MP (cancelala en Tarifas)' : ''}`);
+      if (onChanged) onChanged();
+    } catch (e: any) { setLiberarMsg(e?.response?.data?.error || 'No se pudo liberar'); }
+    finally { setLiberando(false); }
+  };
   const tenantName = tenant ? (tenant.fullName || `${tenant.user?.firstName || tenant.firstName || ''} ${tenant.user?.lastName || tenant.lastName || ''}`.trim()) : (room.currentTenant || null);
   // COMPLETAR/CORREGIR datos del inquilino (bauleras legacy con datos incompletos — caso Débora A3-012):
   // se cargan una vez desde la ficha y quedan guardados en el cliente real de la baulera.
@@ -758,8 +775,21 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
             <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" /></div>
           ) : (
             <>
-              <div className="mb-4">
+              <div className="mb-4 flex items-center justify-between gap-2 flex-wrap">
                 <span className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${cfg.statBg}`}>{cfg.label}</span>
+                {/* LIBERAR ESTA baulera (nivel BAULERA, no cliente): sirve para las ocupadas, incluí
+                    las LEGACY sin reserva que no aparecen en Ventas. Cancela SOLO la sub de esta
+                    baulera puntual — si el cliente tiene otras, no se tocan (decisión Lucas 16/07). */}
+                {room.status === 'occupied' && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {liberarMsg && <span className={`text-[11px] font-semibold ${liberarMsg.startsWith('Liberada') ? 'text-green-700' : 'text-red-700'}`}>{liberarMsg}</span>}
+                    <button onClick={liberar} disabled={liberando}
+                      title="Libera SOLO esta baulera (y opcionalmente corta su suscripción en MP). No toca las otras bauleras del cliente."
+                      className="text-xs font-bold px-3 py-1.5 rounded-lg text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50">
+                      {liberando ? 'Liberando…' : 'Liberar baulera'}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* ✓ PAGÓ DEUDA — el registro VISIBLE de los pagos únicos cobrados (Lucas 15/07: pagó

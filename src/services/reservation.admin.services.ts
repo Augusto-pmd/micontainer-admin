@@ -90,6 +90,13 @@ export const cancelAdminReservation = async (id: string) => {
 // (rebillSubscription ELIMINADO: creaba una suscripción NUEVA vía /rebill — contra el modelo. El
 //  endpoint /rebill quedó deshabilitado -> 410.)
 
+// LIBERAR una baulera OCUPADA desde Inventario (incluye las LEGACY sin reserva, que no aparecen en
+// Ventas). Libera + desanexa cliente + cancela reserva si hay. cortarSub=true: además corta la sub en MP.
+export const liberarBaulera = async (roomId: string | number, cortarSub: boolean) => {
+  const res = await api.post(`/admin/reservations/liberar-baulera`, { roomId, cortarSub });
+  return res.data as { liberada: boolean; baulera: string; subEncontrada: boolean; subCancelada: boolean; subId: string | null };
+};
+
 // DEUDA (SPEC cobros-alineados §5): genera un PAGO ÚNICO por un mes adeudado o un proporcional.
 // NO crea suscripción (la del cliente sigue viva sola). Reemplaza a rebillSubscription en la UI.
 export const generarDeuda = async (p: {
