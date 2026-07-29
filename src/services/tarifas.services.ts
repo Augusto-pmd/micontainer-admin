@@ -60,3 +60,11 @@ export const repriceAll = async (
   const r = await api.post(`/pricing-engine/reprice-all/${encodeURIComponent(branchId)}`, { items, dryRun, notify });
   return r.data;
 };
+
+// CAMBIAR EL COBRO REAL DE UN INQUILINO POR BAULERA (reprice individual desde Tarifas): cambia el
+// monto de la suscripción de MP del inquilino ACTIVO de esa baulera. Rige para los próximos cobros.
+// Distinto de "Precio propio" (que es solo el precio de referencia de la baulera, no toca MP).
+export const cambiarCobroBaulera = async (code: string, nuevo: number) => {
+  const r = await api.post(`/admin/reservations/cambiar-precio-baulera`, { code, nuevo });
+  return r.data as { ok: boolean; code: string; cliente: string; subId: string; anterior: number; nuevo: number };
+};

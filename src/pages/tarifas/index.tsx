@@ -7,6 +7,7 @@ import {
   saveRoomOverride,
   repriceSubscriptions,
   repriceAll,
+  cambiarCobroBaulera,
   type PricingByM2,
   type RoomLite,
   type BranchLite,
@@ -39,6 +40,11 @@ export default function Tarifas() {
   const [allPreview, setAllPreview] = useState<any[] | null>(null);
   const [allLoading, setAllLoading] = useState(false);
   const [allMsg, setAllMsg] = useState('');
+  // Cambiar el COBRO REAL de un inquilino puntual (su suscripción en MP) por baulera.
+  const [cobroFor, setCobroFor] = useState<RoomLite | null>(null);
+  const [cobroVal, setCobroVal] = useState('');
+  const [cobroBusy, setCobroBusy] = useState(false);
+  const [cobroMsg, setCobroMsg] = useState('');
 
   // Cargar sucursales
   useEffect(() => {
@@ -193,6 +199,24 @@ export default function Tarifas() {
     } finally {
       setSavingRoom(null);
     }
+  };
+
+  const codeOf = (r: RoomLite) => String(r.space || r.name || r.id).trim().toUpperCase();
+  const openCobro = (r: RoomLite) => { setCobroFor(r); setCobroVal(''); setCobroMsg(''); };
+  const doCobro = async () => {
+    if (!cobroFor) return;
+    const code = codeOf(cobroFor);
+    const nuevo = Number(String(cobroVal).replace(/[^\d]/g, ''));
+    if (!nuevo || nuevo <= 0) { setCobroMsg('Poné un monto válido.'); return; }
+    if (!window.confirm(`¿Cambiar el COBRO REAL del inquilino de la baulera ${code} a $${nuevo.toLocaleString('es-AR')}/mes?\n\nSe modifica su suscripción en Mercado Pago y rige para los próximos cobros (no cobra retroactivo).`)) return;
+    setCobroBusy(true); setCobroMsg('');
+    try {
+      const out = await cambiarCobroBaulera(code, nuevo);
+      setCobroMsg(`✓ ${out.cliente || code}: de $${Number(out.anterior).toLocaleString('es-AR')} a $${Number(out.nuevo).toLocaleString('es-AR')}/mes.`);
+      updateRoomLocal(cobroFor.id, { price: String(out.nuevo) }); // el backend sincroniza room.price
+    } catch (e: any) {
+      setCobroMsg(e?.response?.data?.error || 'No se pudo cambiar el cobro.');
+    } finally { setCobroBusy(false); }
   };
 
   return (
@@ -430,6 +454,43 @@ export default function Tarifas() {
             </div>
           )}
 
+          {cobroFor && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setCobroFor(null)}>
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b">
+                  <h3 className="font-bold text-gray-900">Cambiar cobro del inquilino</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Baulera <b>{codeOf(cobroFor)}</b> · {cobroFor.areaM2} m². Cambia el <b>cobro real</b> de este inquilino en Mercado Pago (su suscripción). Rige para los próximos cobros — no cobra retroactivo.
+                  </p>
+                </div>
+                <div className="px-5 py-4">
+                  <label className="block text-xs font-semibold text-gray-600 mb-1">Nuevo monto mensual</label>
+                  <div className="flex items-center gap-1 mb-2">
+                    <span className="text-gray-400">$</span>
+                    <input
+                      autoFocus type="text" inputMode="numeric" value={cobroVal}
+                      onChange={(e) => setCobroVal(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !cobroBusy) doCobro(); }}
+                      placeholder="Ej: 233000"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-400 mb-3">
+                    Ojo: esto NO es el "Precio propio" de la baulera (ese es solo referencia). Esto cambia lo que MP le cobra al inquilino actual.
+                  </p>
+                  {cobroMsg && <p className={`text-sm mb-3 ${cobroMsg.startsWith('✓') ? 'text-green-700' : 'text-red-600'}`}>{cobroMsg}</p>}
+                  <div className="flex gap-2">
+                    <button onClick={() => setCobroFor(null)} className="flex-1 text-sm text-gray-600 border border-gray-200 rounded-lg py-2 hover:bg-gray-50">Cerrar</button>
+                    <button onClick={doCobro} disabled={cobroBusy}
+                      className="flex-1 text-sm font-bold text-white bg-indigo-700 hover:bg-indigo-800 rounded-lg py-2 disabled:opacity-50">
+                      {cobroBusy ? 'Cambiando…' : 'Cambiar cobro en MP'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Planes de MP: pegado a los precios (antes estaba al fondo, tras ~500 bauleras) */}
           <PlanesMP branchId={branchId} />
 
@@ -523,7 +584,16 @@ export default function Tarifas() {
                             onChange={(e) => updateRoomLocal(r.id, { lockPrice: e.target.checked })}
                           />
                         </td>
-                        <td className="py-2 pr-3">
+                        <td className="py-2 pr-3 whitespace-nowrap">
+                          {occ && (
+                            <button
+                              onClick={() => openCobro(r)}
+                              className="text-indigo-700 hover:text-indigo-900 font-semibold mr-3"
+                              title="Cambiar el cobro real de este inquilino en Mercado Pago (su suscripción)"
+                            >
+                              Cambiar cobro
+                            </button>
+                          )}
                           <button
                             onClick={() => saveRoom(r)}
                             disabled={savingRoom === r.id}
