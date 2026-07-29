@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BsPersonBoundingBox } from "react-icons/bs";
-import { getAdminReservations, deleteAdminReservation, cancelAdminReservation, getFacePhoto, confirmFaceEnrolled, rejectFacePhoto, getFreeRoomsByM2, reassignReservationRoom, updateAdminReservation, getMpCandidatas, vincularMp, type AdminReservation, type FreeRoom, type MpCandidata } from "@/services/reservation.admin.services";
+import { getAdminReservations, deleteAdminReservation, cancelAdminReservation, getFacePhoto, confirmFaceEnrolled, rejectFacePhoto, getFreeRoomsByM2, reassignReservationRoom, updateAdminReservation, getMpCandidatas, vincularMp, cambiarPrecioSub, type AdminReservation, type FreeRoom, type MpCandidata } from "@/services/reservation.admin.services";
 import { showError } from "@/utils/alerts";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -169,6 +169,27 @@ export default function Reservations() {
       if (e?.response?.status === 409 && window.confirm(`${e.response.data.error}\n\n¿Reasignarla igual a esta baulera?`)) { await doVincular(subId, true); return; }
       showError(e?.response?.data?.error || "No se pudo vincular.");
     } finally { setVincBusy(""); }
+  };
+
+  // CAMBIAR PRECIO A UN SUSCRIPTOR PUNTUAL: reprice individual (una sub), no por medida. Rige próximos cobros.
+  const [precioFor, setPrecioFor] = useState<AdminReservation | null>(null);
+  const [precioVal, setPrecioVal] = useState("");
+  const [precioBusy, setPrecioBusy] = useState(false);
+  const openPrecio = (r: AdminReservation) => { setPrecioFor(r); setPrecioVal(String(r.monthly || "")); };
+  const doPrecio = async () => {
+    if (!precioFor) return;
+    const nuevo = Number(String(precioVal).replace(/[^\d]/g, ""));
+    if (!nuevo || nuevo <= 0) { showError("Poné un monto válido."); return; }
+    if (nuevo === Number(precioFor.monthly)) { showError("Es el mismo monto actual."); return; }
+    if (!window.confirm(`¿Cambiar el precio de la suscripción de ${precioFor.customerEmail || precioFor.bauleraCodigo || precioFor.id}?\n\n$${Number(precioFor.monthly).toLocaleString("es-AR")}/mes → $${nuevo.toLocaleString("es-AR")}/mes\n\nSe modifica en Mercado Pago y rige para los próximos cobros (no cobra retroactivo).`)) return;
+    setPrecioBusy(true);
+    try {
+      const out = await cambiarPrecioSub(precioFor.id, nuevo);
+      setReservations((x) => x.map((rv) => rv.id === precioFor.id ? { ...rv, monthly: out.nuevo } : rv));
+      setPrecioFor(null);
+    } catch (e: any) {
+      showError(e?.response?.data?.error || "No se pudo cambiar el precio.");
+    } finally { setPrecioBusy(false); }
   };
 
   useEffect(() => {
@@ -340,6 +361,10 @@ export default function Reservations() {
                       {!r.mpPreapprovalId && r.status !== "cancelled" && (
                         <button onClick={() => openVincular(r)} className="text-violet-700 hover:text-violet-900 text-xs font-semibold mr-3">Vincular MP</button>
                       )}
+                      {/* Cambiar precio: reprice individual de ESTA sub (requiere sub vinculada) */}
+                      {r.mpPreapprovalId && r.status !== "cancelled" && (
+                        <button onClick={() => openPrecio(r)} className="text-indigo-700 hover:text-indigo-900 text-xs font-semibold mr-3">Cambiar precio</button>
+                      )}
                       <button onClick={() => openReassign(r)} className="text-green-700 hover:text-green-900 text-xs font-semibold mr-3">Reasignar</button>
                       {r.status !== "cancelled" && <button onClick={() => darDeBaja(r)} className="text-orange-600 hover:text-orange-800 text-xs font-semibold mr-3">Dar de baja</button>}
                       <button onClick={() => remove(r.id)} className="text-red-600 hover:text-red-800 text-xs font-semibold">Eliminar</button>
@@ -390,6 +415,35 @@ export default function Reservations() {
               </div>
             )}
             <button onClick={() => setVincFor(null)} className="w-full mt-4 text-sm text-gray-500 underline">Cerrar</button>
+          </div>
+        </div>
+      )}
+
+      {precioFor && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={() => setPrecioFor(null)}>
+          <div className="bg-white rounded-xl p-5 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-gray-900 mb-1">Cambiar precio de la suscripción</h3>
+            <p className="text-xs text-gray-500 mb-3">
+              Baulera <b>{precioFor.bauleraCodigo || precioFor.id}</b> · cliente {precioFor.customerEmail || "—"}.
+              Cambia solo el monto de <b>este</b> suscriptor en Mercado Pago. Rige para los próximos cobros (no cobra retroactivo).
+            </p>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Monto actual</label>
+            <div className="text-sm text-gray-800 mb-3">${Number(precioFor.monthly).toLocaleString("es-AR")}/mes</div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Nuevo monto mensual</label>
+            <input
+              autoFocus type="text" inputMode="numeric" value={precioVal}
+              onChange={(e) => setPrecioVal(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !precioBusy) doPrecio(); }}
+              placeholder="Ej: 233000"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setPrecioFor(null)} className="flex-1 text-sm text-gray-600 border border-gray-200 rounded-lg py-2 hover:bg-gray-50">Cancelar</button>
+              <button onClick={doPrecio} disabled={precioBusy}
+                className="flex-1 text-sm font-bold text-white bg-indigo-700 hover:bg-indigo-800 rounded-lg py-2 disabled:opacity-50">
+                {precioBusy ? "Cambiando…" : "Cambiar precio en MP"}
+              </button>
+            </div>
           </div>
         </div>
       )}

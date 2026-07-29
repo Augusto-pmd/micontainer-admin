@@ -123,6 +123,13 @@ export const vincularMp = async (id: string, subId: string, forzar = false) => {
   return res.data as { ok: boolean; subId: string; refEstampada: boolean; activada: boolean; baulera: string };
 };
 
+// CAMBIAR PRECIO A UN SUSCRIPTOR PUNTUAL (reprice individual, no por medida): cambia el monto mensual
+// de la suscripción de MP de ESA reserva. Rige para los próximos cobros. Requiere sub vinculada.
+export const cambiarPrecioSub = async (id: string, nuevo: number) => {
+  const res = await api.post(`/admin/reservations/${id}/cambiar-precio`, { nuevo });
+  return res.data as { ok: boolean; subId: string; anterior: number; nuevo: number; baulera: string | null };
+};
+
 // FACE ID — alta manual por el admin (hasta integrar el dispositivo de acceso):
 // ver la foto (URL firmada 15 min), confirmar el alta (borra la foto) o rechazarla.
 export const getFacePhoto = async (id: string) => {
