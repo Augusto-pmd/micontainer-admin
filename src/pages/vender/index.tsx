@@ -11,12 +11,6 @@ export default function Vender() {
     promoMonths: "0", promoUnit: "months", discountPct: "0", priceOverride: "",
     // 3 RUTAS SEPARADAS: subscription -> /sell · onetime -> /sell-onetime · plan -> /sell-plan
     paymentMode: "subscription",
-    // MES GRATIS: qué pasa con el proporcional de entrada (los días de ESTE mes).
-    // "ahora" = sale con los 2 links · "despues" = pre-cargado en Inventario (celeste) ·
-    // "regalar" = REGALO LIMPIO: la promo corre desde HOY, sin link 2 ni proporcional, nunca.
-    gapCuando: "ahora",
-    // Si es "despues": desde qué fecha Inventario lo marca celeste "sin cobrar". Vacío = de una.
-    gapRecordar: "",
   });
   const [freeRooms, setFreeRooms] = useState<FreeRoom[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
@@ -41,9 +35,10 @@ export default function Vender() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<{
     initPoint: string; monthly: number; duration: number; paymentMode?: string; total?: number;
-    // Mes gratis: link 2 = proporcional de ENTRADA (o 'regalado'); el backend manda las fechas del ciclo.
-    gapLink?: string | null; gapAmount?: number; gapDays?: number; gratis?: string; gapModo?: string;
-    gapDesde?: string | null; gapHasta?: string | null; finGratis?: string; primerDebito?: string; trialDays?: number;
+    // Mes gratis (modelo 31/07): UN SOLO link. El backend manda las fechas del ciclo y la
+    // estimación de lo que MP va a cobrar de proporcional al terminar el período gratis.
+    gratis?: string; finGratis?: string; primerDebito?: string; trialDays?: number;
+    proporcionalDias?: number; proporcionalEstimado?: number; proporcionalFecha?: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -85,10 +80,6 @@ export default function Vender() {
         promoUnit: form.paymentMode === "plan" ? (form.promoUnit as "days" | "months") : undefined,
         discountPct: Number(form.discountPct) || 0,
         priceOverride: form.priceOverride ? Number(form.priceOverride) : undefined,
-        // Mes gratis: link 2 ahora, diferido a Inventario, o REGALADO (sin proporcional, nunca)
-        generarGapAhora: form.paymentMode === "plan" && form.gapCuando === "ahora",
-        recordarGapDesde: form.paymentMode === "plan" && form.gapCuando === "despues" && form.gapRecordar ? form.gapRecordar : undefined,
-        gapModo: form.paymentMode === "plan" && form.gapCuando === "regalar" ? "regalar" as const : undefined,
       };
       // Cada modo llama a SU endpoint (rutas separadas — no se cruzan)
       const r = form.paymentMode === "onetime"
@@ -98,8 +89,8 @@ export default function Vender() {
           : await createManualSale({ ...payload, paymentMode: "subscription" });
       setResult({
         initPoint: r.initPoint, monthly: r.monthly, duration: r.duration, paymentMode: form.paymentMode, total: r.total,
-        gapLink: r.gapLink ?? null, gapAmount: r.gapAmount, gapDays: r.gapDays, gratis: r.gratis, gapModo: r.gapModo,
-        gapDesde: r.gapDesde, gapHasta: r.gapHasta, finGratis: r.finGratis, primerDebito: r.primerDebito, trialDays: r.trialDays,
+        gratis: r.gratis, finGratis: r.finGratis, primerDebito: r.primerDebito, trialDays: r.trialDays,
+        proporcionalDias: r.proporcionalDias, proporcionalEstimado: r.proporcionalEstimado, proporcionalFecha: r.proporcionalFecha,
       });
     } catch (e: any) {
       setError(e?.response?.data?.error || e?.message || "No se pudo generar el link");
@@ -111,14 +102,12 @@ export default function Vender() {
   const link = result?.initPoint || "";
   const msg = `Hola${form.name ? " " + form.name : ""}! Te dejo el link para activar tu baulera en Mi Container: ${link}`;
 
-  // CICLO del mes gratis: fechas YA calculadas por el backend (misma cuenta que el plan real en MP).
-  // Cobrar: proporcional de ENTRADA (hoy → 1°) + gratis desde ese 1°. Regalado: gratis DESDE HOY.
+  // CICLO del mes gratis (modelo 31/07): gratis DESDE HOY; al terminar, MP cobra solo el
+  // proporcional hasta el 1°; después mes completo cada 1°. Fechas calculadas por el backend.
   const fFecha = (s?: string | null) => (s ? s.split("-").reverse().slice(0, 2).join("/") : "");
   const cicloPlan = result?.paymentMode === "plan" && result.finGratis
-    ? { desdeTxt: fFecha(result.gapDesde), inicioGratisTxt: fFecha(result.gapHasta), finGratisTxt: fFecha(result.finGratis), primerDebitoTxt: fFecha(result.primerDebito), regalado: result.gapModo === "regalado" }
+    ? { finGratisTxt: fFecha(result.finGratis), primerDebitoTxt: fFecha(result.primerDebito) }
     : null;
-  const gapLink = result?.gapLink || "";
-  const gapMsg = `Hola${form.name ? " " + form.name : ""}! Te dejo el link del pago único de alineación (${result?.gapDays ?? 0} días) de tu baulera en Mi Container: ${gapLink}`;
   // Normaliza el telefono a formato internacional para wa.me (Argentina: 549...)
   const waPhone = (() => {
     let p = form.phone.replace(/\D/g, "");
@@ -235,33 +224,11 @@ export default function Vender() {
             )}
             {form.paymentMode === "plan" && (
               <div className="sm:col-span-2">
-                <label className={label}>Link 2 — pago único del proporcional (gap) <span className="font-normal text-gray-400">(depende del cliente: ahora o después)</span></label>
-                <div className="flex items-center gap-4 flex-wrap">
-                  <label className="text-sm flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="gapCuando" checked={form.gapCuando === "ahora"} onChange={() => set("gapCuando", "ahora")} />
-                    Generarlo AHORA (salen los 2 links juntos)
-                  </label>
-                  <label className="text-sm flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="gapCuando" checked={form.gapCuando === "despues"} onChange={() => set("gapCuando", "despues")} />
-                    Después — queda pre-cargado en Inventario (botón Proporcional)
-                  </label>
-                  <label className="text-sm flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="gapCuando" checked={form.gapCuando === "regalar"} onChange={() => set("gapCuando", "regalar")} />
-                    <span><b>Regalarlo</b> — el gratis corre desde HOY; sin link 2 ni proporcional, nunca</span>
-                  </label>
-                </div>
-                {form.gapCuando === "regalar" && (
-                  <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1.5 mt-2">
-                    REGALO LIMPIO: el período gratis arranca hoy mismo. Si termina justo un 1°, ese día cobra el mes completo; si termina a mitad de mes, MP corre el cobro al 1° siguiente y esos días van de yapa (te lo muestro al generar).
-                  </p>
-                )}
-                {form.gapCuando === "despues" && (
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <label className="text-xs text-gray-600">Marcarlo en Inventario (celeste "sin cobrar") desde:</label>
-                    <input type="date" className="text-sm border border-gray-300 rounded-lg px-2 py-1.5" value={form.gapRecordar} onChange={(e) => set("gapRecordar", e.target.value)} />
-                    <span className="text-xs text-gray-400">vacío = aparece marcado de una</span>
-                  </div>
-                )}
+                <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                  El período gratis arranca <b>HOY MISMO</b>. Cuando termina, Mercado Pago cobra solo el
+                  <b> proporcional de los días que faltan hasta el 1°</b>, y de ahí en adelante el mes completo
+                  siempre el 1°. Un solo link: no hay nada más que cobrarle aparte.
+                </p>
               </div>
             )}
             <div><label className={label}>Descuento (%)</label><input className={input} type="number" value={form.discountPct} onChange={(e) => set("discountPct", e.target.value)} /></div>
@@ -287,20 +254,19 @@ export default function Vender() {
               {result.paymentMode === "onetime"
                 ? `Link generado · PAGO ÚNICO $${(result.total || 0).toLocaleString("es-AR")} (${result.duration} ${result.duration === 1 ? "mes" : "meses"} de una)`
                 : result.paymentMode === "plan"
-                  ? `LINK 1 (suscripción) generado · $${result.monthly.toLocaleString("es-AR")}/mes · hoy paga $0`
+                  ? `Link generado · $${result.monthly.toLocaleString("es-AR")}/mes · hoy paga $0`
                   : `Link generado · $${result.monthly.toLocaleString("es-AR")}/mes · suscripción mensual`}
             </p>
             {/* CICLO completo del mes gratis, para que el operador sepa qué le va a pasar al cliente */}
             {result.paymentMode === "plan" && cicloPlan && (
-              <div className={`rounded-lg px-3 py-2 mb-2 text-xs border ${cicloPlan.regalado ? "bg-emerald-50 border-emerald-200 text-emerald-900" : "bg-violet-50 border-violet-200 text-violet-900"}`}>
-                <b>Ciclo:</b>{" "}
-                {cicloPlan.regalado
-                  ? <><b>GRATIS desde HOY</b> hasta el <b>{cicloPlan.finGratisTxt}</b> (entrada REGALADA — sin proporcional, sin link 2) · </>
-                  : (result.gapDays ?? 0) > 0
-                    ? <>proporcional de <b>{result.gapDays} días</b> (${(result.gapAmount || 0).toLocaleString("es-AR")}, del {cicloPlan.desdeTxt} al {cicloPlan.inicioGratisTxt} — link 2, se paga ahora o después) · <b>gratis</b> del <b>{cicloPlan.inicioGratisTxt}</b> al <b>{cicloPlan.finGratisTxt}</b> · </>
-                    : <>entra justo un 1° (sin proporcional) · <b>gratis</b> hasta el <b>{cicloPlan.finGratisTxt}</b> · </>}
-                primer débito completo el <b>{cicloPlan.primerDebitoTxt}</b> y de ahí SIEMPRE el 1°.
+              <div className="rounded-lg px-3 py-2 mb-2 text-xs border bg-emerald-50 border-emerald-200 text-emerald-900">
+                <b>Ciclo:</b> <b>GRATIS desde HOY</b> hasta el <b>{cicloPlan.finGratisTxt}</b> ·{" "}
+                {(result.proporcionalDias ?? 0) > 0
+                  ? <>el <b>{cicloPlan.finGratisTxt}</b> MP le cobra el <b>proporcional de {result.proporcionalDias} días</b> (aprox. ${(result.proporcionalEstimado || 0).toLocaleString("es-AR")}, hasta el {cicloPlan.primerDebitoTxt}) · </>
+                  : <>el gratis termina justo un 1°, así que no hay proporcional · </>}
+                primer mes completo el <b>{cicloPlan.primerDebitoTxt}</b> y de ahí SIEMPRE el 1°.
                 {result.trialDays ? <> (cupón del plan en MP: {result.trialDays} días sin débito)</> : null}
+                <br /><span className="text-[11px] opacity-80">El monto exacto del proporcional lo calcula Mercado Pago; el de acá es una estimación para avisarle al cliente.</span>
               </div>
             )}
             <div className="bg-white border border-gray-200 rounded-lg p-2 text-xs break-all text-gray-600 mb-3">{result.initPoint}</div>
@@ -310,26 +276,6 @@ export default function Vender() {
               <a href={mailUrl} className="bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium text-center">Enviar por mail</a>
             </div>
 
-            {/* LINK 2 (gap): si se generó ahora, mostrarlo con sus botones; si se difirió, decir dónde vive */}
-            {result.paymentMode === "plan" && (result.gapDays ?? 0) > 0 && (
-              gapLink ? (
-                <div className="mt-3 rounded-lg border border-violet-300 bg-white p-3">
-                  <p className="text-sm text-gray-700 mb-1">
-                    <b>LINK 2 (pago único del proporcional)</b> · ${(result.gapAmount || 0).toLocaleString("es-AR")} por {result.gapDays} días de alineación al 1°
-                  </p>
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs break-all text-gray-600 mb-2">{gapLink}</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <button onClick={() => navigator.clipboard?.writeText(gapLink)} className="bg-violet-700 text-white py-2 rounded-lg text-sm font-medium">Copiar link 2</button>
-                    <a href={`https://wa.me/${waPhone}?text=${encodeURIComponent(gapMsg)}`} target="_blank" rel="noreferrer" className="bg-green-500 text-white py-2 rounded-lg text-sm font-medium text-center">WhatsApp link 2</a>
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-1.5">La cuenta del cliente queda anexada a la SUSCRIPCIÓN (link 1), no a este pago único.</p>
-                </div>
-              ) : (
-                <p className="mt-3 text-xs text-amber-800 bg-amber-50 border border-amber-300 rounded-lg px-3 py-2">
-                  El proporcional de <b>{result.gapDays} días</b> (${(result.gapAmount || 0).toLocaleString("es-AR")}) quedó <b>SIN generar</b> (a pedido). Cuando el cliente quiera pagarlo: <b>Inventario → su baulera → Proporcional</b> (ya queda pre-cargado ahí).
-                </p>
-              )
-            )}
             <button onClick={() => setResult(null)} className="w-full mt-3 text-sm text-gray-500 underline">Generar otra venta</button>
           </section>
         )}

@@ -18,14 +18,6 @@ export interface ManualSalePayload {
   discountPct?: number;
   priceOverride?: number;
   paymentMode?: 'subscription' | 'onetime' | 'plan';
-  // MES GRATIS (2 links): true = generar YA el pago único del gap (alineación al 1°).
-  // false/ausente = diferirlo (se genera después desde Inventario → botón Proporcional).
-  generarGapAhora?: boolean;
-  // Si se difiere: desde qué fecha Inventario marca el gap "sin cobrar" (celeste). Vacío = de una.
-  recordarGapDesde?: string;
-  // 'regalar' = REGALO LIMPIO: la promo corre desde HOY, la entrada va gratis y NO existe link 2
-  // ni proporcional ni recordatorio, nunca. Default (ausente/'cobrar'): la entrada se debe.
-  gapModo?: 'cobrar' | 'regalar';
 }
 
 export interface ManualSaleResult {
@@ -38,16 +30,14 @@ export interface ManualSaleResult {
   total?: number;
   endDate?: string;
   planId?: string;
-  // MES GRATIS (modelo 14/07): link 1 = suscripción; link 2 = proporcional de ENTRADA (los días del
-  // mes actual, hoy → 1° próximo). El backend devuelve las FECHAS del ciclo ya calculadas.
   suscripcionLink?: string;
-  gapLink?: string | null;   // null si se difirió (generarGapAhora=false) o gap=0
-  gapAmount?: number;        // SIEMPRE viene calculado (para mostrar el ciclo aunque se difiera)
-  gapDays?: number;
-  gapModo?: 'a_cobrar' | 'regalado';
-  gapDesde?: string | null;  // 'YYYY-MM-DD' hoy (null si regalado)
-  gapHasta?: string | null;  // 'YYYY-MM-DD' el 1° próximo (null si regalado)
-  finGratis?: string;        // 'YYYY-MM-DD' fin del período gratis
+  // MES GRATIS (modelo 31/07): UN SOLO link. El proporcional de entrada lo cobra MP al terminar el
+  // período gratis; estos tres campos son la ESTIMACIÓN para avisarle al cliente (el monto real lo
+  // calcula MP). Ya no existe el segundo link ni el modo regalar/cobrar.
+  proporcionalDias?: number;
+  proporcionalEstimado?: number;
+  proporcionalFecha?: string;
+  finGratis?: string;        // 'YYYY-MM-DD' fin del período gratis (arranca HOY)
   primerDebito?: string;     // 'YYYY-MM-DD' primer débito completo (el 1° siguiente)
   trialDays?: number;        // días totales del cupón/trial en MP
   gratis?: string;           // "1 mes(es)" / "45 día(s)"
