@@ -677,19 +677,25 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
     } catch (e: any) { setSaveErr(e?.response?.data?.error || e?.response?.data?.message || 'NO se guardó — reintentá'); }
     finally { setSaving(false); }
   };
-  // LIBERAR BAULERA (ocupadas, incluí legacy sin reserva que no aparecen en Ventas). Pregunta aparte
-  // si además cortar la suscripción en MP (decisión Lucas 16/07).
+  // LIBERAR BAULERA (ocupadas, incluí legacy sin reserva que no aparecen en Ventas).
+  // Desde el 05/08 (orden Lucas) liberar deja la baulera COMO NUEVA y hace todo junto: corta el
+  // cobro en MP Y mata el/los link(s) de plan de esa baulera. Ya no se pregunta aparte: liberar sin
+  // cortar dejaba al cliente pagando una baulera revendida, y el link vivo permitía que alguien se
+  // suscribiera a una baulera que ya no está disponible.
   const [liberando, setLiberando] = useState(false);
   const [liberarMsg, setLiberarMsg] = useState('');
   const liberar = async () => {
     const cod = room.space || room.name;
-    if (!window.confirm(`¿LIBERAR SOLO la baulera ${cod}?\n\n• Queda DISPONIBLE para revender\n• Es SOLO esta baulera — si el cliente tiene otras, NO se tocan\n• Si tiene reserva, queda cancelada`)) return;
-    // Segunda pregunta: cortar la suscripción DE ESTA BAULERA en MP
-    const cortarSub = window.confirm(`¿Además CORTAR la suscripción de ${cod} en Mercado Pago?\n\n• Se corta SOLO el cobro de ESTA baulera (aunque el cliente tenga otras, esas siguen cobrándose)\n• Aceptar = corta el cobro de ${cod}\n• Cancelar = solo libera la baulera, el cobro no se toca`);
+    if (!window.confirm(`¿LIBERAR la baulera ${cod}?\n\n• Queda DISPONIBLE para revender\n• CORTA el cobro de ${cod} en Mercado Pago\n• MATA el link de pago de ${cod} (nadie más se puede suscribir con él)\n• Si tiene reserva, queda cancelada\n\nEs SOLO esta baulera — si el cliente tiene otras, NO se tocan.`)) return;
     setLiberando(true); setLiberarMsg('');
     try {
-      const out = await liberarBaulera(room.id, cortarSub);
-      setLiberarMsg(`Liberada ✓${out.subCancelada ? ' · suscripción cortada en MP' : out.subEncontrada && !cortarSub ? ' · OJO: tiene una sub viva en MP (cancelala en Tarifas)' : ''}`);
+      const out = await liberarBaulera(room.id);
+      const partes = ['Liberada ✓'];
+      if (out.subCancelada) partes.push('cobro cortado en MP');
+      else if (out.subEncontrada) partes.push('OJO: no se pudo cortar la sub');
+      if (out.linksMuertos) partes.push(`${out.linksMuertos} link(s) muerto(s)`);
+      if (out.linksFallados?.length) partes.push(`OJO: ${out.linksFallados.length} link(s) NO se pudieron matar — cancelalos en Tarifas → Planes de MP`);
+      setLiberarMsg(partes.join(' · '));
       if (onChanged) onChanged();
     } catch (e: any) { setLiberarMsg(e?.response?.data?.error || 'No se pudo liberar'); }
     finally { setLiberando(false); }

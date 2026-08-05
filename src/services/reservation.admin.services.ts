@@ -92,9 +92,15 @@ export const cancelAdminReservation = async (id: string) => {
 
 // LIBERAR una baulera OCUPADA desde Inventario (incluye las LEGACY sin reserva, que no aparecen en
 // Ventas). Libera + desanexa cliente + cancela reserva si hay. cortarSub=true: además corta la sub en MP.
-export const liberarBaulera = async (roomId: string | number, cortarSub: boolean) => {
-  const res = await api.post(`/admin/reservations/liberar-baulera`, { roomId, cortarSub });
-  return res.data as { liberada: boolean; baulera: string; subEncontrada: boolean; subCancelada: boolean; subId: string | null };
+// Desde el 05/08 liberar deja la baulera COMO NUEVA: corta el cobro en MP Y mata el/los link(s) de
+// plan de esa baulera. Ya no hay flag `cortarSub` — el backend lo hace siempre.
+export const liberarBaulera = async (roomId: string | number) => {
+  const res = await api.post(`/admin/reservations/liberar-baulera`, { roomId });
+  return res.data as {
+    liberada: boolean; baulera: string;
+    subEncontrada: boolean; subCancelada: boolean; subId: string | null;
+    linksMuertos: number; linksFallados: string[];
+  };
 };
 
 // DEUDA (SPEC cobros-alineados §5): genera un PAGO ÚNICO por un mes adeudado o un proporcional.
