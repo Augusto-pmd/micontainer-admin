@@ -1,11 +1,15 @@
 import { useState } from "react";
-import { getRoomsReport, cleanupRooms, renameBuilding, type RoomsReport } from "../../services/maintenance.services";
+import { getRoomsReport, cleanupRooms, renameBuilding, getHuerfanos, limpiarHuerfanos, type RoomsReport, type HuerfanosReport } from "../../services/maintenance.services";
 
 export default function Mantenimiento() {
   const [report, setReport] = useState<RoomsReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [names, setNames] = useState<Record<string, string>>({});
+  // Inquilinos huérfanos en bauleras libres (bug 05/08)
+  const [huer, setHuer] = useState<HuerfanosReport | null>(null);
+  const [huerLoading, setHuerLoading] = useState(false);
+  const [huerMsg, setHuerMsg] = useState("");
 
   const cargar = async () => {
     setLoading(true); setMsg("");
@@ -57,6 +61,32 @@ export default function Mantenimiento() {
     }
   };
 
+  const revisarHuerfanos = async () => {
+    setHuerLoading(true); setHuerMsg("");
+    try { setHuer(await getHuerfanos()); }
+    catch (e: any) { setHuerMsg(e?.response?.data?.error || "Error al revisar"); }
+    finally { setHuerLoading(false); }
+  };
+
+  const limpiarHuer = async () => {
+    if (!huer || huer.bauleras === 0) return;
+    const ok = window.confirm(
+      `Se van a despegar los datos del inquilino anterior de ${huer.bauleras} baulera(s) LIBRE(S) ` +
+      `y ${huer.customersAfectados} cliente(s).\n\n` +
+      `• NO se borra ningún cliente — solo se despega el puntero a la baulera\n` +
+      `• NO se tocan las bauleras ocupadas\n` +
+      `• Cada baulera se respalda antes (reversible)\n\n¿Confirmás?`
+    );
+    if (!ok) return;
+    setHuerLoading(true); setHuerMsg("");
+    try {
+      const r = await limpiarHuerfanos();
+      setHuerMsg(`✓ Listo: ${r.bauleras} baulera(s) limpiada(s), ${r.customersDesanexados} cliente(s) desanexado(s). Respaldo: ${r.backupStamp}`);
+      await revisarHuerfanos();
+    } catch (e: any) { setHuerMsg(e?.response?.data?.error || "Error al limpiar"); }
+    finally { setHuerLoading(false); }
+  };
+
   const card = "bg-white border border-gray-200 rounded-xl p-4";
 
   return (
@@ -69,6 +99,58 @@ export default function Mantenimiento() {
       </button>
 
       {msg && <div className="mb-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg p-3 text-sm">{msg}</div>}
+
+      {/* Inquilinos huérfanos — arriba, sin tener que bajar por el reporte de inventario */}
+      <div className={`${card} mb-5`}>
+        <h2 className="font-semibold text-gray-800">Inquilinos pegados en bauleras libres</h2>
+        <p className="text-xs text-gray-500 mt-0.5 mb-3">
+          Bauleras <b>disponibles</b> que quedaron con los datos del inquilino anterior (mail, DNI, nombre) o con
+          clientes todavía apuntando a ellas. Pasaba al liberar antes del arreglo del 05/08. Limpiarlo evita que
+          la ficha muestre al cliente viejo y que el mailing le siga escribiendo.
+          <b> No borra ningún cliente</b> — solo despega el puntero. Cada baulera se respalda antes.
+        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button onClick={revisarHuerfanos} disabled={huerLoading}
+            className="bg-gray-900 hover:bg-black text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50">
+            {huerLoading ? "Revisando…" : "Revisar"}
+          </button>
+          {huer && huer.bauleras > 0 && (
+            <button onClick={limpiarHuer} disabled={huerLoading}
+              className="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50">
+              Limpiar {huer.bauleras} baulera{huer.bauleras !== 1 ? "s" : ""}
+            </button>
+          )}
+        </div>
+        {huerMsg && <p className={`text-sm mt-3 ${huerMsg.startsWith("✓") ? "text-green-700" : "text-red-700"}`}>{huerMsg}</p>}
+        {huer && (
+          huer.bauleras === 0 ? (
+            <p className="text-sm text-green-700 mt-3">✓ Todo limpio: ninguna baulera libre tiene datos del inquilino anterior.</p>
+          ) : (
+            <div className="mt-3 border rounded-lg overflow-hidden">
+              <div className="max-h-56 overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 text-gray-500 sticky top-0">
+                    <tr className="text-left">
+                      <th className="px-3 py-2 font-semibold">Baulera</th>
+                      <th className="px-3 py-2 font-semibold">Le quedó pegado</th>
+                      <th className="px-3 py-2 font-semibold text-right">Clientes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {huer.detalle.map((d) => (
+                      <tr key={d.roomId}>
+                        <td className="px-3 py-1.5 font-mono">{d.baulera}</td>
+                        <td className="px-3 py-1.5 text-gray-600">{d.enBaulera.join(", ") || "—"}</td>
+                        <td className="px-3 py-1.5 text-right">{d.customers.length || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        )}
+      </div>
 
       {report && (
         <div className="space-y-5">
