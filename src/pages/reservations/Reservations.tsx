@@ -40,10 +40,16 @@ export default function Reservations() {
   const [reassigning, setReassigning] = useState(false);
   const [loadingFree, setLoadingFree] = useState(false);
 
-  const load = async () => {
+  // La lista trae las 200 más nuevas. Al BUSCAR se le manda el texto al servidor, que barre TODO el
+  // padrón y no solo esa primera página (fix 06/08): una reserva vieja —como A2-042 de Rivas, del
+  // 16/07, activa y sin sub vinculada— no aparecía ni listada ni buscándola, así que no había forma
+  // de llegar a su botón "Vincular MP". El buscador del servidor entiende nombre, mail, DNI,
+  // teléfono, id de venta y CÓDIGO DE BAULERA (canonizado: "A2-42" encuentra "A2-042").
+  const load = async (q?: string) => {
     setLoading(true);
     try {
-      const res = await getAdminReservations({ limit: 200 });
+      const texto = (q ?? "").trim();
+      const res = await getAdminReservations(texto ? { limit: 200, search: texto } : { limit: 200 });
       setReservations(res.data);
       setFiltered(res.data);
     } catch {
@@ -54,6 +60,13 @@ export default function Reservations() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Al tipear, se vuelve a pedir al servidor (con un respiro para no pegarle en cada tecla).
+  useEffect(() => {
+    const t = setTimeout(() => { load(search); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const remove = async (id: string) => {
     if (!window.confirm('¿Eliminar esta reserva? Esta acción no se puede deshacer.\n\nOJO: Eliminar solo borra el registro interno — NO cancela la suscripción en Mercado Pago. Para cortar el cobro usá "Dar de baja".')) return;
@@ -197,12 +210,22 @@ export default function Reservations() {
     if (statusFilter !== "all") list = list.filter(r => r.status === statusFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
+      // Mismo criterio que el servidor + CÓDIGO DE BAULERA (canonizado: "a2-42" = "A2-042"). Sin el
+      // código acá, este filtro descartaba justo lo que el servidor había encontrado al buscarlo.
+      const canonQ = q.toUpperCase().match(/([A-Z]\d)\D*0*(\d+)/);
+      const codeQ = canonQ ? canonQ[1] + canonQ[2] : "";
+      const codeOf = (c?: string | null) => {
+        const m = String(c || "").toUpperCase().match(/([A-Z]\d)\D*0*(\d+)/);
+        return m ? m[1] + m[2] : "";
+      };
       list = list.filter(r =>
         r.id.toLowerCase().includes(q) ||
         r.customerName.toLowerCase().includes(q) ||
         r.customerEmail.toLowerCase().includes(q) ||
         r.customerDni.toLowerCase().includes(q) ||
-        r.category.toLowerCase().includes(q)
+        r.category.toLowerCase().includes(q) ||
+        String(r.bauleraCodigo || "").toLowerCase().includes(q) ||
+        (!!codeQ && codeOf(r.bauleraCodigo) === codeQ)
       );
     }
     setFiltered(list);
