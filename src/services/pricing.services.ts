@@ -44,6 +44,7 @@ export interface CobroRechazado {
 // Deuda con link de pago único ENVIADO y aún sin pagar (titileo VIOLETA). La emite el backend
 // en cobros-rechazados.deudasPendientes; el front la usa para el estado violeta y el link vigente.
 export interface DeudaPendiente {
+  id?: string; // doc id en debts — lo usa "Anular deuda" (13/08) para apagar un violeta que no corresponde
   baulera: string;
   monto: number;
   periodo: string;

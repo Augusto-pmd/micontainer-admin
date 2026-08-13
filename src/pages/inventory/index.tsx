@@ -4,7 +4,7 @@ import { getAllBranchesServices } from '../../services/branch.services';
 import { getOrdersByCustomerIdServices } from '../../services/order.services';
 import { updateCustomerServices } from '../../services/customer.services';
 import { getCobrosRechazadosServices, type CobroRechazado, type DeudaPendiente, type DeudaPagada, type GapPendiente } from '../../services/pricing.services';
-import { generarDeuda, getAdminReservationById, getAdminReservations, liberarBaulera, type AdminReservationFull } from '../../services/reservation.admin.services';
+import { generarDeuda, anularDeuda, getAdminReservationById, getAdminReservations, liberarBaulera, type AdminReservationFull } from '../../services/reservation.admin.services';
 import type { StorageRoom, StorageRoomStatus } from '../../types/storageRoom';
 import type { Branch } from '../../types/branch';
 
@@ -640,6 +640,19 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
       if (w) w.location.href = url; else window.open(url, '_blank');
     } catch (e: any) {
       if (linkVivoDe409(e)) { const url = waUrl(e.response.data.initPoint); if (w) w.location.href = url; else window.open(url, '_blank'); return; }
+      // AVISO del server (13/08): MP YA cobró ese mes (el reintento entró solo) → generar este link
+      // sería cobrarlo DOS veces. Se confirma explícito antes de forzar.
+      if (e?.response?.status === 409 && e?.response?.data?.yaCobrado) {
+        if (window.confirm(`${e.response.data.error}\n\n¿Generar el link IGUAL?`)) {
+          try {
+            const out2 = await generarDeuda({ ...p, forzar: true });
+            applyResult(out2);
+            const url2 = waUrl(out2.initPoint || '');
+            if (w) w.location.href = url2; else window.open(url2, '_blank');
+          } catch (e2: any) { if (w) w.close(); setRebillState({ err: e2?.response?.data?.error || 'No se pudo generar el link' }); }
+        } else { if (w) w.close(); setRebillState({}); }
+        return;
+      }
       if (w) w.close();
       setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link' });
     }
@@ -650,7 +663,18 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
     if (!window.confirm(confirmMsg(p, false))) return;
     setRebillState({ loading: true });
     try { applyResult(await generarDeuda(p)); }
-    catch (e: any) { if (linkVivoDe409(e)) return; setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link' }); }
+    catch (e: any) {
+      if (linkVivoDe409(e)) return;
+      // Mismo aviso "MP ya cobró ese mes" que en abrirWhatsApp: confirmar antes de forzar.
+      if (e?.response?.status === 409 && e?.response?.data?.yaCobrado) {
+        if (window.confirm(`${e.response.data.error}\n\n¿Generar el link IGUAL?`)) {
+          try { applyResult(await generarDeuda({ ...p, forzar: true })); }
+          catch (e2: any) { setRebillState({ err: e2?.response?.data?.error || 'No se pudo generar el link' }); }
+        } else setRebillState({});
+        return;
+      }
+      setRebillState({ err: e?.response?.data?.error || 'No se pudo generar el link' });
+    }
   };
   // Errores VISIBLES (auditoría integridad 16/07): antes bloqueo y deuda manual tenían catch {}
   // vacío — si el guardado fallaba, el operador creía que quedó y no quedó nada.
@@ -684,6 +708,11 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
   // suscribiera a una baulera que ya no está disponible.
   const [liberando, setLiberando] = useState(false);
   const [liberarMsg, setLiberarMsg] = useState('');
+  // ANULAR DEUDA ENVIADA (13/08, caso A1-029): link de deuda generado por error (MP ya había
+  // cobrado el mes) → nadie lo paga nunca → violeta eterno. El botón lo anula y vence el link.
+  const [anulando, setAnulando] = useState(false);
+  const [anulada, setAnulada] = useState(false);
+  const [anularMsg, setAnularMsg] = useState('');
   const liberar = async () => {
     const cod = room.space || room.name;
     if (!window.confirm(`¿LIBERAR la baulera ${cod}?\n\n• Queda DISPONIBLE para revender\n• CORTA el cobro de ${cod} en Mercado Pago\n• MATA el link de pago de ${cod} (nadie más se puede suscribir con él)\n• Si tiene reserva, queda cancelada\n\nEs SOLO esta baulera — si el cliente tiene otras, NO se tocan.`)) return;
@@ -759,11 +788,34 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
   const gapPendiente: GapPendiente | null = detail.gapPendiente || null;
   // Link 2 del gap VIVO (generado en la venta, aún sin pagar): avisar en vez de dejar generar otro.
   const gapLink2Vivo = !!(resv?.gapInitPoint && !(resv as any)?.gapPaidAt);
-  const recobroEnviado = !!deudaPend || !!rebillState.link;
+  const recobroEnviado = !anulada && (!!deudaPend || !!rebillState.link);
   const recobroLink = rebillState.link || deudaPend?.initPoint || '';
   const fechaEnvio = deudaPend ? new Date(deudaPend.sentAt).toLocaleDateString('es-AR') : '';
   const diasRebill = deudaPend ? Math.floor((Date.now() - Date.parse(deudaPend.sentAt)) / 86400000) : 0;
   const haceRebillTxt = diasRebill <= 0 ? 'hoy' : `hace ${diasRebill} día${diasRebill === 1 ? '' : 's'}`;
+
+  // Anula la deuda enviada: vence el link en MP + apaga el violeta. Solo para links generados por error.
+  const anularDeudaEnviada = async () => {
+    if (!deudaPend?.id) return;
+    if (!window.confirm(
+      `¿ANULAR la deuda enviada de ${room.space || room.name}?\n\n` +
+      `• ${deudaPend.tipo === 'proporcional' ? 'Proporcional' : 'Mes adeudado'} ${deudaPend.periodo} — $${Number(deudaPend.monto).toLocaleString('es-AR')} (enviada el ${fechaEnvio})\n` +
+      `• El link MUERE en MP — el cliente ya no puede pagarlo\n` +
+      `• La baulera deja de titilar violeta\n` +
+      `• NO toca la suscripción ni ningún cobro ya hecho\n\n` +
+      `Usalo SOLO si el link se generó por error (ej.: MP ya había cobrado ese mes solo).`
+    )) return;
+    setAnulando(true); setAnularMsg('');
+    try {
+      const out = await anularDeuda(deudaPend.id);
+      setAnulada(true);
+      setAnularMsg(`✓ Deuda anulada${out.linkVencido ? ' · link vencido en MP' : ''}`);
+      if (onRebilled) onRebilled(); // refetch de cobros-rechazados → el violeta se va del plano
+      if (onChanged) onChanged();
+    } catch (e: any) {
+      setAnularMsg(e?.response?.data?.error || 'No se pudo anular la deuda');
+    } finally { setAnulando(false); }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
@@ -788,7 +840,17 @@ function RoomDetailModal({ detail, loading, onClose, onChanged, onRebilled, busc
                     baulera puntual — si el cliente tiene otras, no se tocan (decisión Lucas 16/07). */}
                 {room.status === 'occupied' && (
                   <div className="flex items-center gap-2 flex-wrap">
+                    {anularMsg && <span className={`text-[11px] font-semibold ${anularMsg.startsWith('✓') ? 'text-green-700' : 'text-red-700'}`}>{anularMsg}</span>}
                     {liberarMsg && <span className={`text-[11px] font-semibold ${liberarMsg.startsWith('Liberada') ? 'text-green-700' : 'text-red-700'}`}>{liberarMsg}</span>}
+                    {/* ANULAR DEUDA ENVIADA (13/08): mata un link de deuda generado por error (MP ya
+                        había cobrado el mes) — apaga el violeta y vence el link en MP. */}
+                    {deudaPend?.id && !anulada && (
+                      <button onClick={anularDeudaEnviada} disabled={anulando}
+                        title="Anula el link de deuda enviado (lo vence en MP) y apaga el titileo violeta. Solo para links generados por error — no toca la suscripción ni cobros hechos."
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+                        {anulando ? 'Anulando…' : 'Anular deuda'}
+                      </button>
+                    )}
                     <button onClick={liberar} disabled={liberando}
                       title="Libera SOLO esta baulera (y opcionalmente corta su suscripción en MP). No toca las otras bauleras del cliente."
                       className="text-xs font-bold px-3 py-1.5 rounded-lg text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-50">

@@ -108,9 +108,19 @@ export const liberarBaulera = async (roomId: string | number) => {
 export const generarDeuda = async (p: {
   bauleraCodigo: string; monto: number; tipo: 'mes_adeudado' | 'proporcional';
   periodo?: string; desde?: string; hasta?: string; email: string; cliente?: string; reservationId?: string;
+  // forzar: saltea el aviso 409 "MP ya cobró este mes" (13/08) — solo tras confirmarlo el operador.
+  forzar?: boolean;
 }) => {
   const res = await api.post(`/admin/reservations/deuda`, p);
   return res.data as { debtId: string; initPoint: string; tipo: string; monto: number; periodo: string; email: string };
+};
+
+// ANULAR una deuda enviada POR ERROR (13/08, caso A1-029: MP ya había cobrado el mes con su
+// reintento y el link sobraba → violeta eterno). Vence el link en MP (nadie puede pagarlo después)
+// y apaga el titileo. Una deuda PAGADA no se puede anular.
+export const anularDeuda = async (debtId: string) => {
+  const res = await api.post(`/admin/reservations/anular-deuda`, { debtId });
+  return res.data as { ok: boolean; debtId: string; baulera: string; linkVencido: boolean; yaEstaba?: boolean };
 };
 
 // VINCULAR SUSCRIPCIÓN DE MP (altas manuales / pagos con otra cuenta que quedaron "sueltas"):
