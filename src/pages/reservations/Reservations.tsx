@@ -250,7 +250,9 @@ export default function Reservations() {
           <h1 className="text-2xl font-bold text-gray-900">Ventas en curso</h1>
           <p className="text-sm text-gray-500 mt-0.5">Todas las ventas (web + Vender): suscripciones, planes con mes gratis y pagos únicos</p>
         </div>
-        <button onClick={load} className="text-sm text-green-700 hover:text-green-900 font-medium">
+        {/* load ahora recibe el texto de búsqueda — pasarla explícita (onClick={load} le metía el
+            MouseEvent como parámetro y ROMPÍA el build: Vercel rechazó todos los deploys del 13/08). */}
+        <button onClick={() => load(search)} className="text-sm text-green-700 hover:text-green-900 font-medium">
           ↻ Actualizar
         </button>
       </div>
