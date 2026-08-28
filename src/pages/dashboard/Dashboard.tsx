@@ -9,6 +9,7 @@ import { useAuth } from "@/stores/authStore";
 import { UserRole } from "@/types/auth";
 import { getAllStorageRoomsServices } from "@/services/storageRoom.services";
 import { getAdminReservations } from "@/services/reservation.admin.services";
+import { getMetricasServices, type MetricasNegocio } from "@/services/pricing.services";
 import { useTour } from "@/hooks/useTour";
 
 interface Stats {
@@ -81,6 +82,18 @@ export default function Dashboard() {
   const [faceQueued, setFaceQueued] = useState(0);
   // Clientes que eligieron candado/kit: se entregan y cobran en persona → hay que prepararlos.
   const [addonsPending, setAddonsPending] = useState(0);
+  // MÉTRICAS DEL NEGOCIO (26/08): SOLO dueño (ADMIN/PROGRAMADOR) — plata por m², facturación,
+  // potencial y brecha. Los operadores no ven este cuadro ni se consulta el endpoint para ellos.
+  const esDueno = user?.role === UserRole.PROGRAMADOR || user?.role === UserRole.ADMIN;
+  const [met, setMet] = useState<MetricasNegocio | null>(null);
+  const [metErr, setMetErr] = useState(false);
+  useEffect(() => {
+    if (!esDueno) return;
+    (async () => {
+      try { setMet(await getMetricasServices()); }
+      catch { setMetErr(true); }
+    })();
+  }, [esDueno]);
   useEffect(() => {
     (async () => {
       try {
@@ -157,6 +170,61 @@ export default function Dashboard() {
         <KpiCard label="Bloqueadas"  value={stats.loading ? "…" : stats.blocked}   sub={stats.blocked > 0 ? "fuera de servicio" : "ninguna"} color="gray" />
         <KpiCard label="Facturación" value={stats.loading ? "…" : stats.billing !== null ? `$${stats.billing.toLocaleString("es-AR")}` : "—"} sub={stats.billing !== null ? "mensual · bauleras ocupadas" : "Sin datos aún"} color={stats.billing ? "green" : "gray"} />
       </div>
+
+      {/* MÉTRICAS DEL NEGOCIO — solo dueño (ADMIN/PROGRAMADOR). Rendimiento por m², facturación
+          en pesos y dólares, potencial de lo libre y brecha al techo. Calculado en vivo. */}
+      {esDueno && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-10">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Métricas del negocio</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">Visible solo para el dueño · facturación configurada (MP + efectivo), no cobrado</p>
+            </div>
+            <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5 uppercase tracking-wide">solo dueño</span>
+          </div>
+          {metErr ? (
+            <p className="text-sm text-red-600">No se pudieron calcular las métricas — reintentá recargando.</p>
+          ) : !met ? (
+            <p className="text-sm text-gray-400">Calculando…</p>
+          ) : (() => {
+            const ar = (n: number) => `$${Math.round(n).toLocaleString("es-AR")}`;
+            const rate = met.dolar?.blue || met.dolar?.oficial || null;
+            const rateTag = met.dolar?.blue ? "blue" : "oficial";
+            const usd = (n: number, dec = 0) => rate ? `US$ ${(n / rate).toLocaleString("es-AR", { maximumFractionDigits: dec, minimumFractionDigits: dec })}` : null;
+            const pctOcup = met.padron.m2 > 0 ? ((met.ocupadas.m2 / met.padron.m2) * 100).toFixed(1) : "—";
+            const Tile = ({ label, value, sub, strong }: { label: string; value: string; sub?: string | null; strong?: boolean }) => (
+              <div className={`rounded-xl border p-3.5 ${strong ? "bg-green-600 border-green-600" : "bg-gray-50 border-gray-200"}`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-widest mb-1 ${strong ? "text-white/70" : "text-gray-400"}`}>{label}</p>
+                <p className={`text-xl font-bold tracking-tight tabular-nums ${strong ? "text-white" : "text-gray-900"}`}>{value}</p>
+                {sub && <p className={`text-[11px] mt-0.5 tabular-nums ${strong ? "text-white/70" : "text-gray-500"}`}>{sub}</p>}
+              </div>
+            );
+            return (
+              <>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+                  <Tile strong label="Rinde 1 m² ocupado" value={met.porM2.realOcupado ? `${ar(met.porM2.realOcupado)}/mes` : "—"}
+                    sub={met.porM2.realOcupado && rate ? `${usd(met.porM2.realOcupado, 1)}/mes · lista ${ar(met.porM2.tarifaPromedio || 0)}` : `lista ${ar(met.porM2.tarifaPromedio || 0)}/m²`} />
+                  <Tile label="Facturación mensual" value={ar(met.facturacion.total)}
+                    sub={`${usd(met.facturacion.total) || ""}${rate ? " · " : ""}MP ${ar(met.facturacion.mpAuthorized + met.facturacion.mpPaused)} + efectivo ${ar(met.facturacion.efectivo)}`} />
+                  <Tile label="Ocupación de m²" value={`${pctOcup}%`}
+                    sub={`${Math.round(met.ocupadas.m2).toLocaleString("es-AR")} de ${Math.round(met.padron.m2).toLocaleString("es-AR")} m² · ${met.ocupadas.unidades} bauleras`} />
+                  <Tile label="Libre para alquilar" value={`${met.libres.unidades} bauleras · ${Math.round(met.libres.m2)} m²`}
+                    sub={`potencial +${ar(met.potencialLibres)}/mes${rate ? ` (${usd(met.potencialLibres)})` : ""}`} />
+                  <Tile label="Techo a tarifa plena" value={ar(met.techo)}
+                    sub={`${usd(met.techo) || ""}${rate ? "/mes" : "por mes, todo alquilado a lista"}`} />
+                  <Tile label="Brecha al techo" value={ar(met.brecha.total)}
+                    sub={`llenar libres ${ar(met.brecha.porLibres)} · alinear precios ${ar(met.brecha.porPrecios)}`} />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-3">
+                  {met.facturacion.subsActivas} subs activas{met.facturacion.subsPausadas ? ` · ${met.facturacion.subsPausadas} pausadas (no cobran)` : ""} · {met.facturacion.baulerasEfectivo} en efectivo
+                  {rate ? ` · dólar ${rateTag} $${rate.toLocaleString("es-AR")}` : " · sin cotización de dólar ahora"}
+                  {met.padron.sinMedida ? ` · ${met.padron.sinMedida} bauleras sin m² cargados` : ""} · calculado {new Date(met.generado).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })}
+                </p>
+              </>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Acceso rápido */}
       <div id="tour-quicklinks">

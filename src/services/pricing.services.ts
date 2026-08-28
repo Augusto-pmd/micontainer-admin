@@ -95,6 +95,26 @@ export interface CobrosRechazadosRes {
   cacheado?: boolean;
 }
 
+// MÉTRICAS DEL NEGOCIO (cuadro del Dashboard, 26/08 — SOLO dueño: el front lo muestra únicamente
+// a ADMIN/PROGRAMADOR). Todo calculado en vivo por el backend con el mismo matcheo del roster.
+export interface MetricasNegocio {
+  generado: string;
+  padron: { unidades: number; m2: number; sinMedida: number };
+  ocupadas: { unidades: number; m2: number };
+  libres: { unidades: number; m2: number };
+  otras: number;
+  facturacion: { mpAuthorized: number; mpPaused: number; efectivo: number; total: number; subsActivas: number; subsPausadas: number; baulerasEfectivo: number };
+  porM2: { realOcupado: number | null; tarifaPromedio: number | null; potencialLibre: number | null };
+  potencialLibres: number;
+  techo: number;
+  brecha: { total: number; porLibres: number; porPrecios: number };
+  dolar: { blue: number | null; oficial: number | null } | null;
+}
+export const getMetricasServices = async (branchId = 'nordelta'): Promise<MetricasNegocio> => {
+  const response = await api.get(`/pricing-engine/metricas/${branchId}`);
+  return response.data;
+};
+
 export const getCobrosRechazadosServices = async (branchId = 'nordelta'): Promise<CobrosRechazadosRes> => {
   const response = await api.get(`/pricing-engine/cobros-rechazados/${branchId}`);
   return response.data;
