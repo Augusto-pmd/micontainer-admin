@@ -94,6 +94,81 @@ export default function Dashboard() {
       catch { setMetErr(true); }
     })();
   }, [esDueno]);
+
+  // DESCARGAR / IMPRIMIR el cuadro (pedido Lucas 28/08): abre una vista lista para imprimir con los
+  // números del cuadro MÁS un "Puntos clave" que no está en pantalla (anualizado, ticket promedio,
+  // descuento efectivo vs lista, palanca principal, US$/m²/año). Desde el diálogo de impresión se
+  // guarda como PDF ("Guardar como PDF") o se imprime — mismo botón para las dos cosas.
+  const imprimirMetricas = () => {
+    if (!met) return;
+    const ar = (n: number) => `$${Math.round(n).toLocaleString("es-AR")}`;
+    const rate = met.dolar?.blue || met.dolar?.oficial || null;
+    const rateTag = met.dolar?.blue ? "blue" : "oficial";
+    const usd = (n: number, dec = 0) => rate ? `US$ ${(n / rate).toLocaleString("es-AR", { maximumFractionDigits: dec, minimumFractionDigits: dec })}` : "—";
+    const pctOcup = met.padron.m2 > 0 ? ((met.ocupadas.m2 / met.padron.m2) * 100).toFixed(1) : "—";
+    const descEfectivo = met.porM2.tarifaPromedio && met.porM2.realOcupado
+      ? (100 - (met.porM2.realOcupado / met.porM2.tarifaPromedio) * 100).toFixed(1) : null;
+    const ticket = met.ocupadas.unidades > 0 ? met.facturacion.total / met.ocupadas.unidades : 0;
+    const palanca = met.brecha.porLibres >= met.brecha.porPrecios ? "llenar lo libre" : "alinear precios de lo ocupado";
+    const hoy = new Date().toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" });
+    const fila = (k: string, v: string, s?: string) =>
+      `<tr><td>${k}</td><td class="v">${v}</td><td class="s">${s || ""}</td></tr>`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Métricas MiContainer — ${hoy}</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Segoe UI',system-ui,sans-serif;color:#14201a;background:#fff;padding:32px;max-width:800px;margin:0 auto}
+  h1{font-size:22px;letter-spacing:-.02em} .sub{color:#5c6b62;font-size:12px;margin-top:2px}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #16a34a;padding-bottom:12px;margin-bottom:20px}
+  .badge{font-size:10px;font-weight:700;letter-spacing:.08em;color:#166534;border:1px solid #86efac;border-radius:99px;padding:3px 10px;text-transform:uppercase}
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}
+  .tile{border:1px solid #d8e0da;border-radius:10px;padding:12px}
+  .tile.hero{background:#16a34a;border-color:#16a34a;color:#fff}
+  .tile p.l{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#7a8a80;margin-bottom:4px}
+  .tile.hero p.l{color:rgba(255,255,255,.75)}
+  .tile p.n{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .tile p.s{font-size:10px;color:#5c6b62;margin-top:3px;font-variant-numeric:tabular-nums}
+  .tile.hero p.s{color:rgba(255,255,255,.75)}
+  h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:#166534;margin:0 0 8px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  td{padding:7px 8px;border-bottom:1px solid #e5eae6;vertical-align:top}
+  td.v{font-weight:700;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  td.s{color:#5c6b62;font-size:11px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .foot{margin-top:20px;font-size:9.5px;color:#7a8a80;border-top:1px solid #e5eae6;padding-top:8px;line-height:1.5}
+  @media print{body{padding:0} .noprint{display:none}}
+  .noprint{margin:18px 0;text-align:center}
+  .noprint button{background:#16a34a;color:#fff;border:0;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer}
+</style></head><body>
+<div class="head">
+  <div><h1>MiContainer · Métricas del negocio</h1><p class="sub">Sucursal Nordelta · ${hoy} · uso interno</p></div>
+  <span class="badge">Confidencial</span>
+</div>
+<div class="tiles">
+  <div class="tile hero"><p class="l">Rinde 1 m² ocupado</p><p class="n">${met.porM2.realOcupado ? ar(met.porM2.realOcupado) + "/mes" : "—"}</p><p class="s">${met.porM2.realOcupado && rate ? usd(met.porM2.realOcupado, 1) + "/mes" : ""}</p></div>
+  <div class="tile"><p class="l">Facturación mensual</p><p class="n">${ar(met.facturacion.total)}</p><p class="s">${usd(met.facturacion.total)} · MP + efectivo</p></div>
+  <div class="tile"><p class="l">Ocupación de m²</p><p class="n">${pctOcup}%</p><p class="s">${Math.round(met.ocupadas.m2).toLocaleString("es-AR")} de ${Math.round(met.padron.m2).toLocaleString("es-AR")} m²</p></div>
+  <div class="tile"><p class="l">Libre para alquilar</p><p class="n">${met.libres.unidades} baul. · ${Math.round(met.libres.m2)} m²</p><p class="s">potencial +${ar(met.potencialLibres)}/mes</p></div>
+  <div class="tile"><p class="l">Techo a tarifa plena</p><p class="n">${ar(met.techo)}</p><p class="s">${usd(met.techo)}/mes</p></div>
+  <div class="tile"><p class="l">Brecha al techo</p><p class="n">${ar(met.brecha.total)}</p><p class="s">libres ${ar(met.brecha.porLibres)} · precios ${ar(met.brecha.porPrecios)}</p></div>
+</div>
+<h2>Puntos clave</h2>
+<table>
+${fila("Facturación anualizada (run-rate)", ar(met.facturacion.total * 12), usd(met.facturacion.total * 12) + "/año")}
+${fila("Rendimiento anual de 1 m² ocupado", met.porM2.realOcupado ? ar(met.porM2.realOcupado * 12) : "—", met.porM2.realOcupado ? usd(met.porM2.realOcupado * 12) + "/m²/año" : "")}
+${fila("Ticket promedio por baulera ocupada", ar(ticket) + "/mes", usd(ticket) + " · " + met.ocupadas.unidades + " bauleras")}
+${fila("Precio de lista promedio del padrón", met.porM2.tarifaPromedio ? ar(met.porM2.tarifaPromedio) + "/m²" : "—", descEfectivo ? "descuento efectivo vs lista: " + descEfectivo + "%" : "")}
+${fila("Rendimiento del m² libre (a tarifa)", met.porM2.potencialLibre ? ar(met.porM2.potencialLibre) + "/m²/mes" : "—", "mejor mix que lo ya ocupado")}
+${fila("Palanca principal de crecimiento", palanca, "libres " + ar(met.brecha.porLibres) + " vs precios " + ar(met.brecha.porPrecios))}
+${fila("Padrón físico", met.padron.unidades + " bauleras · " + Math.round(met.padron.m2).toLocaleString("es-AR") + " m²", met.padron.sinMedida ? met.padron.sinMedida + " sin m² cargados" : "")}
+${fila("Contratos", met.facturacion.subsActivas + " suscripciones activas", (met.facturacion.subsPausadas ? met.facturacion.subsPausadas + " pausadas · " : "") + met.facturacion.baulerasEfectivo + " en efectivo")}
+</table>
+<p class="foot">Facturación <b>configurada</b> (MP + efectivo), no cobranza efectiva · ${rate ? `conversión a dólar ${rateTag} $${rate.toLocaleString("es-AR")}` : "sin cotización de dólar disponible"} · calculado en vivo el ${hoy} ${new Date(met.generado).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} hs · MiContainer — documento interno, no distribuir sin autorización.</p>
+<div class="noprint"><button onclick="window.print()">Imprimir / Guardar como PDF</button></div>
+</body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) { alert("El navegador bloqueó la ventana — permití pop-ups para el panel."); return; }
+    w.document.write(html);
+    w.document.close();
+  };
   useEffect(() => {
     (async () => {
       try {
@@ -180,7 +255,16 @@ export default function Dashboard() {
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Métricas del negocio</p>
               <p className="text-[11px] text-gray-400 mt-0.5">Visible solo para el dueño · facturación configurada (MP + efectivo), no cobrado</p>
             </div>
-            <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5 uppercase tracking-wide">solo dueño</span>
+            <div className="flex items-center gap-2">
+              {met && (
+                <button onClick={imprimirMetricas}
+                  title="Abre el reporte con los números del cuadro + puntos clave (anualizado, ticket promedio, descuento vs lista). Desde ahí: Imprimir o Guardar como PDF."
+                  className="text-xs font-bold px-3 py-1.5 rounded-lg text-white bg-green-600 hover:bg-green-700">
+                  ⬇ Descargar / Imprimir
+                </button>
+              )}
+              <span className="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 rounded-full px-2 py-0.5 uppercase tracking-wide">solo dueño</span>
+            </div>
           </div>
           {metErr ? (
             <p className="text-sm text-red-600">No se pudieron calcular las métricas — reintentá recargando.</p>
